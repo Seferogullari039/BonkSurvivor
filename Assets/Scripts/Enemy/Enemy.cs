@@ -306,6 +306,17 @@ public class Enemy : MonoBehaviour
     {
         if (mimicChestOwner != null)
         {
+            bool mimicCrit = damage >= 7 || damage >= mimicChestOwner.CurrentHealth;
+
+            if (FloatingDamageManager.Instance != null)
+            {
+                Transform mimicTransform = mimicChestOwner.transform;
+                FloatingDamageManager.Instance.SpawnDamage(
+                    mimicTransform.position + Vector3.up * 1.5f,
+                    damage,
+                    mimicCrit);
+            }
+
             mimicChestOwner.TakeDamage(damage);
             return;
         }

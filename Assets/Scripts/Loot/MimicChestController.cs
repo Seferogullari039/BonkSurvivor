@@ -17,6 +17,7 @@ public class MimicChestController : MonoBehaviour
     private bool isActivated;
 
     public bool IsActivated => isActivated;
+    public int CurrentHealth => currentHealth;
 
     public void Initialize(Chest chest, ChestRarity rarity)
     {
@@ -28,6 +29,7 @@ public class MimicChestController : MonoBehaviour
             _ => 10
         };
         currentHealth = maxHealth;
+        EnsureBaseMaterials(rarity);
         ApplyIdleVisuals();
     }
 
@@ -155,6 +157,7 @@ public class MimicChestController : MonoBehaviour
 
         if (eyeRenderer != null)
         {
+            eyeRenderer.sharedMaterial = ChestVisualMaterials.GetMetalBaseMaterial();
             GameVisualStyle.ApplyColor(eyeRenderer, MimicEyeColor, 0.72f, true, 0.45f);
         }
     }
@@ -169,9 +172,50 @@ public class MimicChestController : MonoBehaviour
 
             if (renderer == null) continue;
             if (renderer.transform.name.StartsWith("MimicEye")) continue;
+            if (renderer.transform.name == "PriceText") continue;
+            if (renderer.GetComponent<TMPro.TMP_Text>() != null) continue;
 
+            EnsureRendererMaterial(renderer);
             GameVisualStyle.ApplyColor(renderer, color, smoothness, glow, emission);
         }
+    }
+
+    private void EnsureBaseMaterials(ChestRarity rarity)
+    {
+        ChestVisual chestVisual = GetComponent<ChestVisual>();
+
+        if (chestVisual != null)
+        {
+            chestVisual.ApplyRarity(rarity);
+            return;
+        }
+
+        Renderer chestRenderer = GetComponent<Renderer>();
+
+        if (chestRenderer == null || !chestRenderer.enabled) return;
+
+        ChestVisualMaterials.ApplyWood(chestRenderer, rarity);
+    }
+
+    private static void EnsureRendererMaterial(Renderer renderer)
+    {
+        if (renderer.sharedMaterial != null) return;
+
+        string partName = renderer.transform.name;
+
+        if (partName == "Glow")
+        {
+            renderer.sharedMaterial = ChestVisualMaterials.GetGlowBaseMaterial();
+            return;
+        }
+
+        if (partName.StartsWith("MetalBand") || partName == "Lock")
+        {
+            renderer.sharedMaterial = ChestVisualMaterials.GetMetalBaseMaterial();
+            return;
+        }
+
+        renderer.sharedMaterial = ChestVisualMaterials.GetWoodBaseMaterial();
     }
 
     private void EnsureHitProxy()
