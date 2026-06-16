@@ -17,6 +17,7 @@ public class LevelUpManager : MonoBehaviour
 
     private readonly int[] shownUpgradeIndices = new int[3];
     private readonly UpgradeRarity[] shownUpgradeRarities = new UpgradeRarity[3];
+    private readonly UpgradeCardView[] upgradeCards = new UpgradeCardView[3];
     private int menuPlayerLevel = 1;
     private int remainingUpgradeSelections = 1;
     private bool isChestUpgradeMenu;
@@ -34,7 +35,27 @@ public class LevelUpManager : MonoBehaviour
         {
             levelUpPanel.SetActive(false);
             ApplyUpgradePanelLayout();
+            EnsureUpgradeCards();
         }
+    }
+
+    private sealed class UpgradeCardView
+    {
+        public TMP_Text RarityText;
+        public TMP_Text TitleText;
+        public TMP_Text DescriptionText;
+    }
+
+    private readonly struct UpgradeCardContent
+    {
+        public UpgradeCardContent(string title, string description)
+        {
+            Title = title;
+            Description = description;
+        }
+
+        public string Title { get; }
+        public string Description { get; }
     }
 
     private void ApplyUpgradePanelLayout()
@@ -45,18 +66,18 @@ public class LevelUpManager : MonoBehaviour
         UiLayoutUtility.ConfigureGameplayCanvas(canvas);
 
         RectTransform panelRect = levelUpPanel.GetComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(panelRect, Vector2.zero, new Vector2(760f, 460f));
+        UiLayoutUtility.SetAnchorCenter(panelRect, Vector2.zero, new Vector2(860f, 440f));
 
         Image panelImage = levelUpPanel.GetComponent<Image>();
 
         if (panelImage != null)
         {
-            panelImage.color = new Color(0.06f, 0.07f, 0.1f, 0.94f);
+            panelImage.color = new Color(0.05f, 0.06f, 0.09f, 0.94f);
         }
 
-        LayoutUpgradeButton(optionButton1, 110f);
+        LayoutUpgradeButton(optionButton1, -270f);
         LayoutUpgradeButton(optionButton2, 0f);
-        LayoutUpgradeButton(optionButton3, -110f);
+        LayoutUpgradeButton(optionButton3, 270f);
 
         if (chestHeaderText != null)
         {
@@ -65,21 +86,116 @@ public class LevelUpManager : MonoBehaviour
         }
     }
 
-    private static void LayoutUpgradeButton(Button button, float yOffset)
+    private static void LayoutUpgradeButton(Button button, float xOffset)
     {
         if (button == null) return;
 
         RectTransform rectTransform = button.GetComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(rectTransform, new Vector2(0f, yOffset), new Vector2(680f, 72f));
+        UiLayoutUtility.SetAnchorCenter(rectTransform, new Vector2(xOffset, -8f), new Vector2(250f, 300f));
 
-        TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+        Image buttonImage = button.GetComponent<Image>();
 
-        if (label != null)
+        if (buttonImage != null)
         {
-            label.fontSize = 24f;
-            label.enableWordWrapping = true;
-            label.alignment = TextAlignmentOptions.Center;
+            buttonImage.color = new Color(0.11f, 0.13f, 0.17f, 0.98f);
         }
+
+        ColorBlock colors = button.colors;
+        colors.highlightedColor = new Color(0.18f, 0.22f, 0.3f, 1f);
+        colors.pressedColor = new Color(0.24f, 0.3f, 0.4f, 1f);
+        colors.selectedColor = new Color(0.18f, 0.22f, 0.3f, 1f);
+        button.colors = colors;
+    }
+
+    private void EnsureUpgradeCards()
+    {
+        EnsureUpgradeCard(0, optionButton1, optionText1);
+        EnsureUpgradeCard(1, optionButton2, optionText2);
+        EnsureUpgradeCard(2, optionButton3, optionText3);
+    }
+
+    private void EnsureUpgradeCard(int index, Button button, TMP_Text legacyText)
+    {
+        if (button == null || upgradeCards[index] != null)
+        {
+            return;
+        }
+
+        if (legacyText != null)
+        {
+            legacyText.gameObject.SetActive(false);
+        }
+
+        RectTransform buttonRect = button.GetComponent<RectTransform>();
+
+        if (buttonRect == null)
+        {
+            return;
+        }
+
+        upgradeCards[index] = new UpgradeCardView
+        {
+            RarityText = CreateCardText(buttonRect, "RarityText", new Vector2(0f, 108f), new Vector2(220f, 28f), 17f, FontStyles.Bold),
+            TitleText = CreateCardText(buttonRect, "TitleText", new Vector2(0f, 38f), new Vector2(220f, 96f), 30f, FontStyles.Bold),
+            DescriptionText = CreateCardText(buttonRect, "DescriptionText", new Vector2(0f, -58f), new Vector2(220f, 118f), 20f, FontStyles.Normal)
+        };
+
+        ConfigureDescriptionText(upgradeCards[index].DescriptionText);
+        ConfigureTitleText(upgradeCards[index].TitleText);
+    }
+
+    private static TMP_Text CreateCardText(
+        RectTransform parent,
+        string objectName,
+        Vector2 anchoredPosition,
+        Vector2 size,
+        float fontSize,
+        FontStyles fontStyle)
+    {
+        GameObject textObject = new GameObject(objectName);
+        textObject.transform.SetParent(parent, false);
+
+        RectTransform rectTransform = textObject.AddComponent<RectTransform>();
+        UiLayoutUtility.SetAnchorCenter(rectTransform, anchoredPosition, size);
+
+        TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
+        textMesh.alignment = TextAlignmentOptions.Center;
+        textMesh.fontSize = fontSize;
+        textMesh.fontStyle = fontStyle;
+        textMesh.textWrappingMode = TextWrappingModes.Normal;
+        textMesh.richText = false;
+        textMesh.raycastTarget = false;
+
+        return textMesh;
+    }
+
+    private static void ConfigureTitleText(TMP_Text titleText)
+    {
+        if (titleText == null)
+        {
+            return;
+        }
+
+        titleText.color = Color.white;
+        titleText.enableAutoSizing = true;
+        titleText.fontSizeMin = 24f;
+        titleText.fontSizeMax = 32f;
+        titleText.outlineWidth = 0.12f;
+        titleText.outlineColor = new Color(0f, 0f, 0f, 0.35f);
+    }
+
+    private static void ConfigureDescriptionText(TMP_Text descriptionText)
+    {
+        if (descriptionText == null)
+        {
+            return;
+        }
+
+        descriptionText.color = new Color(0.84f, 0.88f, 0.94f, 1f);
+        descriptionText.lineSpacing = 4f;
+        descriptionText.enableAutoSizing = true;
+        descriptionText.fontSizeMin = 17f;
+        descriptionText.fontSizeMax = 22f;
     }
 
     public void OnPlayerLevelUp(int newLevel)
@@ -122,6 +238,7 @@ public class LevelUpManager : MonoBehaviour
         }
 
         AssignRandomUpgradeOptions();
+        EnsureUpgradeCards();
         RefreshUpgradeOptionTexts();
         UpdateChestHeaderText();
         RefreshButtonListeners();
@@ -129,9 +246,48 @@ public class LevelUpManager : MonoBehaviour
 
     private void RefreshUpgradeOptionTexts()
     {
-        SetOptionText(optionText1, BuildOptionLabel(shownUpgradeIndices[0], shownUpgradeRarities[0]));
-        SetOptionText(optionText2, BuildOptionLabel(shownUpgradeIndices[1], shownUpgradeRarities[1]));
-        SetOptionText(optionText3, BuildOptionLabel(shownUpgradeIndices[2], shownUpgradeRarities[2]));
+        SetCardText(0, shownUpgradeIndices[0], shownUpgradeRarities[0]);
+        SetCardText(1, shownUpgradeIndices[1], shownUpgradeRarities[1]);
+        SetCardText(2, shownUpgradeIndices[2], shownUpgradeRarities[2]);
+    }
+
+    private void SetCardText(int cardIndex, int upgradeIndex, UpgradeRarity rarity)
+    {
+        EnsureUpgradeCards();
+
+        UpgradeCardView card = upgradeCards[cardIndex];
+
+        if (card == null)
+        {
+            TMP_Text fallbackText = cardIndex switch
+            {
+                0 => optionText1,
+                1 => optionText2,
+                _ => optionText3
+            };
+
+            SetOptionText(fallbackText, BuildLegacyOptionLabel(upgradeIndex, rarity));
+            return;
+        }
+
+        int multiplier = GetRarityMultiplier(rarity);
+        UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier);
+
+        if (card.RarityText != null)
+        {
+            card.RarityText.text = GetRarityLabel(rarity);
+            card.RarityText.color = GetRarityColor(rarity);
+        }
+
+        if (card.TitleText != null)
+        {
+            card.TitleText.text = content.Title;
+        }
+
+        if (card.DescriptionText != null)
+        {
+            card.DescriptionText.text = content.Description;
+        }
     }
 
     private void EnsureChestHeaderText()
@@ -243,40 +399,38 @@ public class LevelUpManager : MonoBehaviour
         };
     }
 
-    private static string GetRarityColorHex(UpgradeRarity rarity)
+    private static Color GetRarityColor(UpgradeRarity rarity)
     {
         return rarity switch
         {
-            UpgradeRarity.Rare => "#5CB8FF",
-            UpgradeRarity.Epic => "#C77DFF",
-            _ => "#D9D9D9"
+            UpgradeRarity.Rare => new Color(0.36f, 0.72f, 1f, 1f),
+            UpgradeRarity.Epic => new Color(0.78f, 0.49f, 1f, 1f),
+            _ => new Color(0.86f, 0.88f, 0.92f, 1f)
         };
     }
 
-    private string BuildOptionLabel(int upgradeIndex, UpgradeRarity rarity)
+    private static string BuildLegacyOptionLabel(int upgradeIndex, UpgradeRarity rarity)
     {
         int multiplier = GetRarityMultiplier(rarity);
-        string body = GetUpgradeBody(upgradeIndex, multiplier);
-        string label = $"{GetRarityLabel(rarity)} {body}";
-
-        return $"<color={GetRarityColorHex(rarity)}>{label}</color>";
+        UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier);
+        return $"{GetRarityLabel(rarity)}\n{content.Title}\n{content.Description}";
     }
 
-    private static string GetUpgradeBody(int upgradeIndex, int multiplier)
+    private static UpgradeCardContent GetUpgradeCardContent(int upgradeIndex, int multiplier)
     {
         return upgradeIndex switch
         {
-            0 => $"Ateş Hızı +{20 * multiplier}%",
-            1 => $"Mermi Hızı +{25 * multiplier}%",
-            2 => $"XP Çekim Alanı +{30 * multiplier}%",
-            3 => $"Hasar +{multiplier}",
-            4 => "Spread Shot\n3 mermi aynı anda ateşler.",
-            5 => "Piercing Shot\nMermiler 1 düşmanı delip geçer.",
-            6 => "Orbiting Orb\nEtrafında dönen hasar küresi oluşturur.",
-            7 => "Rocket Launcher\nYavaş roket, alan hasarı verir.",
-            8 => "Chain Lightning\nYakın düşmanlara 3 sekme.",
-            9 => "Laser Beam\nKısa menzilde sürekli hasar.",
-            _ => string.Empty
+            0 => new UpgradeCardContent($"Ateş Hızı +{20 * multiplier}%", "Silah ateş hızını artırır."),
+            1 => new UpgradeCardContent($"Mermi Hızı +{25 * multiplier}%", "Mermiler daha hızlı ilerler."),
+            2 => new UpgradeCardContent($"XP Çekim Alanı +{30 * multiplier}%", "XP kürelerini daha uzaaktan toplar."),
+            3 => new UpgradeCardContent($"Hasar +{multiplier}", "Temel hasarını artırır."),
+            4 => new UpgradeCardContent("Spread Shot", "3 mermi aynı anda ateşler."),
+            5 => new UpgradeCardContent("Piercing Shot", "Mermiler 1 düşmanı delip geçer."),
+            6 => new UpgradeCardContent("Orbiting Orb", "Etrafında dönen hasar küresi oluşturur."),
+            7 => new UpgradeCardContent("Rocket Launcher", "Yavaş roket, alan hasarı verir."),
+            8 => new UpgradeCardContent("Chain Lightning", "Yakın düşmanlara 3 sekme."),
+            9 => new UpgradeCardContent("Laser Beam", "Kısa menzilde sürekli hasar."),
+            _ => new UpgradeCardContent(string.Empty, string.Empty)
         };
     }
 
