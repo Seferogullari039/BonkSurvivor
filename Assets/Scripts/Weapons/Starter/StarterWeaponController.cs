@@ -227,6 +227,16 @@ public class StarterWeaponController : MonoBehaviour
         return baseCooldown * playerStats.MegaMeteorCooldownMultiplier;
     }
 
+    private float GetSwordSkillCooldown(float baseCooldown)
+    {
+        if (playerStats == null)
+        {
+            return baseCooldown;
+        }
+
+        return baseCooldown * playerStats.SwordSkillCooldownMultiplier;
+    }
+
     private void TrySignatureSkill()
     {
         switch (activeWeapon)
@@ -249,7 +259,7 @@ public class StarterWeaponController : MonoBehaviour
                 }
 
                 whirlwindRoutine = StartCoroutine(WhirlwindRoutine());
-                nextSkillTime = Time.time + swordSkillCooldown;
+                nextSkillTime = Time.time + GetSwordSkillCooldown(swordSkillCooldown);
                 break;
         }
     }

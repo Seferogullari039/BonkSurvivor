@@ -5,11 +5,14 @@ Items not implemented yet. Do not describe these in upgrade cards until supporte
 ## FPS starter skill upgrades
 
 - **Meteor Focus / Mega Meteor cooldown** upgrade is implemented (Fire Staff RMB only).
+- **Whirlwind Training / Sword skill cooldown** upgrade is implemented (Sword RMB only).
 - Mega Meteor damage upgrade is a separate task.
 - Mega Meteor radius / impact upgrade is a separate task.
 - Mega Meteor VFX/SFX polish is a separate asset task.
+- Sword skill damage upgrade is a separate task.
+- Sword skill range / radius upgrade is a separate task.
+- Arrow Rain damage upgrade is a separate task.
 - Arrow Rain cooldown upgrade is on `feature/test-team-sync`; merge separately if needed.
-- Sword RMB cooldown / damage upgrades are separate tasks.
 - Skill upgrade cards should be added one at a time with safe runtime hooks.
 
 ## Future starter weapon integration

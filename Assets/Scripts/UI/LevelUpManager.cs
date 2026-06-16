@@ -337,7 +337,7 @@ public class LevelUpManager : MonoBehaviour
 
     private void AssignRandomUpgradeOptions()
     {
-        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
         List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
 
         for (int i = 0; i < shownUpgradeIndices.Length; i++)
@@ -453,6 +453,10 @@ public class LevelUpManager : MonoBehaviour
                 return new UpgradeCardContent(
                     "Meteor Focus",
                     GetMegaMeteorCooldownDescription(multiplier));
+            case 11:
+                return new UpgradeCardContent(
+                    "Whirlwind Training",
+                    GetSwordSkillCooldownDescription(multiplier));
             default:
                 return new UpgradeCardContent(string.Empty, string.Empty);
         }
@@ -505,6 +509,16 @@ public class LevelUpManager : MonoBehaviour
             2 => "Mega Meteor cooldown -24%.",
             3 => "Mega Meteor cooldown -36%.",
             _ => "Mega Meteor cooldown -12%."
+        };
+    }
+
+    private static string GetSwordSkillCooldownDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Sword skill cooldown -24%.",
+            3 => "Sword skill cooldown -36%.",
+            _ => "Sword skill cooldown -12%."
         };
     }
 
@@ -789,6 +803,9 @@ public class LevelUpManager : MonoBehaviour
             case 10:
                 ApplyMegaMeteorCooldownUpgrade(0.12f * multiplier);
                 break;
+            case 11:
+                ApplySwordSkillCooldownUpgrade(0.12f * multiplier);
+                break;
         }
     }
 
@@ -859,6 +876,12 @@ public class LevelUpManager : MonoBehaviour
     {
         PlayerStats playerStats = FindPlayerStats();
         playerStats?.ReduceMegaMeteorCooldown(percent);
+    }
+
+    private void ApplySwordSkillCooldownUpgrade(float percent)
+    {
+        PlayerStats playerStats = FindPlayerStats();
+        playerStats?.ReduceSwordSkillCooldown(percent);
     }
 
     private void ApplySpreadShotUpgrade()
