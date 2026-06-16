@@ -6,13 +6,13 @@ public class EnemySpawner : MonoBehaviour
     [SerializeField] private GameObject dragonBossPrefab;
     [SerializeField] private Transform player;
 
-    private float spawnInterval = 2f;
-    private float spawnDistance = 15f;
+    private float spawnInterval = 2.5f;
+    private float spawnDistance = 14f;
     private float timer;
     private float runTimer;
     private int currentWave = 0;
     private int spawnedBossWave = 0;
-    private const int MaxEnemies = 80;
+    private const int MaxEnemies = 65;
 
     public int CurrentWave => currentWave;
 
@@ -23,18 +23,33 @@ public class EnemySpawner : MonoBehaviour
 
         if (currentWave <= 1)
         {
-            spawnInterval = 2f;
-            spawnDistance = 15f;
+            spawnInterval = 2.5f;
+            spawnDistance = 14f;
         }
         else if (currentWave == 2)
         {
-            spawnInterval = 1.5f;
-            spawnDistance = 16f;
+            spawnInterval = 2f;
+            spawnDistance = 15f;
         }
         else if (currentWave == 3)
         {
-            spawnInterval = 1f;
+            spawnInterval = 1.65f;
+            spawnDistance = 16f;
+        }
+        else if (currentWave <= 5)
+        {
+            spawnInterval = 1.35f;
+            spawnDistance = 17f;
+        }
+        else if (currentWave <= 10)
+        {
+            spawnInterval = 1.05f;
             spawnDistance = 18f;
+        }
+        else if (currentWave <= 20)
+        {
+            spawnInterval = 0.85f;
+            spawnDistance = 19f;
         }
         else
         {
@@ -61,8 +76,8 @@ public class EnemySpawner : MonoBehaviour
         runTimer = 0f;
         currentWave = 0;
         spawnedBossWave = 0;
-        spawnInterval = 2f;
-        spawnDistance = 15f;
+        spawnInterval = 2.5f;
+        spawnDistance = 14f;
         DragonBossSpawnTracker.ResetRun();
     }
 
@@ -91,18 +106,33 @@ public class EnemySpawner : MonoBehaviour
 
         if (newWave <= 1)
         {
-            newSpawnInterval = 2f;
-            newSpawnDistance = 15f;
+            newSpawnInterval = 2.5f;
+            newSpawnDistance = 14f;
         }
         else if (newWave == 2)
         {
-            newSpawnInterval = 1.5f;
-            newSpawnDistance = 16f;
+            newSpawnInterval = 2f;
+            newSpawnDistance = 15f;
         }
         else if (newWave == 3)
         {
-            newSpawnInterval = 1f;
+            newSpawnInterval = 1.65f;
+            newSpawnDistance = 16f;
+        }
+        else if (newWave <= 5)
+        {
+            newSpawnInterval = 1.35f;
+            newSpawnDistance = 17f;
+        }
+        else if (newWave <= 10)
+        {
+            newSpawnInterval = 1.05f;
             newSpawnDistance = 18f;
+        }
+        else if (newWave <= 20)
+        {
+            newSpawnInterval = 0.85f;
+            newSpawnDistance = 19f;
         }
         else
         {
@@ -413,10 +443,10 @@ public class EnemySpawner : MonoBehaviour
             case 1:
                 return Enemy.EnemyType.Normal;
             case 2:
-                return roll < 0.7f ? Enemy.EnemyType.Normal : Enemy.EnemyType.Fast;
+                return roll < 0.82f ? Enemy.EnemyType.Normal : Enemy.EnemyType.Fast;
             case 3:
-                if (roll < 0.5f) return Enemy.EnemyType.Normal;
-                if (roll < 0.85f) return Enemy.EnemyType.Fast;
+                if (roll < 0.62f) return Enemy.EnemyType.Normal;
+                if (roll < 0.92f) return Enemy.EnemyType.Fast;
                 return Enemy.EnemyType.Tank;
             default:
                 if (roll < 0.4f) return Enemy.EnemyType.Normal;
@@ -436,11 +466,11 @@ public class EnemySpawner : MonoBehaviour
         }
         else if (currentWave == 2)
         {
-            enemyType = roll < 0.85f ? Enemy.EnemyType.Normal : Enemy.EnemyType.Fast;
+            enemyType = roll < 0.9f ? Enemy.EnemyType.Normal : Enemy.EnemyType.Fast;
         }
         else if (currentWave == 3)
         {
-            enemyType = roll < 0.7f ? Enemy.EnemyType.Normal : Enemy.EnemyType.Fast;
+            enemyType = roll < 0.78f ? Enemy.EnemyType.Normal : Enemy.EnemyType.Fast;
         }
         else
         {
