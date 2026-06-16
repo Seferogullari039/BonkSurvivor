@@ -11,7 +11,7 @@ public static class BowViewModelAssetBuilder
     private const string PrefabPath = PrefabsFolder + "/Bow_ViewModel.prefab";
     private const float ViewModelTargetWidth = 0.76f;
 
-    private static readonly Vector3 BowRootLocalPosition = new Vector3(0.13f, -0.025f, 0.43f);
+    private static readonly Vector3 BowRootLocalPosition = new Vector3(0.11f, 0f, 0.43f);
     private static readonly Vector3 BowRootLocalRotation = new Vector3(8f, -38f, 8f);
     private static readonly Vector3 BowModelLocalRotation = new Vector3(-12f, 90f, 8f);
     private static readonly Vector3 BowModelLocalOffset = new Vector3(0f, 0.012f, 0.035f);
