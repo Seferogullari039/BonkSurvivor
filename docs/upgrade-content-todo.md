@@ -2,29 +2,29 @@
 
 Items not implemented yet. Do not describe these in upgrade cards until supported in code.
 
+## Future starter weapon integration
+
+- Bow / Fire Staff / Sword specific upgrade cards need a starter weapon stat hook system before they can be added safely.
+- Fire Rate card needs a safe weapon stat connection before it can affect FPS starter weapons.
+- Projectile Speed card needs a safe FPS starter projectile hook before it can affect Bow / Staff / Sword projectiles.
+- Spread Shot and Piercing Shot currently fit the support / legacy projectile path; FPS starter Bow integration is a separate task.
+- Bow / Fire Staff / Sword specific cards should only enter the upgrade pool after their real effects are safely supported in code.
+
 ## Rarity / balance
 
-- Legendary rarity tier (enum + roll rates + card color).
+- Legendary rarity will be evaluated in a separate future task.
 - Rarity multiplier currently does not scale Spread Shot, Piercing Shot, or Orbiting Orb repeat picks (only stat upgrades and Rocket / Chain / Laser stack loops use multiplier).
-- Consider showing a small "rarity has no extra effect" note on weapon unlock cards if design stays this way.
 
-## FPS vs legacy auto weapons
+## Pool / UX (separate tasks)
 
-- Fire Rate and Projectile Speed upgrades affect the legacy auto-aim `ProjectileWeapon` path.
-- `ProjectileWeapon.Fire()` returns early while FPS mode is active, so these two upgrades may not help starter Bow / Staff / Sword runs until a FPS-facing effect exists.
-
-## Content / UX ideas
-
-- Unified Turkish or English naming for all upgrade titles.
-- Show exact next values on card (rocket AoE radius, chain target count preview on first pick).
-- Separate upgrade pools for level-up vs chest rewards.
-- Duplicate weapon picks removed from pool after unlock (currently only early-level bias, not full exclusion).
-- Upgrade icons per card.
-- Card hover preview of current player stats.
+- Removing unlocked weapons from the pool, or using separate level-up vs chest pools, is a future task.
+- Upgrade icons, hover preview, and exact next-value previews remain future UX work.
 
 ## Unsupported effect ideas (do not fake in descriptions)
 
-- Crit chance / crit damage upgrades.
-- Lifesteal or shield upgrades.
-- Fire Staff / Bow / Sword specific upgrade cards.
-- Movement speed or dash upgrades via level-up menu.
+- Movement speed, dash cooldown, crit, lifesteal, shield, and similar upgrades require new gameplay logic and are out of scope for text-only polish passes.
+
+## Card text notes
+
+- Fire Rate and Projectile Speed card text refers to auto / support projectile weapons, not FPS starter Bow / Fire Staff / Sword directly.
+- Damage, XP attraction, Orbiting Orb, Rocket Launcher, Chain Lightning, and Laser Beam descriptions match currently working gameplay effects.

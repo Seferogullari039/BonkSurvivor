@@ -423,20 +423,20 @@ public class LevelUpManager : MonoBehaviour
         {
             case 0:
                 return new UpgradeCardContent(
-                    $"Ateş Hızı +{20 * multiplier}%",
-                    "Otomatik hedefli mermi silahının ateş hızını artırır.");
+                    "Rapid Mechanism",
+                    GetFireRateDescription(multiplier));
             case 1:
                 return new UpgradeCardContent(
-                    $"Mermi Hızı +{25 * multiplier}%",
-                    "Otomatik mermilerin uçuş hızını artırır.");
+                    "Swift Projectiles",
+                    GetProjectileSpeedDescription(multiplier));
             case 2:
                 return new UpgradeCardContent(
-                    $"XP Çekim +{30 * multiplier}%",
-                    "XP kürelerinin sana doğru çekilme menzilini genişletir.");
+                    "Magnet Sense",
+                    GetXpAttractionDescription(multiplier));
             case 3:
                 return new UpgradeCardContent(
-                    $"Hasar +{multiplier}",
-                    "Tüm hasar kaynaklarının temel hasar değerini artırır.");
+                    "Sharp Instinct",
+                    GetDamageDescription(multiplier));
             case 4:
                 return GetSpreadShotContent(playerStats);
             case 5:
@@ -454,18 +454,68 @@ public class LevelUpManager : MonoBehaviour
         }
     }
 
+    private static string GetFireRateDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Auto weapons fire 40% faster.",
+            3 => "Auto weapons fire 60% faster.",
+            _ => "Auto weapons fire 20% faster."
+        };
+    }
+
+    private static string GetProjectileSpeedDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Auto-weapon projectiles fly 50% faster.",
+            3 => "Auto-weapon projectiles fly 75% faster.",
+            _ => "Auto-weapon projectiles fly 25% faster."
+        };
+    }
+
+    private static string GetXpAttractionDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "XP pickup range +60%.",
+            3 => "XP pickup range +90%.",
+            _ => "XP pickup range +30%."
+        };
+    }
+
+    private static string GetDamageDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Global damage +2.",
+            3 => "Global damage +3.",
+            _ => "Global damage +1."
+        };
+    }
+
+    private static string GetStackLevelDescription(string upgradeName, int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => $"Rare: {upgradeName} level +2.",
+            3 => $"Epic: {upgradeName} level +3.",
+            _ => $"Common: {upgradeName} level +1."
+        };
+    }
+
     private static UpgradeCardContent GetSpreadShotContent(PlayerStats playerStats)
     {
         if (playerStats == null || !playerStats.SpreadShotUnlocked)
         {
             return new UpgradeCardContent(
                 "Spread Shot",
-                "3 mermiyi 15° açıyla aynı anda ateşler.");
+                "Support projectiles split into multiple shots.");
         }
 
         return new UpgradeCardContent(
             "Spread Shot+",
-            $"Yayılma açısını +2° artırır. (Mevcut: {playerStats.SpreadAngle:0}°)");
+            "Support projectile spread improves.");
     }
 
     private static UpgradeCardContent GetPiercingShotContent(PlayerStats playerStats)
@@ -474,13 +524,12 @@ public class LevelUpManager : MonoBehaviour
         {
             return new UpgradeCardContent(
                 "Piercing Shot",
-                "Mermiler bir düşman daha delerek ilerler.");
+                "Support projectiles pierce through more enemies.");
         }
 
-        int totalHits = playerStats.PierceCount + 1;
         return new UpgradeCardContent(
             "Piercing Shot+",
-            $"Delme kapasitesini 1 artırır. (Maks. {totalHits + 1} isabet)");
+            "Support projectile pierce improves.");
     }
 
     private static UpgradeCardContent GetOrbitingOrbContent(PlayerStats playerStats)
@@ -489,104 +538,96 @@ public class LevelUpManager : MonoBehaviour
         {
             return new UpgradeCardContent(
                 "Orbiting Orb",
-                "Etrafında dönen 1 hasar küresi oluşturur.");
+                "Unlocks an orb that circles you and damages nearby enemies.");
         }
 
         return new UpgradeCardContent(
             "Orbiting Orb+",
-            $"Yörünge küresi sayısını 1 artırır. (Mevcut: {playerStats.OrbitOrbCount})");
+            "Adds +1 orbiting orb.");
     }
 
     private static UpgradeCardContent GetRocketLauncherContent(int multiplier, PlayerStats playerStats)
     {
         bool isUnlock = playerStats == null || !playerStats.RocketLauncherUnlocked;
 
-        if (isUnlock && multiplier <= 1)
+        if (isUnlock)
         {
-            return new UpgradeCardContent(
-                "Rocket Launcher",
-                "Yavaş roket fırlatır; patlamada alan hasarı verir.");
-        }
+            string description = "Unlocks a slow rocket that explodes on impact.";
 
-        if (isUnlock && multiplier > 1)
-        {
-            return new UpgradeCardContent(
-                $"Rocket Launcher x{multiplier}",
-                "Roketi açar ve seviyesini artırır; patlama alanı büyür.");
+            if (multiplier > 1)
+            {
+                description += "\n" + GetStackLevelDescription("Rocket", multiplier);
+            }
+
+            return new UpgradeCardContent("Rocket Launcher", description);
         }
 
         if (multiplier > 1)
         {
             return new UpgradeCardContent(
-                $"Rocket Launcher x{multiplier}",
-                $"Roket seviyesini {multiplier} artırır; patlama yarıçapı büyür.");
+                "Rocket Launcher+",
+                "Improves rocket level and explosion power.\n" + GetStackLevelDescription("Rocket", multiplier));
         }
 
         return new UpgradeCardContent(
             "Rocket Launcher+",
-            "Roket seviyesini 1 artırır; patlama yarıçapı büyür.");
+            "Improves rocket level and explosion power.");
     }
 
     private static UpgradeCardContent GetChainLightningContent(int multiplier, PlayerStats playerStats)
     {
         bool isUnlock = playerStats == null || !playerStats.ChainLightningUnlocked;
 
-        if (isUnlock && multiplier <= 1)
+        if (isUnlock)
         {
-            return new UpgradeCardContent(
-                "Chain Lightning",
-                "Yakındaki düşmanlara 3 kez zincir şimşek hasarı verir.");
-        }
+            string description = "Unlocks lightning that jumps between nearby enemies.";
 
-        if (isUnlock && multiplier > 1)
-        {
-            return new UpgradeCardContent(
-                $"Chain Lightning x{multiplier}",
-                "Zincir şimşaği açar ve ek hedef/seviye kazandırır.");
+            if (multiplier > 1)
+            {
+                description += "\n" + GetStackLevelDescription("Chain Lightning", multiplier);
+            }
+
+            return new UpgradeCardContent("Chain Lightning", description);
         }
 
         if (multiplier > 1)
         {
             return new UpgradeCardContent(
-                $"Chain Lightning x{multiplier}",
-                $"Zincir seviyesini {multiplier} artırır; daha fazla hedefe sıçrar.");
+                "Chain Lightning+",
+                "Increases chain lightning level and target count.\n" + GetStackLevelDescription("Chain Lightning", multiplier));
         }
 
-        int nextTargets = playerStats.ChainLightningTargets + 1;
         return new UpgradeCardContent(
             "Chain Lightning+",
-            $"Zincir hedef sayısını 1 artırır. (Sonraki: {nextTargets} hedef)");
+            "Increases chain lightning level and target count.");
     }
 
     private static UpgradeCardContent GetLaserBeamContent(int multiplier, PlayerStats playerStats)
     {
         bool isUnlock = playerStats == null || !playerStats.LaserBeamUnlocked;
 
-        if (isUnlock && multiplier <= 1)
+        if (isUnlock)
         {
-            return new UpgradeCardContent(
-                "Laser Beam",
-                "4m menzilde hedefe sürekli lazer hasarı verir.");
-        }
+            string description = "Unlocks a short-range beam that pierces enemies.";
 
-        if (isUnlock && multiplier > 1)
-        {
-            return new UpgradeCardContent(
-                $"Laser Beam x{multiplier}",
-                "Lazer ışınını açar ve menzil seviyesini artırır.");
+            if (multiplier > 1)
+            {
+                description += "\n" + GetStackLevelDescription("Laser Beam", multiplier);
+            }
+
+            return new UpgradeCardContent("Laser Beam", description);
         }
 
         if (multiplier > 1)
         {
             return new UpgradeCardContent(
-                $"Laser Beam x{multiplier}",
-                $"Lazer seviyesini {multiplier} artırır; menzil uzar.");
+                "Laser Beam+",
+                "Increases laser level and beam range.\n" + GetStackLevelDescription("Laser Beam", multiplier));
         }
 
-        float nextRange = playerStats.LaserBeamRange + 0.6f;
         return new UpgradeCardContent(
             "Laser Beam+",
-            $"Lazer menzilini artırır. (Sonraki: {nextRange:0.#}m)");
+            "Increases laser level and beam range.");
     }
 
     private List<int> GetUnpurchasedWeaponIndices()
