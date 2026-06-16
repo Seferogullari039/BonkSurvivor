@@ -600,16 +600,19 @@ public class LevelUpManager : MonoBehaviour
     private int GetUpgradePickWeight(int upgradeIndex, List<int> unpurchasedWeapons, int slotIndex)
     {
         bool earlyGame = menuPlayerLevel <= 5;
+        bool midGame = menuPlayerLevel >= 6 && menuPlayerLevel <= 10;
         bool isUnpurchasedWeapon = unpurchasedWeapons.Contains(upgradeIndex);
         int weight;
 
         switch (upgradeIndex)
         {
             case 0:
-            case 1:
             case 2:
             case 3:
-                weight = earlyGame ? 8 : 5;
+                weight = earlyGame ? 10 : (midGame ? 6 : 5);
+                break;
+            case 1:
+                weight = earlyGame ? 7 : (midGame ? 5 : 5);
                 break;
             case 4:
             case 5:
@@ -624,29 +627,52 @@ public class LevelUpManager : MonoBehaviour
             case 7:
             case 8:
             case 9:
-                weight = earlyGame ? 3 : 4;
-                if (earlyGame && isUnpurchasedWeapon)
-                {
-                    weight += 1;
-                }
+                weight = earlyGame ? 2 : (midGame ? 3 : 4);
 
-                if (HasSupportWeaponAlreadyPicked(upgradeIndex, slotIndex))
+                if (earlyGame && HasAnySupportWeaponOnMenu(slotIndex))
+                {
+                    weight = 1;
+                }
+                else if (HasSupportWeaponAlreadyPicked(upgradeIndex, slotIndex))
                 {
                     weight = Mathf.Max(1, weight / 2);
                 }
 
                 break;
-            default:
-                weight = earlyGame ? 1 : 4;
-                if (earlyGame && HasSkillUpgradeAlreadyPicked(slotIndex))
+            case 10:
+            case 11:
+            case 12:
+            case 13:
+            case 14:
+                weight = earlyGame ? 1 : (midGame ? 3 : 4);
+
+                if (HasSkillUpgradeAlreadyPicked(slotIndex))
                 {
-                    weight = 1;
+                    weight = earlyGame ? 1 : Mathf.Max(1, weight / 2);
                 }
 
+                break;
+            default:
+                weight = 4;
                 break;
         }
 
         return Mathf.Max(1, weight);
+    }
+
+    private bool HasAnySupportWeaponOnMenu(int slotIndex)
+    {
+        for (int i = 0; i < slotIndex; i++)
+        {
+            int picked = shownUpgradeIndices[i];
+
+            if (picked >= 7 && picked <= 9)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private bool HasSupportWeaponAlreadyPicked(int candidateIndex, int slotIndex)
