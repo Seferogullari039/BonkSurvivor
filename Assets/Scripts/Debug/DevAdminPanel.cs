@@ -156,6 +156,7 @@ public class DevAdminPanel : MonoBehaviour
         CreateButton(scrollContent, "Level Up", ForceLevelUp);
         CreateButton(scrollContent, "Next Wave", AdvanceWave);
         CreateButton(scrollContent, "Spawn Boss", SpawnBoss);
+        CreateButton(scrollContent, "Spawn Mimic Chest", SpawnMimicChest);
         CreateButton(scrollContent, "Give Rocket Launcher", GiveRocketLauncher);
         CreateButton(scrollContent, "Give Laser Beam", GiveLaserBeam);
         CreateButton(scrollContent, "Give Chain Lightning", GiveChainLightning);
@@ -399,6 +400,60 @@ public class DevAdminPanel : MonoBehaviour
         if (spawner == null) return;
 
         spawner.DevSpawnBoss();
+    }
+
+    private void SpawnMimicChest()
+    {
+        if (!panelVisible || !IsDevPanelEnabled()) return;
+
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+
+        if (player == null) return;
+
+        Vector3 forward = player.transform.forward;
+        forward.y = 0f;
+
+        if (forward.sqrMagnitude < 0.001f)
+        {
+            forward = Vector3.forward;
+        }
+        else
+        {
+            forward.Normalize();
+        }
+
+        Vector3 spawnPosition = player.transform.position + forward * 4f;
+        spawnPosition.y = ProceduralGrassArena.GetLootSpawnY(0.5f);
+        ProceduralGrassArena.TryClampHorizontal(ref spawnPosition);
+        ProceduralGrassArena.TryResolveBlockedSpawn(ref spawnPosition, 4f, 1.2f);
+
+        GameObject prefab = ResolveDevChestPrefab();
+
+        if (prefab == null) return;
+
+        GameObject chestObject = Instantiate(prefab, spawnPosition, Quaternion.identity);
+        Chest chest = chestObject.GetComponent<Chest>();
+
+        if (chest == null) return;
+
+        chest.ConfigureMapChest(ChestRarity.Normal, true);
+    }
+
+    private static GameObject ResolveDevChestPrefab()
+    {
+        ChestSpawner chestSpawner = FindFirstObjectByType<ChestSpawner>();
+
+        if (chestSpawner != null)
+        {
+            GameObject spawnerPrefab = chestSpawner.GetChestPrefabForRarity(ChestRarity.Normal);
+
+            if (spawnerPrefab != null)
+            {
+                return spawnerPrefab;
+            }
+        }
+
+        return ChestPrefabUtility.ResolveChestPrefab(ChestRarity.Normal);
     }
 
     private void GiveRocketLauncher()
