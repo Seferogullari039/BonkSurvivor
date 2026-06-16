@@ -240,6 +240,30 @@ public class Enemy : MonoBehaviour
         );
     }
 
+    private Vector3 ResolveHitSource()
+    {
+        Camera camera = Camera.main;
+
+        if (camera != null)
+        {
+            return camera.transform.position;
+        }
+
+        if (target != null)
+        {
+            return target.position;
+        }
+
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+
+        if (player != null)
+        {
+            return player.transform.position;
+        }
+
+        return transform.position + transform.forward;
+    }
+
     public void TakeDamage(int damage)
     {
         bool isCrit = damage >= 7 || damage >= currentHealth;
@@ -250,7 +274,7 @@ public class Enemy : MonoBehaviour
         }
 
         EnemyHitFeedback hitFeedback = GetComponent<EnemyHitFeedback>();
-        hitFeedback?.PlayHit();
+        hitFeedback?.PlayHit(ResolveHitSource());
 
         currentHealth -= damage;
 

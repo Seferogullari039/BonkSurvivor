@@ -5,22 +5,27 @@ using UnityEngine;
 public class EnemyHitFeedback : MonoBehaviour
 {
     private const float HitFlashDuration = 0.1f;
+    private const float KnockbackDuration = 0.08f;
+    private const float NormalKnockbackDistance = 0.35f;
+    private const float BossKnockbackDistance = 0.05f;
 
-    private static readonly Color HitFlashColor = new Color(1f, 0.95f, 0.95f);
+    private static readonly Color HitFlashColor = new Color(1f, 0.28f, 0.22f);
     private static readonly Color DeathBurstColor = new Color(0.95f, 0.25f, 0.2f);
+    private static MaterialPropertyBlock sharedFlashBlock;
 
+    private Enemy enemy;
     private Renderer[] flashRenderers;
     private Color[] baseColors;
-    private float[] baseSmoothness;
-    private bool[] baseGlow;
     private float hitFlashTimer;
+    private Coroutine knockbackRoutine;
 
     private void Awake()
     {
+        enemy = GetComponent<Enemy>();
         CacheRenderers();
     }
 
-    public void PlayHit()
+    public void PlayHit(Vector3 hitSource)
     {
         if (flashRenderers == null || flashRenderers.Length == 0)
         {
@@ -28,10 +33,17 @@ public class EnemyHitFeedback : MonoBehaviour
         }
 
         hitFlashTimer = HitFlashDuration;
+        ApplyKnockback(hitSource);
+        HitFeedbackUtility.TryPlayHitSound();
     }
 
     public void PlayDeath(Vector3 position)
     {
+        if (HitFeedbackUtility.TrySpawnDeathVfx(position))
+        {
+            return;
+        }
+
         GameObject burstHost = new GameObject("EnemyDeathBurstFx");
         DeathBurstRunner runner = burstHost.AddComponent<DeathBurstRunner>();
         runner.Run(position);
@@ -39,7 +51,10 @@ public class EnemyHitFeedback : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (hitFlashTimer <= 0f || flashRenderers == null || baseColors == null) return;
+        if (hitFlashTimer <= 0f || flashRenderers == null || baseColors == null)
+        {
+            return;
+        }
 
         hitFlashTimer -= Time.deltaTime;
         float flashStrength = Mathf.Clamp01(hitFlashTimer / HitFlashDuration);
@@ -48,11 +63,123 @@ public class EnemyHitFeedback : MonoBehaviour
         {
             Renderer renderer = flashRenderers[i];
 
-            if (renderer == null) continue;
+            if (renderer == null)
+            {
+                continue;
+            }
 
-            Color color = Color.Lerp(baseColors[i], HitFlashColor, flashStrength);
-            GameVisualStyle.ApplyColor(renderer, color, baseSmoothness[i], baseGlow[i]);
+            if (flashStrength <= 0.001f)
+            {
+                renderer.SetPropertyBlock(null);
+                continue;
+            }
+
+            ApplyFlashRenderer(renderer, i, flashStrength);
         }
+    }
+
+    private void ApplyFlashRenderer(Renderer renderer, int index, float flashStrength)
+    {
+        if (sharedFlashBlock == null)
+        {
+            sharedFlashBlock = new MaterialPropertyBlock();
+        }
+
+        Color flashColor = Color.Lerp(baseColors[index], HitFlashColor, flashStrength);
+        renderer.GetPropertyBlock(sharedFlashBlock);
+
+        Material sharedMaterial = renderer.sharedMaterial;
+
+        if (sharedMaterial != null)
+        {
+            if (sharedMaterial.HasProperty("_BaseColor"))
+            {
+                sharedFlashBlock.SetColor("_BaseColor", flashColor);
+            }
+
+            if (sharedMaterial.HasProperty("_Color"))
+            {
+                sharedFlashBlock.SetColor("_Color", flashColor);
+            }
+
+            if (sharedMaterial.HasProperty("_EmissionColor"))
+            {
+                sharedFlashBlock.SetColor("_EmissionColor", flashColor * (0.35f + flashStrength * 0.65f));
+            }
+        }
+
+        renderer.SetPropertyBlock(sharedFlashBlock);
+    }
+
+    private void ApplyKnockback(Vector3 hitSource)
+    {
+        float knockbackDistance = GetKnockbackDistance();
+
+        if (knockbackDistance <= 0.001f)
+        {
+            return;
+        }
+
+        Vector3 direction = transform.position - hitSource;
+        direction.y = 0f;
+
+        if (direction.sqrMagnitude < 0.0001f)
+        {
+            direction = -transform.forward;
+            direction.y = 0f;
+        }
+
+        if (direction.sqrMagnitude < 0.0001f)
+        {
+            return;
+        }
+
+        direction.Normalize();
+
+        if (knockbackRoutine != null)
+        {
+            StopCoroutine(knockbackRoutine);
+        }
+
+        knockbackRoutine = StartCoroutine(KnockbackRoutine(direction, knockbackDistance));
+    }
+
+    private float GetKnockbackDistance()
+    {
+        if (enemy == null)
+        {
+            return NormalKnockbackDistance;
+        }
+
+        return enemy.Type switch
+        {
+            Enemy.EnemyType.MiniBoss => BossKnockbackDistance,
+            Enemy.EnemyType.DragonBoss => BossKnockbackDistance,
+            _ => NormalKnockbackDistance
+        };
+    }
+
+    private IEnumerator KnockbackRoutine(Vector3 direction, float distance)
+    {
+        Vector3 startPosition = transform.position;
+        Vector3 targetPosition = startPosition + direction * distance;
+        float elapsed = 0f;
+
+        while (elapsed < KnockbackDuration)
+        {
+            if (this == null)
+            {
+                yield break;
+            }
+
+            elapsed += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsed / KnockbackDuration);
+            float eased = 1f - (1f - progress) * (1f - progress);
+            transform.position = Vector3.Lerp(startPosition, targetPosition, eased);
+            yield return null;
+        }
+
+        knockbackRoutine = null;
     }
 
     private void CacheRenderers()
@@ -60,26 +187,28 @@ public class EnemyHitFeedback : MonoBehaviour
         flashRenderers = GetComponentsInChildren<Renderer>(false);
         int count = flashRenderers.Length;
         baseColors = new Color[count];
-        baseSmoothness = new float[count];
-        baseGlow = new bool[count];
 
         for (int i = 0; i < count; i++)
         {
             Renderer renderer = flashRenderers[i];
 
-            if (renderer == null) continue;
-
-            Material material = renderer.material;
-            baseColors[i] = material.color;
-            baseSmoothness[i] = material.HasProperty("_Smoothness")
-                ? material.GetFloat("_Smoothness")
-                : 0.42f;
-
-            if (material.HasProperty("_EmissionColor"))
+            if (renderer == null)
             {
-                Color emission = material.GetColor("_EmissionColor");
-                baseGlow[i] = emission.maxColorComponent > 0.05f;
+                baseColors[i] = Color.white;
+                continue;
             }
+
+            Material sharedMaterial = renderer.sharedMaterial;
+
+            if (sharedMaterial == null)
+            {
+                baseColors[i] = Color.white;
+                continue;
+            }
+
+            baseColors[i] = sharedMaterial.HasProperty("_BaseColor")
+                ? sharedMaterial.GetColor("_BaseColor")
+                : sharedMaterial.color;
         }
     }
 
@@ -92,6 +221,25 @@ public class EnemyHitFeedback : MonoBehaviour
 
         private IEnumerator DeathBurstRoutine(Vector3 position)
         {
+            GameObject flashObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            flashObject.name = "EnemyDeathFlash";
+            flashObject.transform.position = position + Vector3.up * 0.35f;
+            flashObject.transform.localScale = Vector3.one * 0.18f;
+
+            Collider flashCollider = flashObject.GetComponent<Collider>();
+
+            if (flashCollider != null)
+            {
+                Destroy(flashCollider);
+            }
+
+            Renderer flashRenderer = flashObject.GetComponent<Renderer>();
+
+            if (flashRenderer != null)
+            {
+                GameVisualStyle.ApplyColor(flashRenderer, DeathBurstColor, 0.55f, true, 0.65f);
+            }
+
             const int particleCount = 6;
             GameObject[] particles = new GameObject[particleCount];
             Vector3[] velocities = new Vector3[particleCount];
@@ -124,7 +272,7 @@ public class EnemyHitFeedback : MonoBehaviour
                 particles[i] = particle;
             }
 
-            const float duration = 0.55f;
+            const float duration = 0.45f;
             float elapsed = 0f;
 
             while (elapsed < duration)
@@ -132,28 +280,31 @@ public class EnemyHitFeedback : MonoBehaviour
                 elapsed += Time.deltaTime;
                 float fade = 1f - elapsed / duration;
 
+                if (flashObject != null)
+                {
+                    flashObject.transform.localScale = Vector3.one * (0.18f + fade * 0.22f);
+                }
+
                 for (int i = 0; i < particleCount; i++)
                 {
                     GameObject particle = particles[i];
 
-                    if (particle == null) continue;
+                    if (particle == null)
+                    {
+                        continue;
+                    }
 
                     particle.transform.position += velocities[i] * Time.deltaTime;
                     velocities[i] += Vector3.down * 2.5f * Time.deltaTime;
                     particle.transform.localScale = Vector3.one * sizes[i] * fade;
-
-                    Renderer renderer = particle.GetComponent<Renderer>();
-                    Material material = renderer != null ? renderer.material : null;
-
-                    if (material != null && material.HasProperty("_BaseColor"))
-                    {
-                        Color color = material.GetColor("_BaseColor");
-                        color.a = fade;
-                        material.SetColor("_BaseColor", color);
-                    }
                 }
 
                 yield return null;
+            }
+
+            if (flashObject != null)
+            {
+                Destroy(flashObject);
             }
 
             for (int i = 0; i < particleCount; i++)
@@ -164,7 +315,7 @@ public class EnemyHitFeedback : MonoBehaviour
                 }
             }
 
-            Destroy(gameObject, 1.5f);
+            Destroy(gameObject, 0.5f);
         }
     }
 }
