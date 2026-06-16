@@ -161,6 +161,7 @@ public class DevAdminPanel : MonoBehaviour
         CreateButton(scrollContent, "Spawn Mimic Chest", SpawnMimicChest);
         CreateButton(scrollContent, "Spawn Golden Dragon", SpawnGoldenDragon);
         CreateButton(scrollContent, "Trigger Blood Moon", TriggerBloodMoon);
+        CreateButton(scrollContent, "Trigger Void Portal", TriggerVoidPortal);
         CreateButton(scrollContent, "Give Rocket Launcher", GiveRocketLauncher);
         CreateButton(scrollContent, "Give Laser Beam", GiveLaserBeam);
         CreateButton(scrollContent, "Give Chain Lightning", GiveChainLightning);
@@ -443,6 +444,20 @@ public class DevAdminPanel : MonoBehaviour
         }
 
         manager?.DevTriggerBloodMoon();
+    }
+
+    private void TriggerVoidPortal()
+    {
+        if (!panelVisible || !IsDevPanelEnabled()) return;
+
+        VoidPortalEventManager manager = VoidPortalEventManager.Instance;
+
+        if (manager == null)
+        {
+            manager = FindFirstObjectByType<VoidPortalEventManager>();
+        }
+
+        manager?.DevTriggerVoidPortal();
     }
 
     private void SpawnMimicChest()

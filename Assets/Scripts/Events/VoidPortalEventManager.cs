@@ -92,6 +92,14 @@ public class VoidPortalEventManager : MonoBehaviour
         }
     }
 
+    public bool DevTriggerVoidPortal()
+    {
+        if (activePortal != null || !VoidPortalSpawnTracker.CanSpawn) return false;
+        if (!MainMenuManager.IsRunActive) return false;
+
+        return SpawnPortalAtPlayer();
+    }
+
     private void TryRollSpawn()
     {
         if (!CanRollPortalEvent()) return;
@@ -139,6 +147,13 @@ public class VoidPortalEventManager : MonoBehaviour
     private bool TrySpawnPortal(int wave)
     {
         if (!CanRollPortalEvent()) return false;
+
+        return SpawnPortalAtPlayer();
+    }
+
+    private bool SpawnPortalAtPlayer()
+    {
+        if (activePortal != null || !VoidPortalSpawnTracker.CanSpawn) return false;
 
         if (cachedPlayer == null)
         {
