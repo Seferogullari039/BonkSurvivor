@@ -11,30 +11,32 @@ public static class BowViewModelAssetBuilder
     private const string PrefabPath = PrefabsFolder + "/Bow_ViewModel.prefab";
     private const float ViewModelTargetWidth = 0.34f;
 
-    private static readonly Vector3 BowModelLocalPosition = new Vector3(0f, 0f, 0f);
+    private static readonly Vector3 BowRootLocalPosition = new Vector3(0.32f, -0.18f, 0.52f);
+    private static readonly Vector3 BowRootLocalRotation = new Vector3(6f, -22f, 4f);
     private static readonly Vector3 BowModelLocalRotation = new Vector3(-12f, 90f, 8f);
-    private static readonly Vector3 BowModelLocalScale = Vector3.one;
+
+    private static bool autoBuildAttempted;
 
     static BowViewModelAssetBuilder()
     {
         EditorApplication.delayCall += TryBuildMissingAssets;
     }
 
-    [MenuItem("Tools/BonkSurvivor/Build Bow ViewModel Assets")]
+    [MenuItem("Tools/BonkSurvivor/Build Bow ViewModel Assets", false, 21)]
     public static void BuildBowViewModelAssets()
     {
-        if (!File.Exists(BowGlbPath))
+        if (!AssetPathExists(BowGlbPath))
         {
-            Debug.LogError("[BowViewModelAssetBuilder] Missing GLB at " + BowGlbPath);
+            Debug.LogWarning("[BowViewModelAssetBuilder] Missing GLB at " + BowGlbPath);
             return;
         }
 
-        if (!IsGlbImportValid(out string importIssue))
+        if (!EnsureBowSourceImported(out string importIssue))
         {
-            Debug.LogError(
-                "[BowViewModelAssetBuilder] GLB import is not valid. "
+            Debug.LogWarning(
+                "[BowViewModelAssetBuilder] GLB import is not ready. "
                 + importIssue
-                + " OBJ format may be required.");
+                + " Reimport the GLB or try an OBJ export if this persists.");
             return;
         }
 
@@ -42,39 +44,59 @@ public static class BowViewModelAssetBuilder
 
         if (!LoadFallbackMaterials(out Material bodyMaterial, out Material trimMaterial))
         {
-            Debug.LogError("[BowViewModelAssetBuilder] Could not resolve fallback materials.");
-            return;
+            Debug.LogWarning("[BowViewModelAssetBuilder] Could not resolve fallback materials. Using basic defaults.");
+            CreateRuntimeFallbackMaterials(out bodyMaterial, out trimMaterial);
+
+            if (bodyMaterial == null || trimMaterial == null)
+            {
+                Debug.LogWarning("[BowViewModelAssetBuilder] Shader fallback unavailable. Aborting prefab build.");
+                return;
+            }
         }
 
-        BuildBowViewModelPrefab(bodyMaterial, trimMaterial);
+        if (!BuildBowViewModelPrefab(bodyMaterial, trimMaterial))
+        {
+            Debug.LogWarning("[BowViewModelAssetBuilder] Failed to create Bow_ViewModel prefab.");
+            return;
+        }
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
 
-        if (AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath) != null)
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
+
+        if (prefab != null)
         {
             Debug.Log("[BowViewModelAssetBuilder] Bow_ViewModel prefab is ready at " + PrefabPath);
+            EditorGUIUtility.PingObject(prefab);
         }
+        else
+        {
+            Debug.LogWarning("[BowViewModelAssetBuilder] Build finished but prefab was not found at " + PrefabPath);
+        }
+    }
+
+    [MenuItem("Tools/BonkSurvivor/Build Bow ViewModel Assets", true)]
+    private static bool ValidateBuildBowViewModelAssets()
+    {
+        return !EditorApplication.isPlayingOrWillChangePlaymode;
     }
 
     private static void TryBuildMissingAssets()
     {
-        if (EditorApplication.isPlayingOrWillChangePlaymode)
+        if (autoBuildAttempted || EditorApplication.isPlayingOrWillChangePlaymode)
         {
             return;
         }
 
-        if (!File.Exists(BowGlbPath))
+        autoBuildAttempted = true;
+
+        if (!AssetPathExists(BowGlbPath))
         {
             return;
         }
 
         if (AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath) != null)
-        {
-            return;
-        }
-
-        if (!IsGlbImportValid(out _))
         {
             return;
         }
@@ -82,9 +104,18 @@ public static class BowViewModelAssetBuilder
         BuildBowViewModelAssets();
     }
 
-    private static bool IsGlbImportValid(out string issue)
+    private static bool EnsureBowSourceImported(out string issue)
     {
         issue = string.Empty;
+
+        if (!AssetPathExists(BowGlbPath))
+        {
+            issue = "Asset path does not exist.";
+            return false;
+        }
+
+        AssetDatabase.ImportAsset(BowGlbPath, ImportAssetOptions.ForceUpdate);
+        AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
 
         AssetImporter importer = AssetImporter.GetAtPath(BowGlbPath);
 
@@ -96,15 +127,17 @@ public static class BowViewModelAssetBuilder
 
         if (importer is not ModelImporter)
         {
-            issue = "Importer is not ModelImporter.";
-            return false;
+            Debug.LogWarning(
+                "[BowViewModelAssetBuilder] Expected ModelImporter but found "
+                + importer.GetType().Name
+                + ". Continuing if a mesh prefab can still be loaded.");
         }
 
-        GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(BowGlbPath);
+        GameObject source = ResolveBowSourceGameObject();
 
         if (source == null)
         {
-            issue = "GLB did not import as a GameObject.";
+            issue = "GLB did not import as a loadable GameObject.";
             return false;
         }
 
@@ -119,14 +152,44 @@ public static class BowViewModelAssetBuilder
         return true;
     }
 
-    private static void BuildBowViewModelPrefab(Material bodyMaterial, Material trimMaterial)
+    private static GameObject ResolveBowSourceGameObject()
     {
         GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(BowGlbPath);
 
+        if (source != null)
+        {
+            return source;
+        }
+
+        Object[] subAssets = AssetDatabase.LoadAllAssetsAtPath(BowGlbPath);
+
+        for (int i = 0; i < subAssets.Length; i++)
+        {
+            if (subAssets[i] is GameObject gameObject && gameObject.transform.parent == null)
+            {
+                return gameObject;
+            }
+        }
+
+        for (int i = 0; i < subAssets.Length; i++)
+        {
+            if (subAssets[i] is GameObject gameObject)
+            {
+                return gameObject;
+            }
+        }
+
+        return null;
+    }
+
+    private static bool BuildBowViewModelPrefab(Material bodyMaterial, Material trimMaterial)
+    {
+        GameObject source = ResolveBowSourceGameObject();
+
         if (source == null)
         {
-            Debug.LogError("[BowViewModelAssetBuilder] Could not load bow GLB asset.");
-            return;
+            Debug.LogWarning("[BowViewModelAssetBuilder] Could not load bow GLB source asset.");
+            return false;
         }
 
         if (AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath) != null)
@@ -136,21 +199,41 @@ public static class BowViewModelAssetBuilder
 
         GameObject prefabRoot = new GameObject("Bow_ViewModel");
         GameObject bowRoot = new GameObject("BowRoot");
-        bowRoot.transform.SetParent(prefabRoot.transform, false);
+        Transform bowRootTransform = bowRoot.transform;
+        bowRootTransform.SetParent(prefabRoot.transform, false);
+        bowRootTransform.localPosition = BowRootLocalPosition;
+        bowRootTransform.localRotation = Quaternion.Euler(BowRootLocalRotation);
+        bowRootTransform.localScale = Vector3.one;
 
-        GameObject bowModel = Object.Instantiate(source);
+        GameObject bowModel = PrefabUtility.InstantiatePrefab(source) as GameObject;
+
+        if (bowModel == null)
+        {
+            bowModel = Object.Instantiate(source);
+        }
+
+        if (bowModel == null)
+        {
+            Object.DestroyImmediate(prefabRoot);
+            Debug.LogWarning("[BowViewModelAssetBuilder] Could not instantiate bow model from GLB.");
+            return false;
+        }
+
         bowModel.name = "BowModel";
-        bowModel.transform.SetParent(bowRoot.transform, false);
-        bowModel.transform.localPosition = BowModelLocalPosition;
-        bowModel.transform.localRotation = Quaternion.Euler(BowModelLocalRotation);
-        bowModel.transform.localScale = BowModelLocalScale;
+        Transform bowModelTransform = bowModel.transform;
+        bowModelTransform.SetParent(bowRootTransform, false);
+        bowModelTransform.localPosition = Vector3.zero;
+        bowModelTransform.localRotation = Quaternion.Euler(BowModelLocalRotation);
+        bowModelTransform.localScale = Vector3.one;
 
         DisablePhysicsComponents(bowModel);
-        AssignFallbackMaterials(bowModel.transform, bodyMaterial, trimMaterial);
-        FitBowModelTransform(bowRoot.transform, bowModel.transform, ViewModelTargetWidth);
+        AssignFallbackMaterials(bowModelTransform, bodyMaterial, trimMaterial);
+        FitBowModelTransform(bowRootTransform, bowModelTransform, ViewModelTargetWidth);
 
-        PrefabUtility.SaveAsPrefabAsset(prefabRoot, PrefabPath);
+        GameObject savedPrefab = PrefabUtility.SaveAsPrefabAsset(prefabRoot, PrefabPath);
         Object.DestroyImmediate(prefabRoot);
+
+        return savedPrefab != null;
     }
 
     private static void FitBowModelTransform(Transform bowRoot, Transform bowModel, float targetWidth)
@@ -158,11 +241,11 @@ public static class BowViewModelAssetBuilder
         Bounds bounds = CalculateRendererBounds(bowModel);
         float sourceWidth = Mathf.Max(0.001f, Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z));
         float uniformScale = targetWidth / sourceWidth;
-        Vector3 combinedScale = bowModel.localScale * uniformScale;
-        bowModel.localScale = combinedScale;
+        bowModel.localScale = Vector3.one * uniformScale;
 
         bounds = CalculateRendererBounds(bowModel);
-        bowModel.localPosition += bowRoot.position - bounds.center;
+        Vector3 worldOffset = bowRoot.position - bounds.center;
+        bowModel.position += worldOffset;
     }
 
     private static Bounds CalculateRendererBounds(Transform root)
@@ -286,38 +369,44 @@ public static class BowViewModelAssetBuilder
         trimMaterial = LoadMaterial("Assets/Art/Weapons/Firestaff/Materials/FireStaff_Metal.mat")
             ?? LoadMaterial("Assets/Art/Weapons/Firestaff/Materials/M_Staff_Metal.mat");
 
-        if (bodyMaterial != null && trimMaterial != null)
-        {
-            return true;
-        }
+        return bodyMaterial != null && trimMaterial != null;
+    }
 
+    private static void CreateRuntimeFallbackMaterials(out Material bodyMaterial, out Material trimMaterial)
+    {
         Shader urpLit = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
 
         if (urpLit == null)
         {
-            return false;
+            bodyMaterial = null;
+            trimMaterial = null;
+            return;
         }
 
-        if (bodyMaterial == null)
-        {
-            bodyMaterial = new Material(urpLit);
-            bodyMaterial.name = "BowFallbackBody";
-            bodyMaterial.SetColor("_BaseColor", new Color(0.42f, 0.26f, 0.13f));
-        }
+        bodyMaterial = new Material(urpLit);
+        bodyMaterial.name = "BowFallbackBody";
+        bodyMaterial.SetColor("_BaseColor", new Color(0.42f, 0.26f, 0.13f));
 
-        if (trimMaterial == null)
-        {
-            trimMaterial = new Material(urpLit);
-            trimMaterial.name = "BowFallbackTrim";
-            trimMaterial.SetColor("_BaseColor", new Color(0.62f, 0.62f, 0.66f));
-        }
-
-        return bodyMaterial != null && trimMaterial != null;
+        trimMaterial = new Material(urpLit);
+        trimMaterial.name = "BowFallbackTrim";
+        trimMaterial.SetColor("_BaseColor", new Color(0.62f, 0.62f, 0.66f));
     }
 
     private static Material LoadMaterial(string path)
     {
         return AssetDatabase.LoadAssetAtPath<Material>(path);
+    }
+
+    private static bool AssetPathExists(string assetPath)
+    {
+        if (string.IsNullOrEmpty(assetPath))
+        {
+            return false;
+        }
+
+        string fullPath = Path.Combine(Application.dataPath, assetPath.Substring("Assets/".Length));
+
+        return File.Exists(fullPath);
     }
 
     private static void EnsureFolder(string parentPath, string folderName)
