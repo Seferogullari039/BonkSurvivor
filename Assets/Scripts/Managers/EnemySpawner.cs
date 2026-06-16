@@ -91,7 +91,14 @@ public class EnemySpawner : MonoBehaviour
 
         timer += Time.deltaTime;
 
-        if (timer >= spawnInterval)
+        float effectiveSpawnInterval = spawnInterval;
+
+        if (BloodMoonEventManager.Instance != null && BloodMoonEventManager.Instance.IsActive)
+        {
+            effectiveSpawnInterval *= BloodMoonEventManager.Instance.SpawnIntervalMultiplier;
+        }
+
+        if (timer >= effectiveSpawnInterval)
         {
             SpawnEnemy();
             timer = 0f;
