@@ -268,6 +268,21 @@ public class StarterWeaponController : MonoBehaviour
         fpsViewModel?.PlayRecoil();
         weaponViewModel?.PlayStaffGlowPulse();
 
+        Quaternion castRotation = Quaternion.LookRotation(direction);
+
+        if (weaponViewModel != null && weaponViewModel.FireballSpawnPoint != null)
+        {
+            Transform spawnPoint = weaponViewModel.FireballSpawnPoint;
+            castRotation = spawnPoint.rotation;
+            FireStaffPolish.TrySpawnFireCastVfx(spawnPoint.position, castRotation);
+        }
+        else
+        {
+            FireStaffPolish.TrySpawnFireCastVfx(spawnPosition, castRotation);
+        }
+
+        FireStaffPolish.TryPlayFireCastSound();
+
         StarterWeaponProjectile.SpawnRuntimeProjectile(
             spawnPosition,
             direction,
@@ -277,7 +292,8 @@ public class StarterWeaponController : MonoBehaviour
             damage,
             4f,
             false,
-            fireballExplosionRadius);
+            fireballExplosionRadius,
+            useFireStaffPolish: true);
     }
 
     private void PerformSwordComboHit()
@@ -368,6 +384,17 @@ public class StarterWeaponController : MonoBehaviour
         ArrowRainTargetRing.Spawn(targetPoint, megaMeteorDamageRadius, megaMeteorCastDelay + 0.15f);
         weaponViewModel?.PlayStaffChargeGlow(megaMeteorCastDelay);
         fpsViewModel?.PlayFireGlow();
+        FireStaffPolish.TryPlayMeteorCastSound();
+
+        if (weaponViewModel != null && weaponViewModel.MeteorCastPoint != null)
+        {
+            Transform castPoint = weaponViewModel.MeteorCastPoint;
+            FireStaffPolish.TrySpawnMeteorChargeVfx(castPoint.position, castPoint.rotation);
+        }
+        else
+        {
+            FireStaffPolish.TrySpawnMeteorChargeVfx(targetPoint + Vector3.up * 0.5f, Quaternion.identity);
+        }
 
         yield return new WaitForSeconds(megaMeteorCastDelay);
 

@@ -11,6 +11,7 @@ public class StarterWeaponProjectile : MonoBehaviour
     private float impactRadius;
     private bool spawnImpactEffect;
     private bool useMegaMeteorImpactFx;
+    private bool useFireStaffPolish;
     private bool initialized;
     private bool hasImpacted;
 
@@ -24,7 +25,8 @@ public class StarterWeaponProjectile : MonoBehaviour
         float landingImpactRadius = 0f,
         bool showImpactEffect = false,
         bool useMegaMeteorVisual = false,
-        bool useMegaMeteorImpact = false)
+        bool useMegaMeteorImpact = false,
+        bool useFireStaffPolish = false)
     {
         if (shootDirection.sqrMagnitude < 0.001f)
         {
@@ -40,6 +42,7 @@ public class StarterWeaponProjectile : MonoBehaviour
         impactRadius = Mathf.Max(0f, landingImpactRadius);
         spawnImpactEffect = showImpactEffect && !useMegaMeteorImpact;
         useMegaMeteorImpactFx = useMegaMeteorImpact;
+        this.useFireStaffPolish = useFireStaffPolish;
         initialized = true;
         hasImpacted = false;
 
@@ -130,8 +133,10 @@ public class StarterWeaponProjectile : MonoBehaviour
         hasImpacted = true;
         initialized = false;
         CancelInvoke(nameof(Expire));
+        Vector3 impactPoint = other.ClosestPoint(transform.position);
         StarterWeaponDamageUtility.DamageEnemy(enemy, damage);
         StarterWeaponDamageUtility.LogLmbCombat(enemy, damage, 1);
+        SpawnFireStaffHitFeedback(impactPoint, 1.2f);
         Destroy(gameObject);
     }
 
@@ -168,8 +173,22 @@ public class StarterWeaponProjectile : MonoBehaviour
         {
             SpawnImpactVisual(explosionPoint, explosionRadius);
         }
+        else if (useFireStaffPolish)
+        {
+            SpawnFireStaffHitFeedback(explosionPoint, explosionRadius);
+        }
 
         Destroy(gameObject);
+    }
+
+    private void SpawnFireStaffHitFeedback(Vector3 impactPoint, float radius)
+    {
+        if (!FireStaffPolish.TrySpawnFireImpactVfx(impactPoint, radius))
+        {
+            SpawnImpactVisual(impactPoint, Mathf.Max(0.75f, radius * 0.45f));
+        }
+
+        FireStaffPolish.TryPlayFireImpactSound(impactPoint);
     }
 
     private void Impact(Vector3 impactPoint)
@@ -190,6 +209,10 @@ public class StarterWeaponProjectile : MonoBehaviour
         {
             SpawnMegaMeteorImpactVisual(impactPoint, impactRadius);
         }
+        else if (useFireStaffPolish)
+        {
+            SpawnFireStaffHitFeedback(impactPoint, Mathf.Max(0.75f, impactRadius));
+        }
 
         Destroy(gameObject);
     }
@@ -209,7 +232,8 @@ public class StarterWeaponProjectile : MonoBehaviour
         bool useTrailVisual = false,
         bool showImpactEffect = false,
         bool useMegaMeteorVisual = false,
-        bool useMegaMeteorImpact = false)
+        bool useMegaMeteorImpact = false,
+        bool useFireStaffPolish = false)
     {
         GameObject projectileObject;
 
@@ -259,11 +283,16 @@ public class StarterWeaponProjectile : MonoBehaviour
         if (useMegaMeteorVisual)
         {
             CreateMegaMeteorTrail(projectileObject.transform, color, scale);
+            FireStaffPolish.TryAttachMeteorTrail(projectileObject.transform);
             projectileObject.AddComponent<MegaMeteorFallShake>();
         }
         else if (useTrailVisual)
         {
             CreateTrailStreak(projectileObject.transform, color, scale);
+        }
+        else if (useFireStaffPolish)
+        {
+            FireStaffPolish.TryAttachFireballTrail(projectileObject.transform);
         }
 
         StarterWeaponProjectile projectile = projectileObject.AddComponent<StarterWeaponProjectile>();
@@ -277,7 +306,8 @@ public class StarterWeaponProjectile : MonoBehaviour
             landingImpactRadius,
             showImpactEffect,
             useMegaMeteorVisual,
-            useMegaMeteorImpact);
+            useMegaMeteorImpact,
+            useFireStaffPolish);
 
         return projectile;
     }
@@ -384,6 +414,13 @@ public class StarterWeaponProjectile : MonoBehaviour
 
     public static void SpawnMegaMeteorImpactVisual(Vector3 impactPoint, float radius)
     {
+        if (FireStaffPolish.TrySpawnMeteorImpactVfx(impactPoint, radius))
+        {
+            FireStaffPolish.TryPlayMeteorImpactSound(impactPoint);
+            FPSScreenShake.ShakeBig();
+            return;
+        }
+
         float flashSize = Mathf.Max(1.2f, radius * 0.55f);
 
         GameObject flashObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -425,6 +462,7 @@ public class StarterWeaponProjectile : MonoBehaviour
         }
 
         FPSScreenShake.ShakeBig();
+        FireStaffPolish.TryPlayMeteorImpactSound(impactPoint);
         Object.Destroy(flashObject, 0.35f);
         Object.Destroy(shockwaveObject, 0.6f);
     }

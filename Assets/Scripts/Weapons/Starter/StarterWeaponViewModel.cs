@@ -21,6 +21,7 @@ public class StarterWeaponViewModel : MonoBehaviour
     private const float MaxVisualScaleMultiplier = 3f;
     private static bool weaponVisualDiagnosticsLogged;
     private static bool staffPrefabWarningLogged;
+    private static MaterialPropertyBlock staffGlowPropertyBlock;
 
     private static readonly Vector3 StaffPrefabLocalPosition = new Vector3(0.32f, -0.34f, 0.24f);
     private static readonly Vector3 StaffPrefabLocalRotation = new Vector3(20f, -38f, 18f);
@@ -128,7 +129,16 @@ public class StarterWeaponViewModel : MonoBehaviour
     {
         staffGlowPulseTimer = 0.14f;
 
-        if (staffOrbRenderer != null)
+        if (staffOrbRenderer == null)
+        {
+            return;
+        }
+
+        if (usingStaffPrefabVisual)
+        {
+            ApplyStaffRendererGlow(staffOrbRenderer, new Color(1f, 0.65f, 0.15f), 0.75f);
+        }
+        else
         {
             GameVisualStyle.ApplyColor(staffOrbRenderer, new Color(1f, 0.65f, 0.15f), 0.55f, true, 0.75f);
         }
@@ -1076,8 +1086,52 @@ public class StarterWeaponViewModel : MonoBehaviour
                 continue;
             }
 
-            GameVisualStyle.ApplyColor(renderer, glowColor, 0.45f, true, 0.35f + pulseStrength * 0.55f);
+            if (usingStaffPrefabVisual)
+            {
+                ApplyStaffRendererGlow(renderer, glowColor, 0.35f + pulseStrength * 0.55f);
+            }
+            else
+            {
+                GameVisualStyle.ApplyColor(renderer, glowColor, 0.45f, true, 0.35f + pulseStrength * 0.55f);
+            }
         }
+    }
+
+    private static void ApplyStaffRendererGlow(Renderer renderer, Color glowColor, float emissionIntensity)
+    {
+        if (renderer == null)
+        {
+            return;
+        }
+
+        if (staffGlowPropertyBlock == null)
+        {
+            staffGlowPropertyBlock = new MaterialPropertyBlock();
+        }
+
+        renderer.GetPropertyBlock(staffGlowPropertyBlock);
+
+        Material sharedMaterial = renderer.sharedMaterial;
+
+        if (sharedMaterial != null)
+        {
+            if (sharedMaterial.HasProperty("_BaseColor"))
+            {
+                staffGlowPropertyBlock.SetColor("_BaseColor", glowColor);
+            }
+
+            if (sharedMaterial.HasProperty("_Color"))
+            {
+                staffGlowPropertyBlock.SetColor("_Color", glowColor);
+            }
+
+            if (sharedMaterial.HasProperty("_EmissionColor"))
+            {
+                staffGlowPropertyBlock.SetColor("_EmissionColor", glowColor * emissionIntensity);
+            }
+        }
+
+        renderer.SetPropertyBlock(staffGlowPropertyBlock);
     }
 
     private void BuildSwordVisual(Transform root)
