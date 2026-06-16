@@ -23,15 +23,19 @@ public class StarterWeaponViewModel : MonoBehaviour
     private static readonly Vector3 BowWeaponLocalRotation = new Vector3(6f, -22f, 4f);
     private static readonly Vector3 BowWeaponLocalScale = new Vector3(2.35f, 2.35f, 2.35f);
     private const float BowStringRestX = -0.018f;
-    private const float BowFireAnimDuration = 0.17f;
-    private const float BowFireDrawDuration = 0.04f;
-    private const float BowFireReleaseDuration = 0.05f;
-    private const float BowFireSettleDuration = 0.08f;
-    private const float BowStringDrawBackOffset = 0.014f;
-    private const float BowArrowDrawBackOffset = 0.016f;
-    private const float BowStringReleaseSnapOffset = 0.024f;
-    private const float BowArrowReleaseSnapOffset = 0.022f;
-    private const float BowBodyRecoilDistance = 0.018f;
+    private const float BowFireAnimDuration = 0.21f;
+    private const float BowFireDrawDuration = 0.055f;
+    private const float BowFireReleaseDuration = 0.045f;
+    private const float BowFireSettleDuration = 0.11f;
+    private const float BowStringDrawBackOffset = 0.035f;
+    private const float BowArrowDrawBackOffset = 0.032f;
+    private const float BowStringReleaseSnapOffset = 0.058f;
+    private const float BowArrowReleaseSnapOffset = 0.052f;
+    private const float BowBodyDrawAnticipation = 0.012f;
+    private const float BowBodyRecoilDistance = 0.04f;
+    private const float BowBodyKickDown = 0.008f;
+    private const float BowBodyRecoilPitch = 3.5f;
+    private const float BowBodyRecoilRoll = 1.75f;
     private const float MinVisualBoundsExtent = 0.06f;
     private const float MaxVisualScaleMultiplier = 3f;
     private static bool weaponVisualDiagnosticsLogged;
@@ -57,6 +61,7 @@ public class StarterWeaponViewModel : MonoBehaviour
     private Vector3 bowArrowTipRestLocalPosition;
     private Vector3 bowArrowShaftRestLocalPosition;
     private Vector3 bowRestLocalPosition = BowWeaponLocalPosition;
+    private Quaternion bowRestLocalRotation = Quaternion.Euler(BowWeaponLocalRotation);
     private Renderer staffOrbRenderer;
     private Renderer[] staffGlowRenderers = System.Array.Empty<Renderer>();
     private Transform fireballSpawnPoint;
@@ -242,52 +247,89 @@ public class StarterWeaponViewModel : MonoBehaviour
         float tipGlow;
         float arrowVisibility;
         float bodyRecoilZ;
+        float bodyKickY;
+        float bodyPitch;
+        float bodyRoll;
 
         if (elapsed <= BowFireDrawDuration)
         {
             float drawT = elapsed / BowFireDrawDuration;
-            stringPullX = -BowStringDrawBackOffset * drawT;
-            arrowPullZ = -BowArrowDrawBackOffset * drawT;
-            tipGlow = drawT * 0.2f;
+            float drawCurve = 1f - Mathf.Pow(1f - drawT, 2f);
+            stringPullX = -BowStringDrawBackOffset * drawCurve;
+            arrowPullZ = -BowArrowDrawBackOffset * drawCurve;
+            tipGlow = drawCurve * 0.28f;
             arrowVisibility = 1f;
-            bodyRecoilZ = -0.004f * drawT;
+            bodyRecoilZ = BowBodyDrawAnticipation * drawCurve;
+            bodyKickY = -BowBodyKickDown * 0.35f * drawCurve;
+            bodyPitch = -1.5f * drawCurve;
+            bodyRoll = 0.6f * drawCurve;
         }
         else if (elapsed <= BowFireDrawDuration + BowFireReleaseDuration)
         {
             float releaseT = (elapsed - BowFireDrawDuration) / BowFireReleaseDuration;
-            stringPullX = Mathf.Lerp(-BowStringDrawBackOffset, BowStringReleaseSnapOffset, releaseT);
-            arrowPullZ = Mathf.Lerp(-BowArrowDrawBackOffset, BowArrowReleaseSnapOffset, releaseT);
+            float snapCurve = 1f - Mathf.Pow(1f - releaseT, 3f);
+            stringPullX = Mathf.Lerp(-BowStringDrawBackOffset, BowStringReleaseSnapOffset, snapCurve);
+            arrowPullZ = Mathf.Lerp(-BowArrowDrawBackOffset, BowArrowReleaseSnapOffset, snapCurve);
             tipGlow = Mathf.Sin(releaseT * Mathf.PI);
-            arrowVisibility = releaseT < 0.5f
+            arrowVisibility = releaseT < 0.38f
                 ? 1f
-                : 1f - Mathf.SmoothStep(0.5f, 0.82f, releaseT);
-            bodyRecoilZ = Mathf.Lerp(-0.004f, BowBodyRecoilDistance, releaseT);
+                : 1f - Mathf.SmoothStep(0.38f, 0.78f, releaseT);
+            float releasePulse = Mathf.Sin(releaseT * Mathf.PI);
+            bodyRecoilZ = Mathf.Lerp(BowBodyDrawAnticipation, BowBodyRecoilDistance, releasePulse);
+            bodyKickY = -BowBodyKickDown * releasePulse;
+            bodyPitch = -BowBodyRecoilPitch * releasePulse;
+            bodyRoll = BowBodyRecoilRoll * releasePulse;
         }
         else
         {
             float settleT = (elapsed - BowFireDrawDuration - BowFireReleaseDuration) / BowFireSettleDuration;
-            stringPullX = Mathf.Lerp(BowStringReleaseSnapOffset, 0f, settleT);
-            arrowPullZ = Mathf.Lerp(BowArrowReleaseSnapOffset, 0f, settleT);
-            tipGlow = (1f - settleT) * 0.35f;
-            arrowVisibility = Mathf.Lerp(0.12f, 1f, settleT);
-            bodyRecoilZ = Mathf.Sin((1f - settleT) * Mathf.PI) * BowBodyRecoilDistance * 0.65f;
+            float settleEase = 1f - Mathf.Pow(1f - settleT, 2f);
+            stringPullX = Mathf.Lerp(BowStringReleaseSnapOffset, 0f, settleEase);
+            arrowPullZ = Mathf.Lerp(BowArrowReleaseSnapOffset, 0f, settleEase);
+            tipGlow = (1f - settleEase) * 0.42f;
+            arrowVisibility = Mathf.Lerp(0.08f, 1f, settleEase);
+            float settleWave = Mathf.Sin((1f - settleEase) * Mathf.PI);
+            bodyRecoilZ = settleWave * BowBodyRecoilDistance * 0.45f;
+            bodyKickY = -BowBodyKickDown * 0.25f * settleWave;
+            bodyPitch = -BowBodyRecoilPitch * 0.35f * settleWave;
+            bodyRoll = BowBodyRecoilRoll * 0.35f * settleWave;
         }
 
         ApplyBowStringAndArrowPose(stringPullX, arrowPullZ, arrowVisibility, tipGlow);
+        ApplyBowViewModelKick(bodyRecoilZ, bodyKickY, bodyPitch, bodyRoll);
+    }
 
-        if (activeVisualRoot != null)
+    private void ApplyBowViewModelKick(float bodyRecoilZ, float bodyKickY, float bodyPitch, float bodyRoll)
+    {
+        if (activeVisualRoot == null)
         {
-            activeVisualRoot.transform.localPosition = bowRestLocalPosition + new Vector3(0f, 0.0015f, -bodyRecoilZ);
+            return;
         }
+
+        Transform visualTransform = activeVisualRoot.transform;
+        visualTransform.localPosition = bowRestLocalPosition + new Vector3(0f, bodyKickY, -bodyRecoilZ);
+        visualTransform.localRotation = bowRestLocalRotation * Quaternion.Euler(bodyPitch, 0f, bodyRoll);
     }
 
     private void ResetBowDrawFireRestPose()
     {
         ApplyBowStringAndArrowPose(0f, 0f, 1f, 0f);
 
-        if (activeVisualRoot != null && activeVisualRoot.transform.localPosition != bowRestLocalPosition)
+        if (activeVisualRoot == null)
         {
-            activeVisualRoot.transform.localPosition = bowRestLocalPosition;
+            return;
+        }
+
+        Transform visualTransform = activeVisualRoot.transform;
+
+        if (visualTransform.localPosition != bowRestLocalPosition)
+        {
+            visualTransform.localPosition = bowRestLocalPosition;
+        }
+
+        if (visualTransform.localRotation != bowRestLocalRotation)
+        {
+            visualTransform.localRotation = bowRestLocalRotation;
         }
     }
 
@@ -305,10 +347,10 @@ public class StarterWeaponViewModel : MonoBehaviour
             SetBowRendererVisible(bowArrowTipRenderer, arrowVisibility > 0.08f);
             GameVisualStyle.ApplyColor(
                 bowArrowTipRenderer,
-                Color.Lerp(BowArrowHeadColor, new Color(0.92f, 0.94f, 1f), tipGlow * 0.45f),
-                0.6f,
-                tipGlow > 0.35f,
-                tipGlow * 0.22f);
+                Color.Lerp(BowArrowHeadColor, new Color(0.96f, 0.98f, 1f), tipGlow * 0.72f),
+                0.62f,
+                tipGlow > 0.22f,
+                tipGlow * 0.38f);
         }
 
         if (bowArrowShaftTransform != null)
@@ -323,8 +365,8 @@ public class StarterWeaponViewModel : MonoBehaviour
 
         if (bowStringRenderer != null)
         {
-            Color stringColor = Color.Lerp(BowStringColor, new Color(1f, 0.92f, 0.72f), tipGlow * 0.35f);
-            GameVisualStyle.ApplyColor(bowStringRenderer, stringColor, 0.14f, tipGlow > 0.4f, tipGlow * 0.18f);
+            Color stringColor = Color.Lerp(BowStringColor, new Color(1f, 0.94f, 0.68f), tipGlow * 0.55f);
+            GameVisualStyle.ApplyColor(bowStringRenderer, stringColor, 0.16f, tipGlow > 0.3f, tipGlow * 0.28f);
         }
     }
 
@@ -518,6 +560,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             ApplyBowContainerPose(visualRoot);
             bowRestLocalPosition = BowWeaponLocalPosition;
+            bowRestLocalRotation = Quaternion.Euler(BowWeaponLocalRotation);
         }
         else
         {
@@ -607,11 +650,13 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             ApplyBowPrefabContainerPose(visualTransform);
             bowRestLocalPosition = Vector3.zero;
+            bowRestLocalRotation = Quaternion.identity;
         }
         else if (currentWeapon == StarterWeaponType.HunterBow)
         {
             ApplyBowContainerPose(visualTransform);
             bowRestLocalPosition = BowWeaponLocalPosition;
+            bowRestLocalRotation = Quaternion.Euler(BowWeaponLocalRotation);
         }
         else
         {
@@ -647,6 +692,7 @@ public class StarterWeaponViewModel : MonoBehaviour
                 {
                     ApplyBowContainerPose(visualTransform);
                     bowRestLocalPosition = BowWeaponLocalPosition;
+                    bowRestLocalRotation = Quaternion.Euler(BowWeaponLocalRotation);
                 }
                 else
                 {
@@ -895,12 +941,14 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             usingBowPrefabVisual = true;
             bowRestLocalPosition = Vector3.zero;
+            bowRestLocalRotation = Quaternion.identity;
             return;
         }
 
         BuildBowPrimitiveVisual(root);
         usingBowPrefabVisual = false;
         bowRestLocalPosition = BowWeaponLocalPosition;
+        bowRestLocalRotation = Quaternion.Euler(BowWeaponLocalRotation);
     }
 
     private bool TryBuildBowPrefabVisual(Transform root, GameObject prefab)
