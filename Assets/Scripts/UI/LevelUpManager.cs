@@ -41,6 +41,9 @@ public class LevelUpManager : MonoBehaviour
 
     private sealed class UpgradeCardView
     {
+        public Button Button;
+        public Image BackgroundImage;
+        public Image GlowImage;
         public TMP_Text RarityText;
         public TMP_Text TitleText;
         public TMP_Text DescriptionText;
@@ -66,18 +69,18 @@ public class LevelUpManager : MonoBehaviour
         UiLayoutUtility.ConfigureGameplayCanvas(canvas);
 
         RectTransform panelRect = levelUpPanel.GetComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(panelRect, Vector2.zero, new Vector2(860f, 440f));
+        UiLayoutUtility.SetAnchorCenter(panelRect, Vector2.zero, new Vector2(920f, 460f));
 
         Image panelImage = levelUpPanel.GetComponent<Image>();
 
         if (panelImage != null)
         {
-            panelImage.color = new Color(0.05f, 0.06f, 0.09f, 0.94f);
+            panelImage.color = new Color(0.03f, 0.04f, 0.07f, 0.96f);
         }
 
-        LayoutUpgradeButton(optionButton1, -270f);
+        LayoutUpgradeButton(optionButton1, -290f);
         LayoutUpgradeButton(optionButton2, 0f);
-        LayoutUpgradeButton(optionButton3, 270f);
+        LayoutUpgradeButton(optionButton3, 290f);
 
         if (chestHeaderText != null)
         {
@@ -91,19 +94,21 @@ public class LevelUpManager : MonoBehaviour
         if (button == null) return;
 
         RectTransform rectTransform = button.GetComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(rectTransform, new Vector2(xOffset, -8f), new Vector2(250f, 300f));
+        UiLayoutUtility.SetAnchorCenter(rectTransform, new Vector2(xOffset, -6f), new Vector2(260f, 320f));
 
         Image buttonImage = button.GetComponent<Image>();
 
         if (buttonImage != null)
         {
-            buttonImage.color = new Color(0.11f, 0.13f, 0.17f, 0.98f);
+            buttonImage.color = new Color(0.08f, 0.09f, 0.12f, 0.98f);
         }
 
         ColorBlock colors = button.colors;
-        colors.highlightedColor = new Color(0.18f, 0.22f, 0.3f, 1f);
-        colors.pressedColor = new Color(0.24f, 0.3f, 0.4f, 1f);
-        colors.selectedColor = new Color(0.18f, 0.22f, 0.3f, 1f);
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(0.92f, 0.95f, 1f, 1f);
+        colors.pressedColor = new Color(0.82f, 0.88f, 0.98f, 1f);
+        colors.selectedColor = new Color(0.92f, 0.95f, 1f, 1f);
+        colors.fadeDuration = 0.08f;
         button.colors = colors;
     }
 
@@ -133,19 +138,58 @@ public class LevelUpManager : MonoBehaviour
             return;
         }
 
+        Image backgroundImage = button.GetComponent<Image>();
+        Image glowImage = EnsureCardGlow(buttonRect);
+
         upgradeCards[index] = new UpgradeCardView
         {
-            RarityText = CreateCardText(buttonRect, "RarityText", new Vector2(0f, 108f), new Vector2(220f, 28f), 17f, FontStyles.Bold),
-            TitleText = CreateCardText(buttonRect, "TitleText", new Vector2(0f, 38f), new Vector2(220f, 96f), 30f, FontStyles.Bold),
-            DescriptionText = CreateCardText(buttonRect, "DescriptionText", new Vector2(0f, -58f), new Vector2(220f, 118f), 20f, FontStyles.Normal)
+            Button = button,
+            BackgroundImage = backgroundImage,
+            GlowImage = glowImage,
+            RarityText = CreateCardText(buttonRect, legacyText, "RarityText", new Vector2(0f, 118f), new Vector2(228f, 30f), 19f, FontStyles.Bold),
+            TitleText = CreateCardText(buttonRect, legacyText, "TitleText", new Vector2(0f, 46f), new Vector2(228f, 92f), 32f, FontStyles.Bold),
+            DescriptionText = CreateCardText(buttonRect, legacyText, "DescriptionText", new Vector2(0f, -62f), new Vector2(228f, 124f), 20f, FontStyles.Normal)
         };
 
         ConfigureDescriptionText(upgradeCards[index].DescriptionText);
         ConfigureTitleText(upgradeCards[index].TitleText);
+        ConfigureRarityText(upgradeCards[index].RarityText);
+    }
+
+    private static Image EnsureCardGlow(RectTransform buttonRect)
+    {
+        Transform existingGlow = buttonRect.Find("CardGlow");
+
+        if (existingGlow != null)
+        {
+            Image existingImage = existingGlow.GetComponent<Image>();
+
+            if (existingImage != null)
+            {
+                return existingImage;
+            }
+        }
+
+        GameObject glowObject = new GameObject("CardGlow");
+        glowObject.transform.SetParent(buttonRect, false);
+        glowObject.transform.SetAsFirstSibling();
+
+        RectTransform glowRect = glowObject.AddComponent<RectTransform>();
+        glowRect.anchorMin = Vector2.zero;
+        glowRect.anchorMax = Vector2.one;
+        glowRect.offsetMin = new Vector2(-6f, -6f);
+        glowRect.offsetMax = new Vector2(6f, 6f);
+
+        Image glowImage = glowObject.AddComponent<Image>();
+        glowImage.raycastTarget = false;
+        glowImage.color = new Color(0.86f, 0.88f, 0.92f, 0.12f);
+
+        return glowImage;
     }
 
     private static TMP_Text CreateCardText(
         RectTransform parent,
+        TMP_Text fontSource,
         string objectName,
         Vector2 anchoredPosition,
         Vector2 size,
@@ -159,14 +203,34 @@ public class LevelUpManager : MonoBehaviour
         UiLayoutUtility.SetAnchorCenter(rectTransform, anchoredPosition, size);
 
         TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
+        CopyTmpFontFrom(fontSource, textMesh);
         textMesh.alignment = TextAlignmentOptions.Center;
         textMesh.fontSize = fontSize;
         textMesh.fontStyle = fontStyle;
         textMesh.textWrappingMode = TextWrappingModes.Normal;
         textMesh.richText = false;
         textMesh.raycastTarget = false;
+        textMesh.overflowMode = TextOverflowModes.Ellipsis;
 
         return textMesh;
+    }
+
+    private static void CopyTmpFontFrom(TMP_Text source, TMP_Text target)
+    {
+        if (source == null || target == null)
+        {
+            return;
+        }
+
+        if (source.font != null)
+        {
+            target.font = source.font;
+        }
+
+        if (source.fontSharedMaterial != null)
+        {
+            target.fontSharedMaterial = source.fontSharedMaterial;
+        }
     }
 
     private static void ConfigureTitleText(TMP_Text titleText)
@@ -178,10 +242,34 @@ public class LevelUpManager : MonoBehaviour
 
         titleText.color = Color.white;
         titleText.enableAutoSizing = true;
-        titleText.fontSizeMin = 24f;
-        titleText.fontSizeMax = 32f;
-        titleText.outlineWidth = 0.12f;
-        titleText.outlineColor = new Color(0f, 0f, 0f, 0.35f);
+        titleText.fontSizeMin = 26f;
+        titleText.fontSizeMax = 34f;
+        titleText.characterSpacing = 2f;
+
+        if (titleText.font != null)
+        {
+            titleText.outlineWidth = 0.1f;
+            titleText.outlineColor = new Color(0f, 0f, 0f, 0.45f);
+        }
+    }
+
+    private static void ConfigureRarityText(TMP_Text rarityText)
+    {
+        if (rarityText == null)
+        {
+            return;
+        }
+
+        rarityText.enableAutoSizing = true;
+        rarityText.fontSizeMin = 16f;
+        rarityText.fontSizeMax = 20f;
+        rarityText.characterSpacing = 4f;
+
+        if (rarityText.font != null)
+        {
+            rarityText.outlineWidth = 0.08f;
+            rarityText.outlineColor = new Color(0f, 0f, 0f, 0.35f);
+        }
     }
 
     private static void ConfigureDescriptionText(TMP_Text descriptionText)
@@ -191,11 +279,13 @@ public class LevelUpManager : MonoBehaviour
             return;
         }
 
-        descriptionText.color = new Color(0.84f, 0.88f, 0.94f, 1f);
-        descriptionText.lineSpacing = 4f;
+        descriptionText.color = new Color(0.78f, 0.82f, 0.9f, 1f);
+        descriptionText.lineSpacing = 6f;
+        descriptionText.paragraphSpacing = 2f;
         descriptionText.enableAutoSizing = true;
-        descriptionText.fontSizeMin = 17f;
-        descriptionText.fontSizeMax = 22f;
+        descriptionText.fontSizeMin = 16f;
+        descriptionText.fontSizeMax = 20f;
+        descriptionText.margin = new Vector4(8f, 0f, 8f, 0f);
     }
 
     public void OnPlayerLevelUp(int newLevel)
@@ -289,6 +379,58 @@ public class LevelUpManager : MonoBehaviour
         {
             card.DescriptionText.text = content.Description;
         }
+
+        ApplyCardRarityVisuals(card, rarity);
+    }
+
+    private static void ApplyCardRarityVisuals(UpgradeCardView card, UpgradeRarity rarity)
+    {
+        if (card == null)
+        {
+            return;
+        }
+
+        Color accent = GetRarityColor(rarity);
+        Color background = GetRarityBackgroundColor(rarity);
+        float glowAlpha = rarity switch
+        {
+            UpgradeRarity.Epic => 0.24f,
+            UpgradeRarity.Rare => 0.2f,
+            _ => 0.1f
+        };
+
+        if (card.BackgroundImage != null)
+        {
+            card.BackgroundImage.color = background;
+        }
+
+        if (card.GlowImage != null)
+        {
+            card.GlowImage.color = new Color(accent.r, accent.g, accent.b, glowAlpha);
+        }
+
+        if (card.Button == null)
+        {
+            return;
+        }
+
+        ColorBlock colors = card.Button.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = Color.Lerp(Color.white, accent, 0.18f);
+        colors.pressedColor = Color.Lerp(Color.white, accent, 0.3f);
+        colors.selectedColor = colors.highlightedColor;
+        colors.fadeDuration = 0.08f;
+        card.Button.colors = colors;
+    }
+
+    private static Color GetRarityBackgroundColor(UpgradeRarity rarity)
+    {
+        return rarity switch
+        {
+            UpgradeRarity.Rare => new Color(0.07f, 0.11f, 0.18f, 0.98f),
+            UpgradeRarity.Epic => new Color(0.13f, 0.08f, 0.18f, 0.98f),
+            _ => new Color(0.09f, 0.1f, 0.12f, 0.98f)
+        };
     }
 
     private void EnsureChestHeaderText()
@@ -501,9 +643,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return rarity switch
         {
-            UpgradeRarity.Rare => new Color(0.36f, 0.72f, 1f, 1f),
-            UpgradeRarity.Epic => new Color(0.78f, 0.49f, 1f, 1f),
-            _ => new Color(0.86f, 0.88f, 0.92f, 1f)
+            UpgradeRarity.Rare => new Color(0.42f, 0.78f, 1f, 1f),
+            UpgradeRarity.Epic => new Color(0.82f, 0.52f, 1f, 1f),
+            _ => new Color(0.9f, 0.92f, 0.96f, 1f)
         };
     }
 
