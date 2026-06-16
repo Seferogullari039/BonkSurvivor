@@ -113,6 +113,34 @@ public class EnemySpawner : MonoBehaviour
         ApplyEliteMutation(enemy, enemyObject.transform);
     }
 
+    public bool TrySpawnPortalEnemy(Vector3 portalPosition)
+    {
+        if (enemyPrefab == null || player == null) return false;
+
+        if (GameObject.FindGameObjectsWithTag("Enemy").Length >= MaxEnemies)
+        {
+            return false;
+        }
+
+        Vector2 offset = Random.insideUnitCircle * Random.Range(2f, 5f);
+        Vector3 spawnPosition = new Vector3(
+            portalPosition.x + offset.x,
+            0.5f,
+            portalPosition.z + offset.y
+        );
+
+        ProceduralGrassArena.TryClampHorizontal(ref spawnPosition);
+        ProceduralGrassArena.TryResolveBlockedSpawn(ref spawnPosition, 4f, 1.2f);
+
+        GameObject enemyObject = Instantiate(enemyPrefab, spawnPosition, Quaternion.identity);
+        Enemy enemy = enemyObject.GetComponent<Enemy>();
+
+        if (enemy == null) return false;
+
+        ApplyEnemyType(enemy, enemyObject.transform, Enemy.EnemyType.Normal);
+        return true;
+    }
+
     public void ResetRun()
     {
         timer = 0f;
