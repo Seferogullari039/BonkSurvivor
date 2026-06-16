@@ -27,12 +27,14 @@ public class StarterWeaponViewModel : MonoBehaviour
     private const float MaxVisualScaleMultiplier = 3f;
     private static bool weaponVisualDiagnosticsLogged;
     private static bool staffPrefabWarningLogged;
+    private static bool bowPrefabWarningLogged;
     private static MaterialPropertyBlock staffGlowPropertyBlock;
 
     private static readonly Vector3 StaffPrefabLocalPosition = new Vector3(0.32f, -0.34f, 0.24f);
     private static readonly Vector3 StaffPrefabLocalRotation = new Vector3(20f, -38f, 18f);
     private static readonly Vector3 StaffPrefabLocalScale = new Vector3(0.82f, 0.82f, 0.82f);
     private const string StaffPrefabAssetPath = "Assets/Prefabs/Weapons/Staff_ViewModel.prefab";
+    private const string BowPrefabAssetPath = "Assets/Prefabs/Weapons/Bow_ViewModel.prefab";
 
     private readonly HashSet<GameObject> defaultWeaponParts = new HashSet<GameObject>();
     private Transform weaponMount;
@@ -48,6 +50,9 @@ public class StarterWeaponViewModel : MonoBehaviour
     private GameObject staffViewModelPrefab;
     private bool staffPrefabLoadAttempted;
     private bool usingStaffPrefabVisual;
+    private GameObject bowViewModelPrefab;
+    private bool bowPrefabLoadAttempted;
+    private bool usingBowPrefabVisual;
     private StarterWeaponType currentWeapon = StarterWeaponType.HunterBow;
     private StarterWeaponType pendingWeapon = StarterWeaponType.HunterBow;
     private bool needsApply = true;
@@ -87,6 +92,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         fireballSpawnPoint = null;
         meteorCastPoint = null;
         usingStaffPrefabVisual = false;
+        usingBowPrefabVisual = false;
         needsApply = true;
     }
 
@@ -124,6 +130,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         fireballSpawnPoint = null;
         meteorCastPoint = null;
         usingStaffPrefabVisual = false;
+        usingBowPrefabVisual = false;
         weaponVisualDiagnosticsLogged = false;
         needsApply = true;
     }
@@ -416,6 +423,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         fireballSpawnPoint = null;
         meteorCastPoint = null;
         usingStaffPrefabVisual = false;
+        usingBowPrefabVisual = false;
         staffGlowPulseTimer = 0f;
         staffChargeGlowTimer = 0f;
 
@@ -461,11 +469,27 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             ApplyStaffPrefabContainerPose(visualRoot);
         }
+        else if (usingBowPrefabVisual)
+        {
+            ApplyBowPrefabContainerPose(visualRoot);
+        }
 
         EnsureWeaponVisualVisible();
     }
 
     private static void ApplyStaffPrefabContainerPose(Transform visualRoot)
+    {
+        if (visualRoot == null)
+        {
+            return;
+        }
+
+        visualRoot.localPosition = Vector3.zero;
+        visualRoot.localRotation = Quaternion.identity;
+        visualRoot.localScale = Vector3.one;
+    }
+
+    private static void ApplyBowPrefabContainerPose(Transform visualRoot)
     {
         if (visualRoot == null)
         {
@@ -505,6 +529,11 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             ApplyStaffPrefabContainerPose(visualTransform);
         }
+        else if (usingBowPrefabVisual)
+        {
+            ApplyBowPrefabContainerPose(visualTransform);
+            bowRestLocalPosition = Vector3.zero;
+        }
         else if (currentWeapon == StarterWeaponType.HunterBow)
         {
             ApplyBowContainerPose(visualTransform);
@@ -525,7 +554,7 @@ public class StarterWeaponViewModel : MonoBehaviour
             {
                 renderers[i].enabled = true;
 
-                if (!usingStaffPrefabVisual)
+                if (!usingStaffPrefabVisual && !usingBowPrefabVisual)
                 {
                     EnsureOpaqueMaterial(renderers[i]);
                 }
@@ -538,7 +567,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             Bounds bounds = ComputeCombinedBounds(renderers);
 
-            if (IsVisualClipping(camera, bounds) && !usingStaffPrefabVisual)
+            if (IsVisualClipping(camera, bounds) && !usingStaffPrefabVisual && !usingBowPrefabVisual)
             {
                 if (currentWeapon == StarterWeaponType.HunterBow)
                 {
@@ -785,6 +814,240 @@ public class StarterWeaponViewModel : MonoBehaviour
     }
 
     private void BuildBowVisual(Transform root)
+    {
+        GameObject prefab = GetBowViewModelPrefab();
+
+        if (prefab != null && TryBuildBowPrefabVisual(root, prefab))
+        {
+            usingBowPrefabVisual = true;
+            bowRestLocalPosition = Vector3.zero;
+            return;
+        }
+
+        BuildBowPrimitiveVisual(root);
+        usingBowPrefabVisual = false;
+        bowRestLocalPosition = BowWeaponLocalPosition;
+    }
+
+    private bool TryBuildBowPrefabVisual(Transform root, GameObject prefab)
+    {
+        if (root == null || prefab == null)
+        {
+            return false;
+        }
+
+        GameObject instance = null;
+
+        try
+        {
+            instance = Instantiate(prefab, root, false);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogWarning("[ViewModel] Bow prefab instantiate failed, using primitive fallback. " + exception.Message);
+            return false;
+        }
+
+        if (instance == null)
+        {
+            return false;
+        }
+
+        instance.name = "BowViewModelPrefab";
+
+        Transform instanceTransform = instance.transform;
+        instanceTransform.localPosition = Vector3.zero;
+        instanceTransform.localRotation = Quaternion.identity;
+        instanceTransform.localScale = Vector3.one;
+
+        DisableBowPrefabPhysics(instance);
+        SetLayerRecursively(instance, 0);
+        RepairBowPrefabMissingMaterials(instanceTransform);
+        BuildBowPrefabFeedbackOverlays(instanceTransform);
+
+        return true;
+    }
+
+    private void BuildBowPrefabFeedbackOverlays(Transform bowInstanceRoot)
+    {
+        Transform feedbackParent = FindDeepChild(bowInstanceRoot, "BowRoot") ?? bowInstanceRoot;
+
+        GameObject bowString = CreatePart(
+            "BowStringFeedback",
+            PrimitiveType.Cube,
+            feedbackParent,
+            new Vector3(BowStringRestX, 0f, 0.02f),
+            Quaternion.identity,
+            new Vector3(0.008f, 0.16f, 0.008f),
+            BowStringColor,
+            false,
+            0.14f);
+        bowStringTransform = bowString != null ? bowString.transform : null;
+        bowStringRenderer = bowString != null ? bowString.GetComponent<Renderer>() : null;
+
+        GameObject arrowHead = CreatePart(
+            "BowArrowTipFeedback",
+            PrimitiveType.Cylinder,
+            feedbackParent,
+            new Vector3(0.014f, 0.007f, 0.12f),
+            Quaternion.Euler(90f, 0f, 0f),
+            new Vector3(0.012f, 0.022f, 0.012f),
+            BowArrowHeadColor,
+            false,
+            0.6f);
+        bowArrowTipRenderer = arrowHead != null ? arrowHead.GetComponent<Renderer>() : null;
+    }
+
+    private static void DisableBowPrefabPhysics(GameObject bowInstance)
+    {
+        if (bowInstance == null)
+        {
+            return;
+        }
+
+        Collider[] colliders = bowInstance.GetComponentsInChildren<Collider>(true);
+
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            if (colliders[i] != null)
+            {
+                colliders[i].enabled = false;
+            }
+        }
+
+        Rigidbody[] rigidbodies = bowInstance.GetComponentsInChildren<Rigidbody>(true);
+
+        for (int i = 0; i < rigidbodies.Length; i++)
+        {
+            Rigidbody rigidbody = rigidbodies[i];
+
+            if (rigidbody == null)
+            {
+                continue;
+            }
+
+            rigidbody.isKinematic = true;
+            rigidbody.useGravity = false;
+        }
+
+        Animator[] animators = bowInstance.GetComponentsInChildren<Animator>(true);
+
+        for (int i = 0; i < animators.Length; i++)
+        {
+            if (animators[i] != null)
+            {
+                animators[i].enabled = false;
+            }
+        }
+    }
+
+    private void RepairBowPrefabMissingMaterials(Transform bowRoot)
+    {
+        if (bowRoot == null)
+        {
+            return;
+        }
+
+        Renderer[] renderers = bowRoot.GetComponentsInChildren<Renderer>(true);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            Material[] sharedMaterials = renderer.sharedMaterials;
+            bool hasMissingMaterial = false;
+
+            for (int materialIndex = 0; materialIndex < sharedMaterials.Length; materialIndex++)
+            {
+                if (sharedMaterials[materialIndex] == null)
+                {
+                    hasMissingMaterial = true;
+                    break;
+                }
+            }
+
+            if (!hasMissingMaterial)
+            {
+                continue;
+            }
+
+            string label = renderer.gameObject.name.ToLowerInvariant();
+            Material fallback = ResolveBowFallbackMaterial(label);
+
+            if (fallback == null)
+            {
+                continue;
+            }
+
+            for (int materialIndex = 0; materialIndex < sharedMaterials.Length; materialIndex++)
+            {
+                if (sharedMaterials[materialIndex] == null)
+                {
+                    sharedMaterials[materialIndex] = fallback;
+                }
+            }
+
+            renderer.sharedMaterials = sharedMaterials;
+        }
+    }
+
+    private static Material ResolveBowFallbackMaterial(string label)
+    {
+        Material wood = LoadStaffFallbackMaterial("FireStaff_Wood")
+            ?? LoadStaffFallbackMaterial("M_Staff_Wood");
+        Material metal = LoadStaffFallbackMaterial("FireStaff_Metal")
+            ?? LoadStaffFallbackMaterial("M_Staff_Metal");
+
+        if (label.Contains("string")
+            || label.Contains("wire")
+            || label.Contains("metal")
+            || label.Contains("steel")
+            || label.Contains("sight"))
+        {
+            return metal ?? wood;
+        }
+
+        return wood ?? metal;
+    }
+
+    private GameObject GetBowViewModelPrefab()
+    {
+        if (bowViewModelPrefab != null)
+        {
+            return bowViewModelPrefab;
+        }
+
+        if (bowPrefabLoadAttempted)
+        {
+            return null;
+        }
+
+        bowPrefabLoadAttempted = true;
+
+#if UNITY_EDITOR
+        bowViewModelPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(BowPrefabAssetPath);
+#endif
+
+        if (bowViewModelPrefab == null)
+        {
+            bowViewModelPrefab = Resources.Load<GameObject>("Bow_ViewModel");
+        }
+
+        if (bowViewModelPrefab == null && !bowPrefabWarningLogged)
+        {
+            bowPrefabWarningLogged = true;
+            Debug.LogWarning("[ViewModel] Bow prefab not found, using primitive fallback.");
+        }
+
+        return bowViewModelPrefab;
+    }
+
+    private void BuildBowPrimitiveVisual(Transform root)
     {
         CreatePart(
             "BowRiser",
