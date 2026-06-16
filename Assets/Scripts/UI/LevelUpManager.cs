@@ -271,7 +271,8 @@ public class LevelUpManager : MonoBehaviour
         }
 
         int multiplier = GetRarityMultiplier(rarity);
-        UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier);
+        PlayerStats playerStats = FindPlayerStats();
+        UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier, playerStats);
 
         if (card.RarityText != null)
         {
@@ -393,9 +394,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return rarity switch
         {
-            UpgradeRarity.Rare => "[Rare]",
-            UpgradeRarity.Epic => "[Epic]",
-            _ => "[Common]"
+            UpgradeRarity.Rare => "RARE",
+            UpgradeRarity.Epic => "EPIC",
+            _ => "COMMON"
         };
     }
 
@@ -412,26 +413,180 @@ public class LevelUpManager : MonoBehaviour
     private static string BuildLegacyOptionLabel(int upgradeIndex, UpgradeRarity rarity)
     {
         int multiplier = GetRarityMultiplier(rarity);
-        UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier);
+        UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier, null);
         return $"{GetRarityLabel(rarity)}\n{content.Title}\n{content.Description}";
     }
 
-    private static UpgradeCardContent GetUpgradeCardContent(int upgradeIndex, int multiplier)
+    private static UpgradeCardContent GetUpgradeCardContent(int upgradeIndex, int multiplier, PlayerStats playerStats)
     {
-        return upgradeIndex switch
+        switch (upgradeIndex)
         {
-            0 => new UpgradeCardContent($"Ateş Hızı +{20 * multiplier}%", "Silah ateş hızını artırır."),
-            1 => new UpgradeCardContent($"Mermi Hızı +{25 * multiplier}%", "Mermiler daha hızlı ilerler."),
-            2 => new UpgradeCardContent($"XP Çekim Alanı +{30 * multiplier}%", "XP kürelerini daha uzaaktan toplar."),
-            3 => new UpgradeCardContent($"Hasar +{multiplier}", "Temel hasarını artırır."),
-            4 => new UpgradeCardContent("Spread Shot", "3 mermi aynı anda ateşler."),
-            5 => new UpgradeCardContent("Piercing Shot", "Mermiler 1 düşmanı delip geçer."),
-            6 => new UpgradeCardContent("Orbiting Orb", "Etrafında dönen hasar küresi oluşturur."),
-            7 => new UpgradeCardContent("Rocket Launcher", "Yavaş roket, alan hasarı verir."),
-            8 => new UpgradeCardContent("Chain Lightning", "Yakın düşmanlara 3 sekme."),
-            9 => new UpgradeCardContent("Laser Beam", "Kısa menzilde sürekli hasar."),
-            _ => new UpgradeCardContent(string.Empty, string.Empty)
-        };
+            case 0:
+                return new UpgradeCardContent(
+                    $"Ateş Hızı +{20 * multiplier}%",
+                    "Otomatik hedefli mermi silahının ateş hızını artırır.");
+            case 1:
+                return new UpgradeCardContent(
+                    $"Mermi Hızı +{25 * multiplier}%",
+                    "Otomatik mermilerin uçuş hızını artırır.");
+            case 2:
+                return new UpgradeCardContent(
+                    $"XP Çekim +{30 * multiplier}%",
+                    "XP kürelerinin sana doğru çekilme menzilini genişletir.");
+            case 3:
+                return new UpgradeCardContent(
+                    $"Hasar +{multiplier}",
+                    "Tüm hasar kaynaklarının temel hasar değerini artırır.");
+            case 4:
+                return GetSpreadShotContent(playerStats);
+            case 5:
+                return GetPiercingShotContent(playerStats);
+            case 6:
+                return GetOrbitingOrbContent(playerStats);
+            case 7:
+                return GetRocketLauncherContent(multiplier, playerStats);
+            case 8:
+                return GetChainLightningContent(multiplier, playerStats);
+            case 9:
+                return GetLaserBeamContent(multiplier, playerStats);
+            default:
+                return new UpgradeCardContent(string.Empty, string.Empty);
+        }
+    }
+
+    private static UpgradeCardContent GetSpreadShotContent(PlayerStats playerStats)
+    {
+        if (playerStats == null || !playerStats.SpreadShotUnlocked)
+        {
+            return new UpgradeCardContent(
+                "Spread Shot",
+                "3 mermiyi 15° açıyla aynı anda ateşler.");
+        }
+
+        return new UpgradeCardContent(
+            "Spread Shot+",
+            $"Yayılma açısını +2° artırır. (Mevcut: {playerStats.SpreadAngle:0}°)");
+    }
+
+    private static UpgradeCardContent GetPiercingShotContent(PlayerStats playerStats)
+    {
+        if (playerStats == null || playerStats.PierceCount <= 0)
+        {
+            return new UpgradeCardContent(
+                "Piercing Shot",
+                "Mermiler bir düşman daha delerek ilerler.");
+        }
+
+        int totalHits = playerStats.PierceCount + 1;
+        return new UpgradeCardContent(
+            "Piercing Shot+",
+            $"Delme kapasitesini 1 artırır. (Maks. {totalHits + 1} isabet)");
+    }
+
+    private static UpgradeCardContent GetOrbitingOrbContent(PlayerStats playerStats)
+    {
+        if (playerStats == null || playerStats.OrbitOrbCount <= 0)
+        {
+            return new UpgradeCardContent(
+                "Orbiting Orb",
+                "Etrafında dönen 1 hasar küresi oluşturur.");
+        }
+
+        return new UpgradeCardContent(
+            "Orbiting Orb+",
+            $"Yörünge küresi sayısını 1 artırır. (Mevcut: {playerStats.OrbitOrbCount})");
+    }
+
+    private static UpgradeCardContent GetRocketLauncherContent(int multiplier, PlayerStats playerStats)
+    {
+        bool isUnlock = playerStats == null || !playerStats.RocketLauncherUnlocked;
+
+        if (isUnlock && multiplier <= 1)
+        {
+            return new UpgradeCardContent(
+                "Rocket Launcher",
+                "Yavaş roket fırlatır; patlamada alan hasarı verir.");
+        }
+
+        if (isUnlock && multiplier > 1)
+        {
+            return new UpgradeCardContent(
+                $"Rocket Launcher x{multiplier}",
+                "Roketi açar ve seviyesini artırır; patlama alanı büyür.");
+        }
+
+        if (multiplier > 1)
+        {
+            return new UpgradeCardContent(
+                $"Rocket Launcher x{multiplier}",
+                $"Roket seviyesini {multiplier} artırır; patlama yarıçapı büyür.");
+        }
+
+        return new UpgradeCardContent(
+            "Rocket Launcher+",
+            "Roket seviyesini 1 artırır; patlama yarıçapı büyür.");
+    }
+
+    private static UpgradeCardContent GetChainLightningContent(int multiplier, PlayerStats playerStats)
+    {
+        bool isUnlock = playerStats == null || !playerStats.ChainLightningUnlocked;
+
+        if (isUnlock && multiplier <= 1)
+        {
+            return new UpgradeCardContent(
+                "Chain Lightning",
+                "Yakındaki düşmanlara 3 kez zincir şimşek hasarı verir.");
+        }
+
+        if (isUnlock && multiplier > 1)
+        {
+            return new UpgradeCardContent(
+                $"Chain Lightning x{multiplier}",
+                "Zincir şimşaği açar ve ek hedef/seviye kazandırır.");
+        }
+
+        if (multiplier > 1)
+        {
+            return new UpgradeCardContent(
+                $"Chain Lightning x{multiplier}",
+                $"Zincir seviyesini {multiplier} artırır; daha fazla hedefe sıçrar.");
+        }
+
+        int nextTargets = playerStats.ChainLightningTargets + 1;
+        return new UpgradeCardContent(
+            "Chain Lightning+",
+            $"Zincir hedef sayısını 1 artırır. (Sonraki: {nextTargets} hedef)");
+    }
+
+    private static UpgradeCardContent GetLaserBeamContent(int multiplier, PlayerStats playerStats)
+    {
+        bool isUnlock = playerStats == null || !playerStats.LaserBeamUnlocked;
+
+        if (isUnlock && multiplier <= 1)
+        {
+            return new UpgradeCardContent(
+                "Laser Beam",
+                "4m menzilde hedefe sürekli lazer hasarı verir.");
+        }
+
+        if (isUnlock && multiplier > 1)
+        {
+            return new UpgradeCardContent(
+                $"Laser Beam x{multiplier}",
+                "Lazer ışınını açar ve menzil seviyesini artırır.");
+        }
+
+        if (multiplier > 1)
+        {
+            return new UpgradeCardContent(
+                $"Laser Beam x{multiplier}",
+                $"Lazer seviyesini {multiplier} artırır; menzil uzar.");
+        }
+
+        float nextRange = playerStats.LaserBeamRange + 0.6f;
+        return new UpgradeCardContent(
+            "Laser Beam+",
+            $"Lazer menzilini artırır. (Sonraki: {nextRange:0.#}m)");
     }
 
     private List<int> GetUnpurchasedWeaponIndices()
