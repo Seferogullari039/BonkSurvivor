@@ -37,6 +37,7 @@ public class Enemy : MonoBehaviour
     private bool isTelegraphing;
     private Coroutine contactTelegraphRoutine;
     private MimicChestController mimicChestOwner;
+    private GoldenDragonController goldenDragonOwner;
 
     public EnemyType Type => enemyType;
     public bool IsElite { get; private set; }
@@ -102,6 +103,12 @@ public class Enemy : MonoBehaviour
     public void BindMimicChest(MimicChestController mimicChest)
     {
         mimicChestOwner = mimicChest;
+        SetMovementLocked(true);
+    }
+
+    public void BindGoldenDragon(GoldenDragonController goldenDragon)
+    {
+        goldenDragonOwner = goldenDragon;
         SetMovementLocked(true);
     }
 
@@ -318,6 +325,23 @@ public class Enemy : MonoBehaviour
             }
 
             mimicChestOwner.TakeDamage(damage);
+            return;
+        }
+
+        if (goldenDragonOwner != null)
+        {
+            bool goldenCrit = damage >= 7 || damage >= goldenDragonOwner.CurrentHealth;
+
+            if (FloatingDamageManager.Instance != null)
+            {
+                Transform dragonTransform = goldenDragonOwner.transform;
+                FloatingDamageManager.Instance.SpawnDamage(
+                    dragonTransform.position + Vector3.up * 2.2f,
+                    damage,
+                    goldenCrit);
+            }
+
+            goldenDragonOwner.TakeDamage(damage);
             return;
         }
 
