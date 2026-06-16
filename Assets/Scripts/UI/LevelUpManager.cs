@@ -427,8 +427,8 @@ public class LevelUpManager : MonoBehaviour
                     "Otomatik hedefli mermi silahının ateş hızını artırır.");
             case 1:
                 return new UpgradeCardContent(
-                    $"Mermi Hızı +{25 * multiplier}%",
-                    "Otomatik mermilerin uçuş hızını artırır.");
+                    "Swift Projectiles",
+                    GetProjectileSpeedDescription(multiplier));
             case 2:
                 return new UpgradeCardContent(
                     $"XP Çekim +{30 * multiplier}%",
@@ -452,6 +452,16 @@ public class LevelUpManager : MonoBehaviour
             default:
                 return new UpgradeCardContent(string.Empty, string.Empty);
         }
+    }
+
+    private static string GetProjectileSpeedDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Projectile speed +50%.",
+            3 => "Projectile speed +75%.",
+            _ => "Projectile speed +25%."
+        };
     }
 
     private static UpgradeCardContent GetSpreadShotContent(PlayerStats playerStats)
@@ -751,13 +761,20 @@ public class LevelUpManager : MonoBehaviour
     {
         UpgradeManager upgradeManager = UpgradeManager.GetOrCreateInstance();
 
-        if (upgradeManager == null)
+        if (upgradeManager != null)
         {
-            Debug.LogError("UpgradeManager bulunamadı");
+            upgradeManager.IncreaseProjectileSpeed(percent);
+        }
+
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+
+        if (player == null)
+        {
             return;
         }
 
-        upgradeManager.IncreaseProjectileSpeed(percent);
+        PlayerStats stats = player.GetComponent<PlayerStats>();
+        stats?.IncreaseStarterProjectileSpeed(percent);
     }
 
     private void ApplyXPAttractionUpgrade(float percent)

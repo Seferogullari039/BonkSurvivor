@@ -253,7 +253,7 @@ public class StarterWeaponController : MonoBehaviour
             direction,
             new Color(0.75f, 0.55f, 0.25f),
             0.12f,
-            28f,
+            GetStarterProjectileSpeed(28f),
             damage,
             3f,
             false,
@@ -288,12 +288,22 @@ public class StarterWeaponController : MonoBehaviour
             direction,
             new Color(1f, 0.45f, 0.08f),
             0.18f,
-            16f,
+            GetStarterProjectileSpeed(16f),
             damage,
             4f,
             false,
             fireballExplosionRadius,
             useFireStaffPolish: true);
+    }
+
+    private float GetStarterProjectileSpeed(float baseSpeed)
+    {
+        if (playerStats == null)
+        {
+            return baseSpeed;
+        }
+
+        return baseSpeed * playerStats.StarterProjectileSpeedMultiplier;
     }
 
     private void PerformSwordComboHit()

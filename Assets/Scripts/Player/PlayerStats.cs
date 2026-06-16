@@ -29,8 +29,10 @@ public class PlayerStats : MonoBehaviour
     private bool isDead;
     private bool isGodMode;
     private float metaXpGainMultiplier = 1f;
+    private float starterProjectileSpeedMultiplier = 1f;
 
     public bool IsGodMode => isGodMode;
+    public float StarterProjectileSpeedMultiplier => starterProjectileSpeedMultiplier;
     public bool IsDead => isDead;
 
     public int CurrentLevel => currentLevel;
@@ -133,6 +135,12 @@ public class PlayerStats : MonoBehaviour
         metaXpGainMultiplier = Mathf.Max(1f, multiplier);
     }
 
+    public void IncreaseStarterProjectileSpeed(float percent)
+    {
+        starterProjectileSpeedMultiplier *= 1f + percent;
+        starterProjectileSpeedMultiplier = Mathf.Clamp(starterProjectileSpeedMultiplier, 1f, 4f);
+    }
+
     public void ApplyMetaProgressionBonuses()
     {
         MetaProgressionData.ApplyRunBonuses(this, GetComponent<PlayerController>());
@@ -165,6 +173,7 @@ public class PlayerStats : MonoBehaviour
         isDead = false;
         isGodMode = false;
         metaXpGainMultiplier = 1f;
+        starterProjectileSpeedMultiplier = 1f;
     }
 
     private void Start()
