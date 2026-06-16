@@ -6,7 +6,7 @@ using UnityEngine.Rendering;
 [InitializeOnLoad]
 public static class BowViewModelAssetBuilder
 {
-    private const string BowObjFolder = "Assets/Art/Weapons/Bow/CompoundBow_wert_OBJ";
+    private const string BowObjPath = "Assets/Art/Weapons/Bow/CompoundBow_wert/CompoundBow.obj";
     private const string PrefabsFolder = "Assets/Prefabs/Weapons";
     private const string PrefabPath = PrefabsFolder + "/Bow_ViewModel.prefab";
     private const float ViewModelTargetWidth = 0.34f;
@@ -28,9 +28,9 @@ public static class BowViewModelAssetBuilder
         if (!TryResolveBowObjPath(out string bowObjPath))
         {
             Debug.LogWarning(
-                "[BowViewModelAssetBuilder] Missing OBJ in "
-                + BowObjFolder
-                + ". Add a .obj file to that folder.");
+                "[BowViewModelAssetBuilder] Missing OBJ at "
+                + BowObjPath
+                + ". Add the Compound Bow OBJ export to that path.");
             return;
         }
 
@@ -108,42 +108,15 @@ public static class BowViewModelAssetBuilder
 
     private static bool TryResolveBowObjPath(out string bowObjPath)
     {
+        bowObjPath = BowObjPath;
+
+        if (AssetPathExists(BowObjPath))
+        {
+            return true;
+        }
+
         bowObjPath = string.Empty;
-
-        if (!AssetDatabase.IsValidFolder(BowObjFolder))
-        {
-            return false;
-        }
-
-        string[] objGuids = AssetDatabase.FindAssets("t:Model", new[] { BowObjFolder });
-
-        for (int i = 0; i < objGuids.Length; i++)
-        {
-            string candidatePath = AssetDatabase.GUIDToAssetPath(objGuids[i]);
-
-            if (candidatePath.EndsWith(".obj", System.StringComparison.OrdinalIgnoreCase))
-            {
-                bowObjPath = candidatePath;
-                return true;
-            }
-        }
-
-        string folderFullPath = Path.Combine(Application.dataPath, BowObjFolder.Substring("Assets/".Length));
-
-        if (!Directory.Exists(folderFullPath))
-        {
-            return false;
-        }
-
-        string[] objFiles = Directory.GetFiles(folderFullPath, "*.obj", SearchOption.AllDirectories);
-
-        if (objFiles.Length == 0)
-        {
-            return false;
-        }
-
-        bowObjPath = "Assets" + objFiles[0].Substring(Application.dataPath.Length).Replace('\\', '/');
-        return true;
+        return false;
     }
 
     private static bool EnsureBowSourceImported(string bowObjPath, out string issue)
