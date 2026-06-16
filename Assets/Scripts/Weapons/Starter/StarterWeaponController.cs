@@ -194,17 +194,27 @@ public class StarterWeaponController : MonoBehaviour
         {
             case StarterWeaponType.HunterBow:
                 FireBowArrow(false);
-                nextPrimaryTime = Time.time + bowPrimaryCooldown;
+                nextPrimaryTime = Time.time + GetPrimaryCooldown(bowPrimaryCooldown);
                 break;
             case StarterWeaponType.FireStaff:
                 FireFireball();
-                nextPrimaryTime = Time.time + staffPrimaryCooldown;
+                nextPrimaryTime = Time.time + GetPrimaryCooldown(staffPrimaryCooldown);
                 break;
             case StarterWeaponType.KnightSword:
                 PerformSwordComboHit();
-                nextPrimaryTime = Time.time + swordPrimaryCooldown;
+                nextPrimaryTime = Time.time + GetPrimaryCooldown(swordPrimaryCooldown);
                 break;
         }
+    }
+
+    private float GetPrimaryCooldown(float baseCooldown)
+    {
+        if (playerStats == null)
+        {
+            return baseCooldown;
+        }
+
+        return baseCooldown * playerStats.StarterWeaponCooldownMultiplier;
     }
 
     private void TrySignatureSkill()

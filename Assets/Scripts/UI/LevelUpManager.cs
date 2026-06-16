@@ -458,9 +458,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return multiplier switch
         {
-            2 => "Auto weapons fire 40% faster.",
-            3 => "Auto weapons fire 60% faster.",
-            _ => "Auto weapons fire 20% faster."
+            2 => "Basic attack cooldowns -40%.",
+            3 => "Basic attack cooldowns -60%.",
+            _ => "Basic attack cooldowns -20%."
         };
     }
 
@@ -783,9 +783,13 @@ public class LevelUpManager : MonoBehaviour
 
         WeaponManager weaponManager = player.GetComponent<WeaponManager>();
 
-        if (weaponManager == null) return;
+        if (weaponManager != null)
+        {
+            weaponManager.IncreaseFireRate(percent);
+        }
 
-        weaponManager.IncreaseFireRate(percent);
+        PlayerStats stats = player.GetComponent<PlayerStats>();
+        stats?.IncreaseStarterWeaponFireRate(percent);
     }
 
     private void ApplyProjectileSpeedUpgrade(float percent)
