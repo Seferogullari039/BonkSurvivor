@@ -30,9 +30,15 @@ public class PlayerStats : MonoBehaviour
     private bool isGodMode;
     private float metaXpGainMultiplier = 1f;
     private float starterProjectileSpeedMultiplier = 1f;
+    private float bowDamageMultiplier = 1f;
+    private float fireStaffDamageMultiplier = 1f;
+    private float swordDamageMultiplier = 1f;
 
     public bool IsGodMode => isGodMode;
     public float StarterProjectileSpeedMultiplier => starterProjectileSpeedMultiplier;
+    public float BowDamageMultiplier => bowDamageMultiplier;
+    public float FireStaffDamageMultiplier => fireStaffDamageMultiplier;
+    public float SwordDamageMultiplier => swordDamageMultiplier;
     public bool IsDead => isDead;
 
     public int CurrentLevel => currentLevel;
@@ -141,6 +147,21 @@ public class PlayerStats : MonoBehaviour
         starterProjectileSpeedMultiplier = Mathf.Clamp(starterProjectileSpeedMultiplier, 1f, 4f);
     }
 
+    public void IncreaseBowDamage(float percent)
+    {
+        bowDamageMultiplier = Mathf.Clamp(bowDamageMultiplier * (1f + percent), 1f, 5f);
+    }
+
+    public void IncreaseFireStaffDamage(float percent)
+    {
+        fireStaffDamageMultiplier = Mathf.Clamp(fireStaffDamageMultiplier * (1f + percent), 1f, 5f);
+    }
+
+    public void IncreaseSwordDamage(float percent)
+    {
+        swordDamageMultiplier = Mathf.Clamp(swordDamageMultiplier * (1f + percent), 1f, 5f);
+    }
+
     public void ApplyMetaProgressionBonuses()
     {
         MetaProgressionData.ApplyRunBonuses(this, GetComponent<PlayerController>());
@@ -174,6 +195,9 @@ public class PlayerStats : MonoBehaviour
         isGodMode = false;
         metaXpGainMultiplier = 1f;
         starterProjectileSpeedMultiplier = 1f;
+        bowDamageMultiplier = 1f;
+        fireStaffDamageMultiplier = 1f;
+        swordDamageMultiplier = 1f;
     }
 
     private void Start()

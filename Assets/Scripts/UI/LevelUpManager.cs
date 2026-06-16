@@ -337,7 +337,7 @@ public class LevelUpManager : MonoBehaviour
 
     private void AssignRandomUpgradeOptions()
     {
-        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
         List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
 
         for (int i = 0; i < shownUpgradeIndices.Length; i++)
@@ -449,6 +449,18 @@ public class LevelUpManager : MonoBehaviour
                 return GetChainLightningContent(multiplier, playerStats);
             case 9:
                 return GetLaserBeamContent(multiplier, playerStats);
+            case 10:
+                return new UpgradeCardContent(
+                    "Sharpened Arrows",
+                    GetBowDamageDescription(multiplier));
+            case 11:
+                return new UpgradeCardContent(
+                    "Ember Core",
+                    GetFireStaffDamageDescription(multiplier));
+            case 12:
+                return new UpgradeCardContent(
+                    "Honed Blade",
+                    GetSwordDamageDescription(multiplier));
             default:
                 return new UpgradeCardContent(string.Empty, string.Empty);
         }
@@ -461,6 +473,36 @@ public class LevelUpManager : MonoBehaviour
             2 => "Projectile speed +50%.",
             3 => "Projectile speed +75%.",
             _ => "Projectile speed +25%."
+        };
+    }
+
+    private static string GetBowDamageDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Bow basic damage +30%.",
+            3 => "Bow basic damage +45%.",
+            _ => "Bow basic damage +15%."
+        };
+    }
+
+    private static string GetFireStaffDamageDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Fireball basic damage +30%.",
+            3 => "Fireball basic damage +45%.",
+            _ => "Fireball basic damage +15%."
+        };
+    }
+
+    private static string GetSwordDamageDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Sword basic damage +30%.",
+            3 => "Sword basic damage +45%.",
+            _ => "Sword basic damage +15%."
         };
     }
 
@@ -741,6 +783,15 @@ public class LevelUpManager : MonoBehaviour
             case 9:
                 ApplyLaserBeamUpgrade(multiplier);
                 break;
+            case 10:
+                ApplyBowDamageUpgrade(0.15f * multiplier);
+                break;
+            case 11:
+                ApplyFireStaffDamageUpgrade(0.15f * multiplier);
+                break;
+            case 12:
+                ApplySwordDamageUpgrade(0.15f * multiplier);
+                break;
         }
     }
 
@@ -801,6 +852,24 @@ public class LevelUpManager : MonoBehaviour
         if (playerStats == null) return;
 
         playerStats.damage += amount;
+    }
+
+    private void ApplyBowDamageUpgrade(float percent)
+    {
+        PlayerStats playerStats = FindPlayerStats();
+        playerStats?.IncreaseBowDamage(percent);
+    }
+
+    private void ApplyFireStaffDamageUpgrade(float percent)
+    {
+        PlayerStats playerStats = FindPlayerStats();
+        playerStats?.IncreaseFireStaffDamage(percent);
+    }
+
+    private void ApplySwordDamageUpgrade(float percent)
+    {
+        PlayerStats playerStats = FindPlayerStats();
+        playerStats?.IncreaseSwordDamage(percent);
     }
 
     private void ApplySpreadShotUpgrade()

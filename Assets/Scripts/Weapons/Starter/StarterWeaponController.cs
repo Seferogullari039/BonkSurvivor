@@ -245,6 +245,8 @@ public class StarterWeaponController : MonoBehaviour
             damage = Mathf.Max(1, Mathf.RoundToInt(damage * bowCritMultiplier));
         }
 
+        damage = ApplyBowPrimaryDamage(damage);
+
         fpsViewModel?.PlayRecoil();
         weaponViewModel?.PlayBowStringKick();
 
@@ -265,6 +267,7 @@ public class StarterWeaponController : MonoBehaviour
         if (!TryGetFireballSpawnData(out Vector3 spawnPosition, out Vector3 direction)) return;
 
         int damage = StarterWeaponDamageUtility.GetBaseDamage(playerStats);
+        damage = ApplyFireStaffPrimaryDamage(damage);
         fpsViewModel?.PlayRecoil();
         weaponViewModel?.PlayStaffGlowPulse();
 
@@ -306,6 +309,36 @@ public class StarterWeaponController : MonoBehaviour
         return baseSpeed * playerStats.StarterProjectileSpeedMultiplier;
     }
 
+    private int ApplyBowPrimaryDamage(int damage)
+    {
+        if (playerStats == null)
+        {
+            return damage;
+        }
+
+        return Mathf.Max(1, Mathf.RoundToInt(damage * playerStats.BowDamageMultiplier));
+    }
+
+    private int ApplyFireStaffPrimaryDamage(int damage)
+    {
+        if (playerStats == null)
+        {
+            return damage;
+        }
+
+        return Mathf.Max(1, Mathf.RoundToInt(damage * playerStats.FireStaffDamageMultiplier));
+    }
+
+    private int ApplySwordPrimaryDamage(int damage)
+    {
+        if (playerStats == null)
+        {
+            return damage;
+        }
+
+        return Mathf.Max(1, Mathf.RoundToInt(damage * playerStats.SwordDamageMultiplier));
+    }
+
     private void PerformSwordComboHit()
     {
         if (fireCamera == null) return;
@@ -313,6 +346,7 @@ public class StarterWeaponController : MonoBehaviour
         int baseDamage = StarterWeaponDamageUtility.GetBaseDamage(playerStats);
         float comboMultiplier = 1f + swordComboIndex * 0.12f;
         int damage = Mathf.Max(1, Mathf.RoundToInt(baseDamage * comboMultiplier));
+        damage = ApplySwordPrimaryDamage(damage);
 
         Vector3 origin = fireCamera.position;
         Vector3 forward = fireCamera.forward;

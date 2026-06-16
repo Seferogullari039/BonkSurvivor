@@ -10,8 +10,11 @@ Items not implemented yet. Do not describe these in upgrade cards until supporte
 
 ## FPS vs legacy auto weapons
 
-- Fire Rate and Projectile Speed upgrades affect the legacy auto-aim `ProjectileWeapon` path.
-- `ProjectileWeapon.Fire()` returns early while FPS mode is active, so these two upgrades may not help starter Bow / Staff / Sword runs until a FPS-facing effect exists.
+- Fire Rate upgrade still primarily affects the legacy auto-aim `ProjectileWeapon` path on this branch.
+- Projectile Speed upgrade affects legacy `Projectile.cs` and FPS Bow / Fire Staff LMB projectiles.
+- Bow / Fire Staff / Sword **basic attack (LMB) damage** upgrade cards are implemented (Sharpened Arrows, Ember Core, Honed Blade).
+- Arrow Rain / Mega Meteor / Sword RMB skill damage upgrade cards are **not** in this task; separate task later.
+- Spread / Pierce FPS starter integration is still a separate task.
 
 ## Content / UX ideas
 
@@ -21,10 +24,11 @@ Items not implemented yet. Do not describe these in upgrade cards until supporte
 - Duplicate weapon picks removed from pool after unlock (currently only early-level bias, not full exclusion).
 - Upgrade icons per card.
 - Card hover preview of current player stats.
+- Weapon mastery / unlock tree progression — future large progression task.
 
 ## Unsupported effect ideas (do not fake in descriptions)
 
 - Crit chance / crit damage upgrades.
 - Lifesteal or shield upgrades.
-- Fire Staff / Bow / Sword specific upgrade cards.
 - Movement speed or dash upgrades via level-up menu.
+- Skill-specific damage upgrades (Arrow Rain, Mega Meteor, Whirlwind) until wired in code.
