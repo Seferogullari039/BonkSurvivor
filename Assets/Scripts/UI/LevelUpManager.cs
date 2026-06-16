@@ -44,6 +44,8 @@ public class LevelUpManager : MonoBehaviour
         public Button Button;
         public Image BackgroundImage;
         public Image GlowImage;
+        public Image IconImage;
+        public TMP_Text IconFallbackText;
         public TMP_Text RarityText;
         public TMP_Text TitleText;
         public TMP_Text DescriptionText;
@@ -51,14 +53,16 @@ public class LevelUpManager : MonoBehaviour
 
     private readonly struct UpgradeCardContent
     {
-        public UpgradeCardContent(string title, string description)
+        public UpgradeCardContent(string title, string description, string iconKey = "")
         {
             Title = title;
             Description = description;
+            IconKey = iconKey ?? string.Empty;
         }
 
         public string Title { get; }
         public string Description { get; }
+        public string IconKey { get; }
     }
 
     private void ApplyUpgradePanelLayout()
@@ -140,15 +144,18 @@ public class LevelUpManager : MonoBehaviour
 
         Image backgroundImage = button.GetComponent<Image>();
         Image glowImage = EnsureCardGlow(buttonRect);
+        EnsureCardIconSlot(buttonRect, legacyText, out Image iconImage, out TMP_Text iconFallbackText);
 
         upgradeCards[index] = new UpgradeCardView
         {
             Button = button,
             BackgroundImage = backgroundImage,
             GlowImage = glowImage,
-            RarityText = CreateCardText(buttonRect, legacyText, "RarityText", new Vector2(0f, 118f), new Vector2(228f, 30f), 19f, FontStyles.Bold),
-            TitleText = CreateCardText(buttonRect, legacyText, "TitleText", new Vector2(0f, 46f), new Vector2(228f, 92f), 32f, FontStyles.Bold),
-            DescriptionText = CreateCardText(buttonRect, legacyText, "DescriptionText", new Vector2(0f, -62f), new Vector2(228f, 124f), 20f, FontStyles.Normal)
+            IconImage = iconImage,
+            IconFallbackText = iconFallbackText,
+            RarityText = CreateCardText(buttonRect, legacyText, "RarityText", new Vector2(0f, 92f), new Vector2(228f, 28f), 19f, FontStyles.Bold),
+            TitleText = CreateCardText(buttonRect, legacyText, "TitleText", new Vector2(0f, 28f), new Vector2(228f, 88f), 32f, FontStyles.Bold),
+            DescriptionText = CreateCardText(buttonRect, legacyText, "DescriptionText", new Vector2(0f, -68f), new Vector2(228f, 120f), 20f, FontStyles.Normal)
         };
 
         ConfigureDescriptionText(upgradeCards[index].DescriptionText);
@@ -185,6 +192,59 @@ public class LevelUpManager : MonoBehaviour
         glowImage.color = new Color(0.86f, 0.88f, 0.92f, 0.12f);
 
         return glowImage;
+    }
+
+    private static void EnsureCardIconSlot(RectTransform buttonRect, TMP_Text fontSource, out Image iconImage, out TMP_Text iconFallbackText)
+    {
+        Transform existingIconRoot = buttonRect.Find("CardIconRoot");
+
+        if (existingIconRoot != null)
+        {
+            iconImage = existingIconRoot.Find("IconImage")?.GetComponent<Image>();
+            iconFallbackText = existingIconRoot.Find("IconFallbackText")?.GetComponent<TMP_Text>();
+            return;
+        }
+
+        GameObject iconRoot = new GameObject("CardIconRoot");
+        iconRoot.transform.SetParent(buttonRect, false);
+
+        RectTransform iconRootRect = iconRoot.AddComponent<RectTransform>();
+        UiLayoutUtility.SetAnchorCenter(iconRootRect, new Vector2(0f, 124f), new Vector2(44f, 44f));
+
+        GameObject iconImageObject = new GameObject("IconImage");
+        iconImageObject.transform.SetParent(iconRoot.transform, false);
+
+        RectTransform iconImageRect = iconImageObject.AddComponent<RectTransform>();
+        iconImageRect.anchorMin = Vector2.zero;
+        iconImageRect.anchorMax = Vector2.one;
+        iconImageRect.offsetMin = Vector2.zero;
+        iconImageRect.offsetMax = Vector2.zero;
+
+        iconImage = iconImageObject.AddComponent<Image>();
+        iconImage.raycastTarget = false;
+        iconImage.preserveAspect = true;
+        iconImage.enabled = false;
+        iconImageObject.SetActive(false);
+
+        GameObject iconFallbackObject = new GameObject("IconFallbackText");
+        iconFallbackObject.transform.SetParent(iconRoot.transform, false);
+
+        RectTransform iconFallbackRect = iconFallbackObject.AddComponent<RectTransform>();
+        iconFallbackRect.anchorMin = Vector2.zero;
+        iconFallbackRect.anchorMax = Vector2.one;
+        iconFallbackRect.offsetMin = Vector2.zero;
+        iconFallbackRect.offsetMax = Vector2.zero;
+
+        TextMeshProUGUI iconFallbackMesh = iconFallbackObject.AddComponent<TextMeshProUGUI>();
+        CopyTmpFontFrom(fontSource, iconFallbackMesh);
+        iconFallbackMesh.alignment = TextAlignmentOptions.Center;
+        iconFallbackMesh.fontSize = 24f;
+        iconFallbackMesh.raycastTarget = false;
+        iconFallbackMesh.enableAutoSizing = true;
+        iconFallbackMesh.fontSizeMin = 18f;
+        iconFallbackMesh.fontSizeMax = 26f;
+        iconFallbackText = iconFallbackMesh;
+        iconFallbackObject.SetActive(false);
     }
 
     private static TMP_Text CreateCardText(
@@ -380,7 +440,53 @@ public class LevelUpManager : MonoBehaviour
             card.DescriptionText.text = content.Description;
         }
 
+        ApplyCardIcon(card, content.IconKey);
         ApplyCardRarityVisuals(card, rarity);
+    }
+
+    private static void ApplyCardIcon(UpgradeCardView card, string iconKey)
+    {
+        if (card == null)
+        {
+            return;
+        }
+
+        Sprite iconSprite = UpgradeCardIconUtility.TryLoadSprite(iconKey);
+
+        if (iconSprite != null && card.IconImage != null)
+        {
+            card.IconImage.sprite = iconSprite;
+            card.IconImage.enabled = true;
+            card.IconImage.gameObject.SetActive(true);
+
+            if (card.IconFallbackText != null)
+            {
+                card.IconFallbackText.gameObject.SetActive(false);
+            }
+
+            return;
+        }
+
+        if (card.IconImage != null)
+        {
+            card.IconImage.sprite = null;
+            card.IconImage.enabled = false;
+            card.IconImage.gameObject.SetActive(false);
+        }
+
+        string fallbackLabel = UpgradeCardIconUtility.GetFallbackLabel(iconKey);
+
+        if (card.IconFallbackText != null && !string.IsNullOrEmpty(fallbackLabel))
+        {
+            card.IconFallbackText.text = fallbackLabel;
+            card.IconFallbackText.gameObject.SetActive(true);
+            return;
+        }
+
+        if (card.IconFallbackText != null)
+        {
+            card.IconFallbackText.gameObject.SetActive(false);
+        }
     }
 
     private static void ApplyCardRarityVisuals(UpgradeCardView card, UpgradeRarity rarity)
@@ -656,26 +762,35 @@ public class LevelUpManager : MonoBehaviour
         return $"{GetRarityLabel(rarity)}\n{content.Title}\n{content.Description}";
     }
 
+    private static UpgradeCardContent MakeContent(string title, string description, string iconKey)
+    {
+        return new UpgradeCardContent(title, description, iconKey);
+    }
+
     private static UpgradeCardContent GetUpgradeCardContent(int upgradeIndex, int multiplier, PlayerStats playerStats)
     {
         switch (upgradeIndex)
         {
             case 0:
-                return new UpgradeCardContent(
+                return MakeContent(
                     "Rapid Mechanism",
-                    GetFireRateDescription(multiplier));
+                    GetFireRateDescription(multiplier),
+                    "rapid_mechanism");
             case 1:
-                return new UpgradeCardContent(
+                return MakeContent(
                     "Swift Projectiles",
-                    GetProjectileSpeedDescription(multiplier));
+                    GetProjectileSpeedDescription(multiplier),
+                    "swift_projectiles");
             case 2:
-                return new UpgradeCardContent(
+                return MakeContent(
                     "Magnet Sense",
-                    GetXpAttractionDescription(multiplier));
+                    GetXpAttractionDescription(multiplier),
+                    "magnet_sense");
             case 3:
-                return new UpgradeCardContent(
+                return MakeContent(
                     "Sharp Instinct",
-                    GetDamageDescription(multiplier));
+                    GetDamageDescription(multiplier),
+                    "sharp_instinct");
             case 4:
                 return GetSpreadShotContent(playerStats);
             case 5:
@@ -689,27 +804,32 @@ public class LevelUpManager : MonoBehaviour
             case 9:
                 return GetLaserBeamContent(multiplier, playerStats);
             case 10:
-                return new UpgradeCardContent(
+                return MakeContent(
                     "Meteor Focus",
-                    GetMegaMeteorCooldownDescription(multiplier));
+                    GetMegaMeteorCooldownDescription(multiplier),
+                    "meteor_focus");
             case 11:
-                return new UpgradeCardContent(
+                return MakeContent(
                     "Whirlwind Training",
-                    GetSwordSkillCooldownDescription(multiplier));
+                    GetSwordSkillCooldownDescription(multiplier),
+                    "whirlwind_training");
             case 12:
-                return new UpgradeCardContent(
+                return MakeContent(
                     "Arrow Storm",
-                    GetArrowRainDamageDescription(multiplier));
+                    GetArrowRainDamageDescription(multiplier),
+                    "arrow_storm");
             case 13:
-                return new UpgradeCardContent(
+                return MakeContent(
                     "Inferno Ritual",
-                    GetMegaMeteorDamageDescription(multiplier));
+                    GetMegaMeteorDamageDescription(multiplier),
+                    "inferno_ritual");
             case 14:
-                return new UpgradeCardContent(
+                return MakeContent(
                     "Blade Tempest",
-                    GetSwordSkillDamageDescription(multiplier));
+                    GetSwordSkillDamageDescription(multiplier),
+                    "blade_tempest");
             default:
-                return new UpgradeCardContent(string.Empty, string.Empty);
+                return MakeContent(string.Empty, string.Empty, string.Empty);
         }
     }
 
@@ -817,42 +937,48 @@ public class LevelUpManager : MonoBehaviour
     {
         if (playerStats == null || !playerStats.SpreadShotUnlocked)
         {
-            return new UpgradeCardContent(
+            return MakeContent(
                 "Spread Shot",
-                "Support projectiles split into multiple shots.");
+                "Support projectiles split into multiple shots.",
+                "spread_shot");
         }
 
-        return new UpgradeCardContent(
+        return MakeContent(
             "Spread Shot+",
-            "Support projectile spread improves.");
+            "Support projectile spread improves.",
+            "spread_shot");
     }
 
     private static UpgradeCardContent GetPiercingShotContent(PlayerStats playerStats)
     {
         if (playerStats == null || playerStats.PierceCount <= 0)
         {
-            return new UpgradeCardContent(
+            return MakeContent(
                 "Piercing Shot",
-                "Support projectiles pierce through more enemies.");
+                "Support projectiles pierce through more enemies.",
+                "piercing_shot");
         }
 
-        return new UpgradeCardContent(
+        return MakeContent(
             "Piercing Shot+",
-            "Support projectile pierce improves.");
+            "Support projectile pierce improves.",
+            "piercing_shot");
     }
 
     private static UpgradeCardContent GetOrbitingOrbContent(PlayerStats playerStats)
     {
         if (playerStats == null || playerStats.OrbitOrbCount <= 0)
         {
-            return new UpgradeCardContent(
+            return MakeContent(
                 "Orbiting Orb",
-                "Unlocks an orb that circles you and damages nearby enemies.");
+                "Unlocks an orb that circles you and damages nearby enemies.",
+                "orbiting_orb");
         }
 
-        return new UpgradeCardContent(
+        return MakeContent(
             "Orbiting Orb+",
-            "Adds +1 orbiting orb.");
+            "Adds +1 orbiting orb.",
+            "orbiting_orb");
     }
 
     private static UpgradeCardContent GetRocketLauncherContent(int multiplier, PlayerStats playerStats)
@@ -868,19 +994,21 @@ public class LevelUpManager : MonoBehaviour
                 description += "\n" + GetStackLevelDescription("Rocket", multiplier);
             }
 
-            return new UpgradeCardContent("Rocket Launcher", description);
+            return MakeContent("Rocket Launcher", description, "rocket_launcher");
         }
 
         if (multiplier > 1)
         {
-            return new UpgradeCardContent(
+            return MakeContent(
                 "Rocket Launcher+",
-                "Improves rocket level and explosion power.\n" + GetStackLevelDescription("Rocket", multiplier));
+                "Improves rocket level and explosion power.\n" + GetStackLevelDescription("Rocket", multiplier),
+                "rocket_launcher");
         }
 
-        return new UpgradeCardContent(
+        return MakeContent(
             "Rocket Launcher+",
-            "Improves rocket level and explosion power.");
+            "Improves rocket level and explosion power.",
+            "rocket_launcher");
     }
 
     private static UpgradeCardContent GetChainLightningContent(int multiplier, PlayerStats playerStats)
@@ -896,19 +1024,21 @@ public class LevelUpManager : MonoBehaviour
                 description += "\n" + GetStackLevelDescription("Chain Lightning", multiplier);
             }
 
-            return new UpgradeCardContent("Chain Lightning", description);
+            return MakeContent("Chain Lightning", description, "chain_lightning");
         }
 
         if (multiplier > 1)
         {
-            return new UpgradeCardContent(
+            return MakeContent(
                 "Chain Lightning+",
-                "Increases chain lightning level and target count.\n" + GetStackLevelDescription("Chain Lightning", multiplier));
+                "Increases chain lightning level and target count.\n" + GetStackLevelDescription("Chain Lightning", multiplier),
+                "chain_lightning");
         }
 
-        return new UpgradeCardContent(
+        return MakeContent(
             "Chain Lightning+",
-            "Increases chain lightning level and target count.");
+            "Increases chain lightning level and target count.",
+            "chain_lightning");
     }
 
     private static UpgradeCardContent GetLaserBeamContent(int multiplier, PlayerStats playerStats)
@@ -924,19 +1054,21 @@ public class LevelUpManager : MonoBehaviour
                 description += "\n" + GetStackLevelDescription("Laser Beam", multiplier);
             }
 
-            return new UpgradeCardContent("Laser Beam", description);
+            return MakeContent("Laser Beam", description, "laser_beam");
         }
 
         if (multiplier > 1)
         {
-            return new UpgradeCardContent(
+            return MakeContent(
                 "Laser Beam+",
-                "Increases laser level and beam range.\n" + GetStackLevelDescription("Laser Beam", multiplier));
+                "Increases laser level and beam range.\n" + GetStackLevelDescription("Laser Beam", multiplier),
+                "laser_beam");
         }
 
-        return new UpgradeCardContent(
+        return MakeContent(
             "Laser Beam+",
-            "Increases laser level and beam range.");
+            "Increases laser level and beam range.",
+            "laser_beam");
     }
 
     private List<int> GetUnpurchasedWeaponIndices()
