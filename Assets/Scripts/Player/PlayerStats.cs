@@ -31,9 +31,11 @@ public class PlayerStats : MonoBehaviour
     private float metaXpGainMultiplier = 1f;
     private float starterWeaponCooldownMultiplier = 1f;
     private float starterProjectileSpeedMultiplier = 1f;
+    private float megaMeteorCooldownMultiplier = 1f;
 
     public float StarterWeaponCooldownMultiplier => starterWeaponCooldownMultiplier;
     public float StarterProjectileSpeedMultiplier => starterProjectileSpeedMultiplier;
+    public float MegaMeteorCooldownMultiplier => megaMeteorCooldownMultiplier;
 
     public bool IsGodMode => isGodMode;
     public bool IsDead => isDead;
@@ -150,6 +152,12 @@ public class PlayerStats : MonoBehaviour
         starterProjectileSpeedMultiplier = Mathf.Clamp(starterProjectileSpeedMultiplier, 1f, 4f);
     }
 
+    public void ReduceMegaMeteorCooldown(float percent)
+    {
+        megaMeteorCooldownMultiplier *= Mathf.Max(0.05f, 1f - percent);
+        megaMeteorCooldownMultiplier = Mathf.Clamp(megaMeteorCooldownMultiplier, 0.35f, 1f);
+    }
+
     public void ApplyMetaProgressionBonuses()
     {
         MetaProgressionData.ApplyRunBonuses(this, GetComponent<PlayerController>());
@@ -184,6 +192,7 @@ public class PlayerStats : MonoBehaviour
         metaXpGainMultiplier = 1f;
         starterWeaponCooldownMultiplier = 1f;
         starterProjectileSpeedMultiplier = 1f;
+        megaMeteorCooldownMultiplier = 1f;
     }
 
     private void Start()

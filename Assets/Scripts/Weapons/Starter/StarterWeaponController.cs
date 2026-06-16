@@ -217,6 +217,16 @@ public class StarterWeaponController : MonoBehaviour
         return baseCooldown * playerStats.StarterWeaponCooldownMultiplier;
     }
 
+    private float GetMegaMeteorCooldown(float baseCooldown)
+    {
+        if (playerStats == null)
+        {
+            return baseCooldown;
+        }
+
+        return baseCooldown * playerStats.MegaMeteorCooldownMultiplier;
+    }
+
     private void TrySignatureSkill()
     {
         switch (activeWeapon)
@@ -228,7 +238,7 @@ public class StarterWeaponController : MonoBehaviour
             case StarterWeaponType.FireStaff:
                 LogStarterDebug("[StarterWeapon] FireStaff RMB Mega Meteor");
                 skillRoutine = StartCoroutine(MeteorShowerRoutine());
-                nextSkillTime = Time.time + staffSkillCooldown;
+                nextSkillTime = Time.time + GetMegaMeteorCooldown(staffSkillCooldown);
                 break;
             case StarterWeaponType.KnightSword:
                 LogStarterDebug("[StarterWeapon] Sword RMB Whirlwind");

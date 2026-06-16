@@ -2,13 +2,20 @@
 
 Items not implemented yet. Do not describe these in upgrade cards until supported in code.
 
+## FPS starter skill upgrades
+
+- **Meteor Focus / Mega Meteor cooldown** upgrade is implemented (Fire Staff RMB only).
+- Mega Meteor damage upgrade is a separate task.
+- Mega Meteor radius / impact upgrade is a separate task.
+- Mega Meteor VFX/SFX polish is a separate asset task.
+- Arrow Rain cooldown upgrade is on `feature/test-team-sync`; merge separately if needed.
+- Sword RMB cooldown / damage upgrades are separate tasks.
+- Skill upgrade cards should be added one at a time with safe runtime hooks.
+
 ## Future starter weapon integration
 
-- Bow / Fire Staff / Sword specific upgrade cards need a starter weapon stat hook system before they can be added safely.
-- Fire Rate card needs a safe weapon stat connection before it can affect FPS starter weapons.
-- Projectile Speed card needs a safe FPS starter projectile hook before it can affect Bow / Staff / Sword projectiles.
+- Bow / Fire Staff / Sword LMB damage upgrade cards need merge from feature branch or re-implementation on main.
 - Spread Shot and Piercing Shot currently fit the support / legacy projectile path; FPS starter Bow integration is a separate task.
-- Bow / Fire Staff / Sword specific cards should only enter the upgrade pool after their real effects are safely supported in code.
 
 ## Rarity / balance
 
@@ -26,5 +33,5 @@ Items not implemented yet. Do not describe these in upgrade cards until supporte
 
 ## Card text notes
 
-- Fire Rate and Projectile Speed card text refers to auto / support projectile weapons, not FPS starter Bow / Fire Staff / Sword directly.
+- Fire Rate and Projectile Speed card text affects FPS starter LMB cooldown / projectile speed on main (via PlayerStats hooks).
 - Damage, XP attraction, Orbiting Orb, Rocket Launcher, Chain Lightning, and Laser Beam descriptions match currently working gameplay effects.

@@ -337,7 +337,7 @@ public class LevelUpManager : MonoBehaviour
 
     private void AssignRandomUpgradeOptions()
     {
-        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
         List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
 
         for (int i = 0; i < shownUpgradeIndices.Length; i++)
@@ -449,6 +449,10 @@ public class LevelUpManager : MonoBehaviour
                 return GetChainLightningContent(multiplier, playerStats);
             case 9:
                 return GetLaserBeamContent(multiplier, playerStats);
+            case 10:
+                return new UpgradeCardContent(
+                    "Meteor Focus",
+                    GetMegaMeteorCooldownDescription(multiplier));
             default:
                 return new UpgradeCardContent(string.Empty, string.Empty);
         }
@@ -491,6 +495,16 @@ public class LevelUpManager : MonoBehaviour
             2 => "Global damage +2.",
             3 => "Global damage +3.",
             _ => "Global damage +1."
+        };
+    }
+
+    private static string GetMegaMeteorCooldownDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Mega Meteor cooldown -24%.",
+            3 => "Mega Meteor cooldown -36%.",
+            _ => "Mega Meteor cooldown -12%."
         };
     }
 
@@ -772,6 +786,9 @@ public class LevelUpManager : MonoBehaviour
             case 9:
                 ApplyLaserBeamUpgrade(multiplier);
                 break;
+            case 10:
+                ApplyMegaMeteorCooldownUpgrade(0.12f * multiplier);
+                break;
         }
     }
 
@@ -836,6 +853,12 @@ public class LevelUpManager : MonoBehaviour
         if (playerStats == null) return;
 
         playerStats.damage += amount;
+    }
+
+    private void ApplyMegaMeteorCooldownUpgrade(float percent)
+    {
+        PlayerStats playerStats = FindPlayerStats();
+        playerStats?.ReduceMegaMeteorCooldown(percent);
     }
 
     private void ApplySpreadShotUpgrade()
