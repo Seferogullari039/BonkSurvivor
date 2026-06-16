@@ -20,6 +20,7 @@ public class StarterWeaponViewModel : MonoBehaviour
     private const float MinVisualBoundsExtent = 0.06f;
     private const float MaxVisualScaleMultiplier = 3f;
     private static bool weaponVisualDiagnosticsLogged;
+    private static bool staffPrefabWarningLogged;
 
     private static readonly Vector3 StaffPrefabLocalPosition = new Vector3(0.04f, -0.06f, 0.08f);
     private static readonly Vector3 StaffPrefabLocalRotation = new Vector3(18f, -12f, 10f);
@@ -359,7 +360,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         Transform visualTransform = activeVisualRoot.transform;
         visualTransform.localPosition = VisibleWeaponLocalPosition;
         visualTransform.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
-        visualTransform.localScale = VisibleWeaponLocalScale;
+        visualTransform.localScale = usingStaffPrefabVisual ? Vector3.one : VisibleWeaponLocalScale;
 
         Renderer[] renderers = activeVisualRoot.GetComponentsInChildren<Renderer>(true);
 
@@ -368,7 +369,11 @@ public class StarterWeaponViewModel : MonoBehaviour
             if (renderers[i] != null)
             {
                 renderers[i].enabled = true;
-                EnsureOpaqueMaterial(renderers[i]);
+
+                if (!usingStaffPrefabVisual)
+                {
+                    EnsureOpaqueMaterial(renderers[i]);
+                }
             }
         }
 
@@ -382,7 +387,7 @@ public class StarterWeaponViewModel : MonoBehaviour
             {
                 visualTransform.localPosition = VisibleWeaponLocalPosition;
                 visualTransform.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
-                visualTransform.localScale = VisibleWeaponLocalScale;
+                visualTransform.localScale = usingStaffPrefabVisual ? Vector3.one : VisibleWeaponLocalScale;
             }
         }
 
@@ -619,6 +624,111 @@ public class StarterWeaponViewModel : MonoBehaviour
 
     private void BuildStaffVisual(Transform root)
     {
+        GameObject prefab = GetStaffViewModelPrefab();
+
+        if (prefab != null && TryBuildStaffPrefabVisual(root, prefab))
+        {
+            usingStaffPrefabVisual = true;
+            return;
+        }
+
+        BuildStaffPrimitiveVisual(root);
+        usingStaffPrefabVisual = false;
+    }
+
+    private bool TryBuildStaffPrefabVisual(Transform root, GameObject prefab)
+    {
+        if (root == null || prefab == null)
+        {
+            return false;
+        }
+
+        GameObject instance = null;
+
+        try
+        {
+            instance = Instantiate(prefab, root, false);
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogWarning("[ViewModel] Fire Staff prefab instantiate failed, using primitive fallback. " + exception.Message);
+            return false;
+        }
+
+        if (instance == null)
+        {
+            return false;
+        }
+
+        instance.name = "StaffViewModelPrefab";
+
+        Transform instanceTransform = instance.transform;
+        instanceTransform.localPosition = StaffPrefabLocalPosition;
+        instanceTransform.localRotation = Quaternion.Euler(StaffPrefabLocalRotation);
+        instanceTransform.localScale = Vector3.one * StaffPrefabLocalScale;
+
+        DisableStaffPrefabPhysics(instance);
+        SetLayerRecursively(instance, 0);
+        EnsureStaffVisualMaterials(instanceTransform);
+
+        CacheStaffSpawnPoints(instanceTransform);
+        CacheStaffGlowRenderers(instanceTransform);
+
+        if (fireballSpawnPoint == null)
+        {
+            fireballSpawnPoint = CreateSpawnPoint(root, "FireballSpawnPoint", new Vector3(0.04f, 0.06f, 0.18f));
+        }
+
+        if (meteorCastPoint == null)
+        {
+            meteorCastPoint = CreateSpawnPoint(root, "MeteorCastPoint", new Vector3(0.04f, 0.06f, 0.18f));
+        }
+
+        if (staffOrbRenderer == null && staffGlowRenderers.Length > 0)
+        {
+            staffOrbRenderer = staffGlowRenderers[0];
+        }
+
+        return true;
+    }
+
+    private static void DisableStaffPrefabPhysics(GameObject staffInstance)
+    {
+        if (staffInstance == null)
+        {
+            return;
+        }
+
+        Collider[] colliders = staffInstance.GetComponentsInChildren<Collider>(true);
+
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider collider = colliders[i];
+
+            if (collider != null)
+            {
+                collider.enabled = false;
+            }
+        }
+
+        Rigidbody[] rigidbodies = staffInstance.GetComponentsInChildren<Rigidbody>(true);
+
+        for (int i = 0; i < rigidbodies.Length; i++)
+        {
+            Rigidbody rigidbody = rigidbodies[i];
+
+            if (rigidbody == null)
+            {
+                continue;
+            }
+
+            rigidbody.isKinematic = true;
+            rigidbody.useGravity = false;
+        }
+    }
+
+    private void BuildStaffPrimitiveVisual(Transform root)
+    {
         CreatePart("StaffShaft", PrimitiveType.Cylinder, root, new Vector3(0.02f, -0.04f, 0.08f), Quaternion.Euler(68f, -12f, 0f), new Vector3(0.04f, 0.24f, 0.04f), StaffWoodColor, false, 0.28f);
         CreatePart("StaffCap", PrimitiveType.Cylinder, root, new Vector3(0f, -0.1f, 0.02f), Quaternion.Euler(68f, -12f, 0f), new Vector3(0.045f, 0.03f, 0.045f), StaffWoodColor, false, 0.25f);
 
@@ -642,7 +752,34 @@ public class StarterWeaponViewModel : MonoBehaviour
 
     private GameObject GetStaffViewModelPrefab()
     {
-        return null;
+        if (staffViewModelPrefab != null)
+        {
+            return staffViewModelPrefab;
+        }
+
+        if (staffPrefabLoadAttempted)
+        {
+            return null;
+        }
+
+        staffPrefabLoadAttempted = true;
+
+#if UNITY_EDITOR
+        staffViewModelPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(StaffPrefabAssetPath);
+#endif
+
+        if (staffViewModelPrefab == null)
+        {
+            staffViewModelPrefab = Resources.Load<GameObject>("Staff_ViewModel");
+        }
+
+        if (staffViewModelPrefab == null && !staffPrefabWarningLogged)
+        {
+            staffPrefabWarningLogged = true;
+            Debug.LogWarning("[ViewModel] Fire Staff prefab not found, using primitive fallback.");
+        }
+
+        return staffViewModelPrefab;
     }
 
     private void CacheStaffSpawnPoints(Transform staffRoot)
