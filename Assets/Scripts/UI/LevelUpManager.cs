@@ -468,9 +468,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return multiplier switch
         {
-            2 => "Auto-weapon projectiles fly 50% faster.",
-            3 => "Auto-weapon projectiles fly 75% faster.",
-            _ => "Auto-weapon projectiles fly 25% faster."
+            2 => "Projectile speed +50%.",
+            3 => "Projectile speed +75%.",
+            _ => "Projectile speed +25%."
         };
     }
 
@@ -796,13 +796,20 @@ public class LevelUpManager : MonoBehaviour
     {
         UpgradeManager upgradeManager = UpgradeManager.GetOrCreateInstance();
 
-        if (upgradeManager == null)
+        if (upgradeManager != null)
         {
-            Debug.LogError("UpgradeManager bulunamadı");
+            upgradeManager.IncreaseProjectileSpeed(percent);
+        }
+
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+
+        if (player == null)
+        {
             return;
         }
 
-        upgradeManager.IncreaseProjectileSpeed(percent);
+        PlayerStats stats = player.GetComponent<PlayerStats>();
+        stats?.IncreaseStarterProjectileSpeed(percent);
     }
 
     private void ApplyXPAttractionUpgrade(float percent)
