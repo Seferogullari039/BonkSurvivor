@@ -36,6 +36,7 @@ public class Enemy : MonoBehaviour
     private bool baseVisualGlow;
     private bool isTelegraphing;
     private Coroutine contactTelegraphRoutine;
+    private MimicChestController mimicChestOwner;
 
     public EnemyType Type => enemyType;
     public bool IsElite { get; private set; }
@@ -96,6 +97,12 @@ public class Enemy : MonoBehaviour
     public void SetBossAbility(BossAbilityType ability)
     {
         bossAbility = ability;
+    }
+
+    public void BindMimicChest(MimicChestController mimicChest)
+    {
+        mimicChestOwner = mimicChest;
+        SetMovementLocked(true);
     }
 
     public void ApplyEliteMutation(Color eliteColor)
@@ -297,6 +304,12 @@ public class Enemy : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
+        if (mimicChestOwner != null)
+        {
+            mimicChestOwner.TakeDamage(damage);
+            return;
+        }
+
         bool isCrit = damage >= 7 || damage >= currentHealth;
 
         if (FloatingDamageManager.Instance != null)
@@ -516,7 +529,7 @@ public class Enemy : MonoBehaviour
 
         if (chest == null) return;
 
-        chest.Configure(rarity);
+        chest.Configure(rarity, isBossDrop);
 
         if (isBossDrop)
         {

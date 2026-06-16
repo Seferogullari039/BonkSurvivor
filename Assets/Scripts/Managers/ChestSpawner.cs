@@ -118,7 +118,16 @@ public class ChestSpawner : MonoBehaviour
 
         if (chest != null)
         {
-            chest.Configure(rarity);
+            int currentWave = 1;
+            EnemySpawner enemySpawner = FindFirstObjectByType<EnemySpawner>();
+
+            if (enemySpawner != null)
+            {
+                currentWave = Mathf.Max(1, enemySpawner.CurrentWave);
+            }
+
+            bool isMimic = MimicChestUtility.RollMimicForMapChest(currentWave);
+            chest.ConfigureMapChest(rarity, isMimic);
         }
 
         Debug.Log("[ChestSpawner] Spawned " + rarity + " chest at " + spawnPosition);

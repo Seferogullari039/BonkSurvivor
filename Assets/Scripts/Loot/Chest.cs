@@ -8,7 +8,13 @@ public class Chest : MonoBehaviour
 
     private int price;
     private bool isOpened;
+    private bool isMimic;
+    private bool isBossDrop;
     private ChestRarity chestRarity = ChestRarity.Normal;
+    private MimicChestController mimicController;
+
+    public ChestRarity Rarity => chestRarity;
+    public bool IsMimic => isMimic;
 
     private void Start()
     {
@@ -17,14 +23,48 @@ public class Chest : MonoBehaviour
         UpdatePrice();
     }
 
-    public void Configure(ChestRarity rarity)
+    public void Configure(ChestRarity rarity, bool bossDrop = false)
     {
         chestRarity = rarity;
+        isBossDrop = bossDrop;
+        isMimic = false;
         ApplyVisuals();
+    }
+
+    public void ConfigureMapChest(ChestRarity rarity, bool mimic)
+    {
+        chestRarity = rarity;
+        isBossDrop = false;
+        isMimic = mimic;
+
+        if (isMimic)
+        {
+            EnsureMimicController();
+            mimicController.Initialize(this, chestRarity);
+        }
+
+        ApplyVisuals();
+    }
+
+    private void EnsureMimicController()
+    {
+        if (mimicController != null) return;
+
+        mimicController = GetComponent<MimicChestController>();
+
+        if (mimicController == null)
+        {
+            mimicController = gameObject.AddComponent<MimicChestController>();
+        }
     }
 
     private void ApplyVisuals()
     {
+        if (isMimic)
+        {
+            return;
+        }
+
         ChestVisual chestVisual = GetComponent<ChestVisual>();
 
         if (chestVisual != null)
@@ -118,6 +158,19 @@ public class Chest : MonoBehaviour
     {
         if (isOpened) return;
         if (!other.CompareTag("Player")) return;
+
+        if (isMimic)
+        {
+            if (mimicController == null)
+            {
+                EnsureMimicController();
+                mimicController.Initialize(this, chestRarity);
+            }
+
+            isOpened = true;
+            mimicController.Activate();
+            return;
+        }
 
         PlayerStats playerStats = other.GetComponent<PlayerStats>();
 
