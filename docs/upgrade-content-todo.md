@@ -32,6 +32,7 @@ Items not implemented yet. Do not describe these in upgrade cards until supporte
 
 ## Pool / UX (separate tasks)
 
+- **Level-up pool balance (main):** weighted picks favor core stat cards (Fire Rate, Projectile Speed, XP Attraction, Global Damage) during levels 1–5. Skill cooldown/damage cards (index 10–14) stay low-weight early. Rocket / Chain / Laser can still appear but lose weight if another support unlock is already on the same menu. Epic roll rate unchanged (5%). Chest menus use the same picker.
 - Removing unlocked weapons from the pool, or using separate level-up vs chest pools, is a future task.
 - Upgrade icons, hover preview, and exact next-value previews remain future UX work.
 

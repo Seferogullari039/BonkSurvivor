@@ -342,25 +342,122 @@ public class LevelUpManager : MonoBehaviour
 
         for (int i = 0; i < shownUpgradeIndices.Length; i++)
         {
-            int pick;
-
-            if (menuPlayerLevel <= 5 && unpurchasedWeapons.Count > 0 && (i == 0 || Random.value < 0.5f))
-            {
-                int weaponPickIndex = Random.Range(0, unpurchasedWeapons.Count);
-                pick = unpurchasedWeapons[weaponPickIndex];
-                unpurchasedWeapons.RemoveAt(weaponPickIndex);
-            }
-            else
-            {
-                int pickIndex = Random.Range(0, availableIndices.Count);
-                pick = availableIndices[pickIndex];
-            }
-
+            int pick = PickWeightedUpgradeIndex(availableIndices, unpurchasedWeapons, i);
             shownUpgradeIndices[i] = pick;
             shownUpgradeRarities[i] = RollUpgradeRarity();
             availableIndices.Remove(pick);
-            unpurchasedWeapons.Remove(pick);
         }
+    }
+
+    private int PickWeightedUpgradeIndex(List<int> candidates, List<int> unpurchasedWeapons, int slotIndex)
+    {
+        int totalWeight = 0;
+        int[] weights = new int[candidates.Count];
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            weights[i] = GetUpgradePickWeight(candidates[i], unpurchasedWeapons, slotIndex);
+            totalWeight += weights[i];
+        }
+
+        int roll = Random.Range(0, totalWeight);
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            roll -= weights[i];
+
+            if (roll < 0)
+            {
+                return candidates[i];
+            }
+        }
+
+        return candidates[candidates.Count - 1];
+    }
+
+    private int GetUpgradePickWeight(int upgradeIndex, List<int> unpurchasedWeapons, int slotIndex)
+    {
+        bool earlyGame = menuPlayerLevel <= 5;
+        bool isUnpurchasedWeapon = unpurchasedWeapons.Contains(upgradeIndex);
+        int weight;
+
+        switch (upgradeIndex)
+        {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+                weight = earlyGame ? 8 : 5;
+                break;
+            case 4:
+            case 5:
+            case 6:
+                weight = earlyGame ? 4 : 5;
+                if (earlyGame && isUnpurchasedWeapon)
+                {
+                    weight += 2;
+                }
+
+                break;
+            case 7:
+            case 8:
+            case 9:
+                weight = earlyGame ? 3 : 4;
+                if (earlyGame && isUnpurchasedWeapon)
+                {
+                    weight += 1;
+                }
+
+                if (HasSupportWeaponAlreadyPicked(upgradeIndex, slotIndex))
+                {
+                    weight = Mathf.Max(1, weight / 2);
+                }
+
+                break;
+            default:
+                weight = earlyGame ? 1 : 4;
+                if (earlyGame && HasSkillUpgradeAlreadyPicked(slotIndex))
+                {
+                    weight = 1;
+                }
+
+                break;
+        }
+
+        return Mathf.Max(1, weight);
+    }
+
+    private bool HasSupportWeaponAlreadyPicked(int candidateIndex, int slotIndex)
+    {
+        if (candidateIndex < 7 || candidateIndex > 9)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < slotIndex; i++)
+        {
+            int picked = shownUpgradeIndices[i];
+
+            if (picked >= 7 && picked <= 9 && picked != candidateIndex)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private bool HasSkillUpgradeAlreadyPicked(int slotIndex)
+    {
+        for (int i = 0; i < slotIndex; i++)
+        {
+            if (shownUpgradeIndices[i] >= 10)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private UpgradeRarity RollUpgradeRarity()
