@@ -6,7 +6,7 @@ using UnityEngine.Rendering;
 [InitializeOnLoad]
 public static class BowViewModelAssetBuilder
 {
-    private const string BowGlbPath = "Assets/Art/Weapons/Bow/CompoundBow_wert/compound_bow.glb";
+    private const string BowObjFolder = "Assets/Art/Weapons/Bow/CompoundBow_wert_OBJ";
     private const string PrefabsFolder = "Assets/Prefabs/Weapons";
     private const string PrefabPath = PrefabsFolder + "/Bow_ViewModel.prefab";
     private const float ViewModelTargetWidth = 0.34f;
@@ -25,18 +25,20 @@ public static class BowViewModelAssetBuilder
     [MenuItem("Tools/BonkSurvivor/Build Bow ViewModel Assets", false, 21)]
     public static void BuildBowViewModelAssets()
     {
-        if (!AssetPathExists(BowGlbPath))
+        if (!TryResolveBowObjPath(out string bowObjPath))
         {
-            Debug.LogWarning("[BowViewModelAssetBuilder] Missing GLB at " + BowGlbPath);
+            Debug.LogWarning(
+                "[BowViewModelAssetBuilder] Missing OBJ in "
+                + BowObjFolder
+                + ". Add a .obj file to that folder.");
             return;
         }
 
-        if (!EnsureBowSourceImported(out string importIssue))
+        if (!EnsureBowSourceImported(bowObjPath, out string importIssue))
         {
             Debug.LogWarning(
-                "[BowViewModelAssetBuilder] GLB import is not ready. "
-                + importIssue
-                + " Reimport the GLB or try an OBJ export if this persists.");
+                "[BowViewModelAssetBuilder] OBJ import is not ready. "
+                + importIssue);
             return;
         }
 
@@ -54,7 +56,7 @@ public static class BowViewModelAssetBuilder
             }
         }
 
-        if (!BuildBowViewModelPrefab(bodyMaterial, trimMaterial))
+        if (!BuildBowViewModelPrefab(bowObjPath, bodyMaterial, trimMaterial))
         {
             Debug.LogWarning("[BowViewModelAssetBuilder] Failed to create Bow_ViewModel prefab.");
             return;
@@ -91,7 +93,7 @@ public static class BowViewModelAssetBuilder
 
         autoBuildAttempted = true;
 
-        if (!AssetPathExists(BowGlbPath))
+        if (!TryResolveBowObjPath(out _))
         {
             return;
         }
@@ -104,20 +106,60 @@ public static class BowViewModelAssetBuilder
         BuildBowViewModelAssets();
     }
 
-    private static bool EnsureBowSourceImported(out string issue)
+    private static bool TryResolveBowObjPath(out string bowObjPath)
     {
-        issue = string.Empty;
+        bowObjPath = string.Empty;
 
-        if (!AssetPathExists(BowGlbPath))
+        if (!AssetDatabase.IsValidFolder(BowObjFolder))
         {
-            issue = "Asset path does not exist.";
             return false;
         }
 
-        AssetDatabase.ImportAsset(BowGlbPath, ImportAssetOptions.ForceUpdate);
+        string[] objGuids = AssetDatabase.FindAssets("t:Model", new[] { BowObjFolder });
+
+        for (int i = 0; i < objGuids.Length; i++)
+        {
+            string candidatePath = AssetDatabase.GUIDToAssetPath(objGuids[i]);
+
+            if (candidatePath.EndsWith(".obj", System.StringComparison.OrdinalIgnoreCase))
+            {
+                bowObjPath = candidatePath;
+                return true;
+            }
+        }
+
+        string folderFullPath = Path.Combine(Application.dataPath, BowObjFolder.Substring("Assets/".Length));
+
+        if (!Directory.Exists(folderFullPath))
+        {
+            return false;
+        }
+
+        string[] objFiles = Directory.GetFiles(folderFullPath, "*.obj", SearchOption.AllDirectories);
+
+        if (objFiles.Length == 0)
+        {
+            return false;
+        }
+
+        bowObjPath = "Assets" + objFiles[0].Substring(Application.dataPath.Length).Replace('\\', '/');
+        return true;
+    }
+
+    private static bool EnsureBowSourceImported(string bowObjPath, out string issue)
+    {
+        issue = string.Empty;
+
+        if (string.IsNullOrEmpty(bowObjPath) || !AssetPathExists(bowObjPath))
+        {
+            issue = "OBJ asset path does not exist.";
+            return false;
+        }
+
+        AssetDatabase.ImportAsset(bowObjPath, ImportAssetOptions.ForceUpdate);
         AssetDatabase.Refresh(ImportAssetOptions.ForceUpdate);
 
-        AssetImporter importer = AssetImporter.GetAtPath(BowGlbPath);
+        AssetImporter importer = AssetImporter.GetAtPath(bowObjPath);
 
         if (importer == null)
         {
@@ -125,19 +167,23 @@ public static class BowViewModelAssetBuilder
             return false;
         }
 
-        if (importer is not ModelImporter)
+        if (importer is not ModelImporter modelImporter)
         {
-            Debug.LogWarning(
-                "[BowViewModelAssetBuilder] Expected ModelImporter but found "
-                + importer.GetType().Name
-                + ". Continuing if a mesh prefab can still be loaded.");
+            issue = "Expected ModelImporter but found " + importer.GetType().Name + ".";
+            return false;
         }
 
-        GameObject source = ResolveBowSourceGameObject();
+        modelImporter.materialImportMode = ModelImporterMaterialImportMode.ImportViaMaterialDescription;
+        modelImporter.materialLocation = ModelImporterMaterialLocation.InPrefab;
+        modelImporter.addCollider = false;
+        modelImporter.importAnimation = false;
+        modelImporter.SaveAndReimport();
+
+        GameObject source = ResolveBowSourceGameObject(bowObjPath);
 
         if (source == null)
         {
-            issue = "GLB did not import as a loadable GameObject.";
+            issue = "OBJ did not import as a loadable GameObject.";
             return false;
         }
 
@@ -145,23 +191,23 @@ public static class BowViewModelAssetBuilder
 
         if (renderers == null || renderers.Length == 0)
         {
-            issue = "GLB imported without renderers.";
+            issue = "OBJ imported without renderers.";
             return false;
         }
 
         return true;
     }
 
-    private static GameObject ResolveBowSourceGameObject()
+    private static GameObject ResolveBowSourceGameObject(string bowObjPath)
     {
-        GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(BowGlbPath);
+        GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(bowObjPath);
 
         if (source != null)
         {
             return source;
         }
 
-        Object[] subAssets = AssetDatabase.LoadAllAssetsAtPath(BowGlbPath);
+        Object[] subAssets = AssetDatabase.LoadAllAssetsAtPath(bowObjPath);
 
         for (int i = 0; i < subAssets.Length; i++)
         {
@@ -182,13 +228,13 @@ public static class BowViewModelAssetBuilder
         return null;
     }
 
-    private static bool BuildBowViewModelPrefab(Material bodyMaterial, Material trimMaterial)
+    private static bool BuildBowViewModelPrefab(string bowObjPath, Material bodyMaterial, Material trimMaterial)
     {
-        GameObject source = ResolveBowSourceGameObject();
+        GameObject source = ResolveBowSourceGameObject(bowObjPath);
 
         if (source == null)
         {
-            Debug.LogWarning("[BowViewModelAssetBuilder] Could not load bow GLB source asset.");
+            Debug.LogWarning("[BowViewModelAssetBuilder] Could not load bow OBJ source asset.");
             return false;
         }
 
@@ -215,7 +261,7 @@ public static class BowViewModelAssetBuilder
         if (bowModel == null)
         {
             Object.DestroyImmediate(prefabRoot);
-            Debug.LogWarning("[BowViewModelAssetBuilder] Could not instantiate bow model from GLB.");
+            Debug.LogWarning("[BowViewModelAssetBuilder] Could not instantiate bow model from OBJ.");
             return false;
         }
 
@@ -347,6 +393,8 @@ public static class BowViewModelAssetBuilder
                 sharedMaterials[materialIndex] = label.Contains("string")
                     || label.Contains("wire")
                     || label.Contains("metal")
+                    || label.Contains("steel")
+                    || label.Contains("sight")
                     ? trimMaterial
                     : bodyMaterial;
                 changed = true;
