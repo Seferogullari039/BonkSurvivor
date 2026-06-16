@@ -11,17 +11,21 @@ public class SkylandsVisualKit : MonoBehaviour
     private const float WallHeight = 4f;
     private const float BorderThickness = 2f;
 
-    private static readonly Color SkyTint = new Color(0.42f, 0.68f, 1f);
-    private static readonly Color SkyGroundColor = new Color(0.58f, 0.78f, 0.96f);
-    private static readonly Color AmbientSky = new Color(0.58f, 0.74f, 0.96f);
-    private static readonly Color AmbientEquator = new Color(0.46f, 0.62f, 0.82f);
-    private static readonly Color AmbientGround = new Color(0.28f, 0.42f, 0.34f);
-    private static readonly Color FogColor = new Color(0.62f, 0.78f, 0.98f);
-    private static readonly Color CloudColor = new Color(0.96f, 0.98f, 1f, 0.42f);
-    private static readonly Color CloudHighlight = new Color(1f, 1f, 1f, 0.55f);
-    private static readonly Color IslandShadow = new Color(0.18f, 0.28f, 0.38f);
-    private static readonly Color IslandMid = new Color(0.24f, 0.36f, 0.48f);
-    private static readonly Color IslandHighlight = new Color(0.34f, 0.5f, 0.62f);
+    private static readonly Color SkyTint = new Color(0.52f, 0.74f, 0.98f);
+    private static readonly Color SkyGroundColor = new Color(0.82f, 0.76f, 0.68f);
+    private static readonly Color AmbientSky = new Color(0.62f, 0.76f, 0.94f);
+    private static readonly Color AmbientEquator = new Color(0.58f, 0.66f, 0.78f);
+    private static readonly Color AmbientGround = new Color(0.34f, 0.4f, 0.44f);
+    private static readonly Color FogColor = new Color(0.72f, 0.78f, 0.86f);
+    private static readonly Color CloudColor = new Color(0.88f, 0.9f, 0.94f, 0.24f);
+    private static readonly Color CloudHighlight = new Color(0.94f, 0.95f, 0.98f, 0.3f);
+    private static readonly Color IslandShadow = new Color(0.3f, 0.36f, 0.44f);
+    private static readonly Color IslandMid = new Color(0.38f, 0.44f, 0.52f);
+    private static readonly Color IslandHighlight = new Color(0.46f, 0.52f, 0.58f);
+    private static readonly Color IslandUnderShadow = new Color(0.2f, 0.24f, 0.3f);
+    private static readonly Color GrassPatchDark = new Color(0.22f, 0.48f, 0.18f);
+    private static readonly Color GrassPatchLight = new Color(0.34f, 0.62f, 0.26f);
+    private static readonly Color GrassPatchMuted = new Color(0.28f, 0.54f, 0.21f);
     private static readonly Color CliffRock = new Color(0.34f, 0.38f, 0.42f);
     private static readonly Color CliffDeep = new Color(0.22f, 0.26f, 0.3f);
     private static readonly Color GrassRim = new Color(0.36f, 0.68f, 0.28f);
@@ -163,10 +167,10 @@ public class SkylandsVisualKit : MonoBehaviour
             skyboxMaterial = new Material(skyShader);
             skyboxMaterial.SetColor("_SkyTint", SkyTint);
             skyboxMaterial.SetColor("_GroundColor", SkyGroundColor);
-            skyboxMaterial.SetFloat("_SunSize", 0.035f);
+            skyboxMaterial.SetFloat("_SunSize", 0.028f);
             skyboxMaterial.SetFloat("_SunSizeConvergence", 5f);
-            skyboxMaterial.SetFloat("_AtmosphereThickness", 1.12f);
-            skyboxMaterial.SetFloat("_Exposure", 1.18f);
+            skyboxMaterial.SetFloat("_AtmosphereThickness", 1.05f);
+            skyboxMaterial.SetFloat("_Exposure", 1.02f);
             RenderSettings.skybox = skyboxMaterial;
         }
 
@@ -177,7 +181,7 @@ public class SkylandsVisualKit : MonoBehaviour
 
         RenderSettings.fog = true;
         RenderSettings.fogMode = FogMode.Exponential;
-        RenderSettings.fogDensity = 0.0016f;
+        RenderSettings.fogDensity = 0.0019f;
         RenderSettings.fogColor = FogColor;
     }
 
@@ -185,8 +189,8 @@ public class SkylandsVisualKit : MonoBehaviour
     {
         if (cachedSun == null) return;
 
-        cachedSun.color = new Color(1f, 0.95f, 0.86f);
-        cachedSun.intensity = 1.12f;
+        cachedSun.color = new Color(1f, 0.94f, 0.84f);
+        cachedSun.intensity = 1.06f;
     }
 
     private void BuildCloudLayer()
@@ -195,69 +199,75 @@ public class SkylandsVisualKit : MonoBehaviour
 
         Vector3[] cloudPositions =
         {
-            new Vector3(-72f, 46f, 38f),
-            new Vector3(-28f, 52f, -18f),
-            new Vector3(18f, 44f, 52f),
-            new Vector3(64f, 49f, 12f),
-            new Vector3(92f, 41f, -44f),
-            new Vector3(-96f, 43f, -56f),
-            new Vector3(6f, 58f, -72f),
-            new Vector3(-44f, 38f, 88f),
-            new Vector3(52f, 55f, 74f),
-            new Vector3(-118f, 47f, 8f),
-            new Vector3(118f, 45f, -24f),
-            new Vector3(0f, 62f, 0f)
+            new Vector3(-88f, 52f, 64f),
+            new Vector3(-36f, 58f, -28f),
+            new Vector3(24f, 49f, 78f),
+            new Vector3(78f, 55f, 22f),
+            new Vector3(112f, 47f, -58f),
+            new Vector3(-124f, 51f, -34f),
+            new Vector3(12f, 63f, -92f),
+            new Vector3(-58f, 44f, 104f),
+            new Vector3(68f, 60f, 96f),
+            new Vector3(-148f, 53f, 18f),
+            new Vector3(142f, 48f, -36f),
+            new Vector3(-8f, 66f, 12f),
+            new Vector3(46f, 42f, -110f),
+            new Vector3(-102f, 57f, 88f)
         };
 
-        Vector3[] cloudScales =
+        float[] cloudSizes =
         {
-            new Vector3(24f, 6f, 14f),
-            new Vector3(18f, 5f, 11f),
-            new Vector3(26f, 7f, 15f),
-            new Vector3(20f, 5.5f, 12f),
-            new Vector3(22f, 6f, 13f),
-            new Vector3(19f, 5f, 10f),
-            new Vector3(28f, 7f, 16f),
-            new Vector3(17f, 4.5f, 10f),
-            new Vector3(21f, 6f, 12f),
-            new Vector3(23f, 5.5f, 13f),
-            new Vector3(25f, 6.5f, 14f),
-            new Vector3(30f, 8f, 18f)
+            14f, 11f, 16f, 12f, 13f, 10f, 15f, 9f, 14f, 12f, 11f, 17f, 10f, 13f
         };
 
         for (int i = 0; i < cloudPositions.Length; i++)
         {
-            CreateCloudPuff(cloudRoot, "Cloud_" + i, cloudPositions[i], cloudScales[i], i % 3 == 0);
+            CreateCloudCluster(cloudRoot, "Cloud_" + i, cloudPositions[i], cloudSizes[i], i % 4 == 0);
         }
     }
 
-    private void CreateCloudPuff(Transform parent, string name, Vector3 position, Vector3 scale, bool highlight)
+    private void CreateCloudCluster(Transform parent, string name, Vector3 position, float size, bool highlight)
     {
-        GameObject cloudObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        cloudObject.name = name;
-        cloudObject.transform.SetParent(parent, false);
-        cloudObject.transform.position = position;
-        cloudObject.transform.localScale = scale;
-        cloudObject.transform.rotation = Quaternion.Euler(0f, UnityEngine.Random.Range(0f, 180f), 0f);
-        cloudObject.isStatic = false;
+        GameObject clusterRoot = new GameObject(name);
+        clusterRoot.transform.SetParent(parent, false);
+        clusterRoot.transform.position = position;
+        clusterRoot.transform.rotation = Quaternion.Euler(0f, UnityEngine.Random.Range(0f, 180f), 0f);
+        clusterRoot.isStatic = false;
 
-        RemoveCollider(cloudObject);
-
-        Renderer renderer = cloudObject.GetComponent<Renderer>();
-
-        if (renderer != null)
+        Vector3[] puffOffsets =
         {
-            renderer.sharedMaterial = cloudMaterial;
-            renderer.shadowCastingMode = ShadowCastingMode.Off;
-            renderer.receiveShadows = false;
-            ApplyMaterialColor(renderer, highlight ? CloudHighlight : CloudColor, 0f);
-        }
+            Vector3.zero,
+            new Vector3(size * 0.22f, size * 0.03f, size * 0.08f),
+            new Vector3(-size * 0.18f, -size * 0.02f, size * 0.12f),
+            new Vector3(size * 0.08f, size * 0.04f, -size * 0.16f)
+        };
 
+        Vector3[] puffScales =
+        {
+            new Vector3(size * 1.1f, size * 0.28f, size * 0.72f),
+            new Vector3(size * 0.72f, size * 0.22f, size * 0.55f),
+            new Vector3(size * 0.64f, size * 0.2f, size * 0.48f),
+            new Vector3(size * 0.58f, size * 0.18f, size * 0.42f)
+        };
+
+        for (int i = 0; i < puffOffsets.Length; i++)
+        {
+            CreateCloudPuff(
+                clusterRoot.transform,
+                name + "_Puff" + i,
+                puffOffsets[i],
+                puffScales[i],
+                i == 0 && highlight);
+        }
+    }
+
+    private void CreateCloudPuff(Transform parent, string name, Vector3 localPosition, Vector3 scale, bool highlight)
+    {
         GameObject puff = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        puff.name = name + "_Puff";
-        puff.transform.SetParent(cloudObject.transform, false);
-        puff.transform.localPosition = new Vector3(scale.x * 0.18f, 0.15f, 0f);
-        puff.transform.localScale = new Vector3(0.55f, 0.45f, 0.5f);
+        puff.name = name;
+        puff.transform.SetParent(parent, false);
+        puff.transform.localPosition = localPosition;
+        puff.transform.localScale = scale;
         RemoveCollider(puff);
 
         Renderer puffRenderer = puff.GetComponent<Renderer>();
@@ -280,10 +290,10 @@ public class SkylandsVisualKit : MonoBehaviour
         for (int i = 0; i < 9; i++)
         {
             float angle = (float)(random.NextDouble() * Math.PI * 2d);
-            float radius = Mathf.Lerp(210f, 340f, (float)random.NextDouble());
-            float height = Mathf.Lerp(-55f, 18f, (float)random.NextDouble());
+            float radius = Mathf.Lerp(420f, 560f, (float)random.NextDouble());
+            float height = Mathf.Lerp(-72f, 8f, (float)random.NextDouble());
             Vector3 position = new Vector3(Mathf.Cos(angle) * radius, height, Mathf.Sin(angle) * radius);
-            float islandScale = Mathf.Lerp(0.85f, 1.35f, (float)random.NextDouble());
+            float islandScale = Mathf.Lerp(0.42f, 0.68f, (float)random.NextDouble());
 
             CreateDistantIsland(distantIslandsRoot, "DistantIsland_" + i, position, islandScale, random);
         }
@@ -297,9 +307,9 @@ public class SkylandsVisualKit : MonoBehaviour
         islandRoot.transform.rotation = Quaternion.Euler(0f, (float)(random.NextDouble() * 360d), 0f);
         islandRoot.isStatic = true;
 
-        float baseWidth = Mathf.Lerp(16f, 28f, (float)random.NextDouble()) * scale;
-        float baseHeight = Mathf.Lerp(10f, 18f, (float)random.NextDouble()) * scale;
-        float topRadius = baseWidth * Mathf.Lerp(0.42f, 0.58f, (float)random.NextDouble());
+        float baseWidth = Mathf.Lerp(8f, 14f, (float)random.NextDouble()) * scale;
+        float baseHeight = Mathf.Lerp(6f, 11f, (float)random.NextDouble()) * scale;
+        float topRadius = baseWidth * Mathf.Lerp(0.38f, 0.52f, (float)random.NextDouble());
 
         CreateVisualPrimitive(
             islandRoot.transform,
@@ -308,42 +318,62 @@ public class SkylandsVisualKit : MonoBehaviour
             Vector3.zero,
             new Vector3(baseWidth, baseHeight * 0.5f, baseWidth),
             IslandShadow,
-            0.08f,
+            0.04f,
             islandMaterial);
 
         CreateVisualPrimitive(
             islandRoot.transform,
             "Top",
             PrimitiveType.Sphere,
-            new Vector3(0f, baseHeight * 0.42f, 0f),
-            new Vector3(topRadius * 2f, topRadius * 1.1f, topRadius * 2f),
+            new Vector3(0f, baseHeight * 0.38f, 0f),
+            new Vector3(topRadius * 2f, topRadius * 0.82f, topRadius * 2f),
             IslandMid,
-            0.1f,
+            0.05f,
             islandMaterial);
 
-        if (random.NextDouble() > 0.45d)
+        if (random.NextDouble() > 0.55d)
         {
             CreateVisualPrimitive(
                 islandRoot.transform,
                 "Spire",
                 PrimitiveType.Cylinder,
-                new Vector3(0f, baseHeight * 0.72f, 0f),
-                new Vector3(topRadius * 0.35f, baseHeight * 0.35f, topRadius * 0.35f),
+                new Vector3(0f, baseHeight * 0.62f, 0f),
+                new Vector3(topRadius * 0.28f, baseHeight * 0.22f, topRadius * 0.28f),
                 IslandHighlight,
-                0.12f,
+                0.06f,
                 islandMaterial);
         }
 
-        float stemDepth = Mathf.Lerp(12f, 28f, (float)random.NextDouble()) * scale;
+        float stemDepth = Mathf.Lerp(8f, 16f, (float)random.NextDouble()) * scale;
 
         CreateVisualPrimitive(
             islandRoot.transform,
             "Stem",
             PrimitiveType.Cylinder,
-            new Vector3(0f, -stemDepth * 0.5f - 2f, 0f),
-            new Vector3(baseWidth * 0.22f, stemDepth, baseWidth * 0.22f),
-            CliffDeep,
-            0.05f,
+            new Vector3(0f, -stemDepth * 0.5f - 1.5f, 0f),
+            new Vector3(baseWidth * 0.16f, stemDepth, baseWidth * 0.16f),
+            IslandUnderShadow,
+            0.03f,
+            islandMaterial);
+
+        CreateVisualPrimitive(
+            islandRoot.transform,
+            "UnderCliff",
+            PrimitiveType.Cylinder,
+            new Vector3(0f, -1.8f, 0f),
+            new Vector3(baseWidth * 1.18f, 2.4f, baseWidth * 1.18f),
+            IslandUnderShadow,
+            0.03f,
+            islandMaterial);
+
+        CreateVisualPrimitive(
+            islandRoot.transform,
+            "ShadowCap",
+            PrimitiveType.Sphere,
+            new Vector3(0f, -3.6f, 0f),
+            new Vector3(baseWidth * 1.35f, 1.2f, baseWidth * 1.35f),
+            new Color(0.16f, 0.2f, 0.26f),
+            0.02f,
             islandMaterial);
     }
 
@@ -362,6 +392,7 @@ public class SkylandsVisualKit : MonoBehaviour
         float halfZ = arena.HalfSizeZ;
 
         EnhanceGroundReadability(arena);
+        BuildGrassVariation(arena);
         BuildGrassRim(halfX, halfZ);
         BuildCliffUndersides(halfX, halfZ);
         BuildCornerOutcrops(halfX, halfZ);
@@ -393,6 +424,60 @@ public class SkylandsVisualKit : MonoBehaviour
             0.14f,
             grassMaterial,
             false);
+    }
+
+    private void BuildGrassVariation(ProceduralGrassArena arena)
+    {
+        System.Random random = new System.Random(arena.CurrentRunSeed ^ 0x7F4A7C15);
+        float halfX = arena.HalfSizeX - 10f;
+        float halfZ = arena.HalfSizeZ - 10f;
+        const int patchCount = 28;
+        int placed = 0;
+        int safety = 0;
+
+        while (placed < patchCount && safety < patchCount * 6)
+        {
+            safety++;
+
+            float x = RandomRange(random, -halfX, halfX);
+            float z = RandomRange(random, -halfZ, halfZ);
+
+            if (x * x + z * z < 400f)
+            {
+                continue;
+            }
+
+            float patchWidth = RandomRange(random, 1.8f, 4.2f);
+            float patchDepth = RandomRange(random, 1.6f, 3.8f);
+            float patchHeight = RandomRange(random, 0.03f, 0.06f);
+            float yaw = RandomRange(random, 0f, 180f);
+
+            Color patchColor = (placed % 3) switch
+            {
+                0 => GrassPatchDark,
+                1 => GrassPatchLight,
+                _ => GrassPatchMuted
+            };
+
+            GameObject patchObject = CreateVisualPrimitive(
+                arenaDressingRoot,
+                "GrassPatch_" + placed,
+                PrimitiveType.Cube,
+                new Vector3(x, 0.045f, z),
+                new Vector3(patchWidth, patchHeight, patchDepth),
+                patchColor,
+                0.1f,
+                grassMaterial,
+                false);
+
+            patchObject.transform.rotation = Quaternion.Euler(0f, yaw, 0f);
+            placed++;
+        }
+    }
+
+    private static float RandomRange(System.Random random, float min, float max)
+    {
+        return (float)(min + random.NextDouble() * (max - min));
     }
 
     private void BuildGrassRim(float halfX, float halfZ)
@@ -667,6 +752,6 @@ public class SkylandsCloudDrift : MonoBehaviour
     private void Update()
     {
         float time = Time.time * 0.08f + phase;
-        transform.localPosition = basePosition + new Vector3(Mathf.Sin(time) * 4f, 0f, Mathf.Cos(time * 0.85f) * 3f);
+        transform.localPosition = basePosition + new Vector3(Mathf.Sin(time) * 2.5f, 0f, Mathf.Cos(time * 0.85f) * 2f);
     }
 }
