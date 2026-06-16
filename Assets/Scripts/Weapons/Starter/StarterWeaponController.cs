@@ -237,6 +237,36 @@ public class StarterWeaponController : MonoBehaviour
         return baseCooldown * playerStats.SwordSkillCooldownMultiplier;
     }
 
+    private int ApplyArrowRainDamage(int damage)
+    {
+        if (playerStats == null)
+        {
+            return damage;
+        }
+
+        return Mathf.Max(1, Mathf.RoundToInt(damage * playerStats.ArrowRainDamageMultiplier));
+    }
+
+    private int ApplyMegaMeteorSkillDamage(int damage)
+    {
+        if (playerStats == null)
+        {
+            return damage;
+        }
+
+        return Mathf.Max(1, Mathf.RoundToInt(damage * playerStats.MegaMeteorSkillDamageMultiplier));
+    }
+
+    private int ApplySwordRmbDamage(int damage)
+    {
+        if (playerStats == null)
+        {
+            return damage;
+        }
+
+        return Mathf.Max(1, Mathf.RoundToInt(damage * playerStats.SwordRmbDamageMultiplier));
+    }
+
     private void TrySignatureSkill()
     {
         switch (activeWeapon)
@@ -376,7 +406,9 @@ public class StarterWeaponController : MonoBehaviour
         const float arrowFallSpeed = 10f;
         int baseDamage = StarterWeaponDamageUtility.GetBaseDamage(playerStats);
         int rainDamage = Mathf.Max(1, Mathf.RoundToInt(baseDamage * 0.85f));
+        rainDamage = ApplyArrowRainDamage(rainDamage);
         int openingTickDamage = Mathf.Max(1, Mathf.RoundToInt(baseDamage * 0.45f));
+        openingTickDamage = ApplyArrowRainDamage(openingTickDamage);
 
         ArrowRainTargetRing.Spawn(targetPoint, arrowRainRadius, arrowRainMarkerDuration);
         StarterWeaponDamageUtility.DamageEnemiesInRadius(targetPoint, arrowRainRadius, openingTickDamage);
@@ -420,6 +452,7 @@ public class StarterWeaponController : MonoBehaviour
 
         int baseDamage = StarterWeaponDamageUtility.GetBaseDamage(playerStats);
         int megaDamage = Mathf.Max(1, Mathf.RoundToInt(baseDamage * megaMeteorDamageMultiplier));
+        megaDamage = ApplyMegaMeteorSkillDamage(megaDamage);
 
         ArrowRainTargetRing.Spawn(targetPoint, megaMeteorDamageRadius, megaMeteorCastDelay + 0.15f);
         weaponViewModel?.PlayStaffChargeGlow(megaMeteorCastDelay);
@@ -467,6 +500,7 @@ public class StarterWeaponController : MonoBehaviour
     {
         int baseDamage = StarterWeaponDamageUtility.GetBaseDamage(playerStats);
         int tickDamage = Mathf.Max(1, Mathf.RoundToInt(baseDamage * 0.75f));
+        tickDamage = ApplySwordRmbDamage(tickDamage);
         float elapsed = 0f;
         GameObject whirlwindVisual = SpawnWhirlwindVisual(transform.position, whirlwindRadius);
 

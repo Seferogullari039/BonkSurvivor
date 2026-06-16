@@ -337,7 +337,7 @@ public class LevelUpManager : MonoBehaviour
 
     private void AssignRandomUpgradeOptions()
     {
-        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11 };
+        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
         List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
 
         for (int i = 0; i < shownUpgradeIndices.Length; i++)
@@ -457,6 +457,18 @@ public class LevelUpManager : MonoBehaviour
                 return new UpgradeCardContent(
                     "Whirlwind Training",
                     GetSwordSkillCooldownDescription(multiplier));
+            case 12:
+                return new UpgradeCardContent(
+                    "Arrow Storm",
+                    GetArrowRainDamageDescription(multiplier));
+            case 13:
+                return new UpgradeCardContent(
+                    "Inferno Ritual",
+                    GetMegaMeteorDamageDescription(multiplier));
+            case 14:
+                return new UpgradeCardContent(
+                    "Blade Tempest",
+                    GetSwordSkillDamageDescription(multiplier));
             default:
                 return new UpgradeCardContent(string.Empty, string.Empty);
         }
@@ -519,6 +531,36 @@ public class LevelUpManager : MonoBehaviour
             2 => "Sword skill cooldown -24%.",
             3 => "Sword skill cooldown -36%.",
             _ => "Sword skill cooldown -12%."
+        };
+    }
+
+    private static string GetArrowRainDamageDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Arrow Rain damage +30%.",
+            3 => "Arrow Rain damage +45%.",
+            _ => "Arrow Rain damage +15%."
+        };
+    }
+
+    private static string GetMegaMeteorDamageDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Mega Meteor damage +30%.",
+            3 => "Mega Meteor damage +45%.",
+            _ => "Mega Meteor damage +15%."
+        };
+    }
+
+    private static string GetSwordSkillDamageDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Sword skill damage +30%.",
+            3 => "Sword skill damage +45%.",
+            _ => "Sword skill damage +15%."
         };
     }
 
@@ -806,6 +848,15 @@ public class LevelUpManager : MonoBehaviour
             case 11:
                 ApplySwordSkillCooldownUpgrade(0.12f * multiplier);
                 break;
+            case 12:
+                ApplyArrowRainDamageUpgrade(0.15f * multiplier);
+                break;
+            case 13:
+                ApplyMegaMeteorDamageUpgrade(0.15f * multiplier);
+                break;
+            case 14:
+                ApplySwordSkillDamageUpgrade(0.15f * multiplier);
+                break;
         }
     }
 
@@ -882,6 +933,24 @@ public class LevelUpManager : MonoBehaviour
     {
         PlayerStats playerStats = FindPlayerStats();
         playerStats?.ReduceSwordSkillCooldown(percent);
+    }
+
+    private void ApplyArrowRainDamageUpgrade(float percent)
+    {
+        PlayerStats playerStats = FindPlayerStats();
+        playerStats?.IncreaseArrowRainDamage(percent);
+    }
+
+    private void ApplyMegaMeteorDamageUpgrade(float percent)
+    {
+        PlayerStats playerStats = FindPlayerStats();
+        playerStats?.IncreaseMegaMeteorDamage(percent);
+    }
+
+    private void ApplySwordSkillDamageUpgrade(float percent)
+    {
+        PlayerStats playerStats = FindPlayerStats();
+        playerStats?.IncreaseSwordSkillDamage(percent);
     }
 
     private void ApplySpreadShotUpgrade()

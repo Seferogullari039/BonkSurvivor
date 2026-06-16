@@ -33,11 +33,17 @@ public class PlayerStats : MonoBehaviour
     private float starterProjectileSpeedMultiplier = 1f;
     private float megaMeteorCooldownMultiplier = 1f;
     private float swordSkillCooldownMultiplier = 1f;
+    private float arrowRainDamageMultiplier = 1f;
+    private float megaMeteorSkillDamageMultiplier = 1f;
+    private float swordRmbDamageMultiplier = 1f;
 
     public float StarterWeaponCooldownMultiplier => starterWeaponCooldownMultiplier;
     public float StarterProjectileSpeedMultiplier => starterProjectileSpeedMultiplier;
     public float MegaMeteorCooldownMultiplier => megaMeteorCooldownMultiplier;
     public float SwordSkillCooldownMultiplier => swordSkillCooldownMultiplier;
+    public float ArrowRainDamageMultiplier => arrowRainDamageMultiplier;
+    public float MegaMeteorSkillDamageMultiplier => megaMeteorSkillDamageMultiplier;
+    public float SwordRmbDamageMultiplier => swordRmbDamageMultiplier;
 
     public bool IsGodMode => isGodMode;
     public bool IsDead => isDead;
@@ -166,6 +172,21 @@ public class PlayerStats : MonoBehaviour
         swordSkillCooldownMultiplier = Mathf.Clamp(swordSkillCooldownMultiplier, 0.35f, 1f);
     }
 
+    public void IncreaseArrowRainDamage(float percent)
+    {
+        arrowRainDamageMultiplier = Mathf.Clamp(arrowRainDamageMultiplier * (1f + percent), 1f, 5f);
+    }
+
+    public void IncreaseMegaMeteorDamage(float percent)
+    {
+        megaMeteorSkillDamageMultiplier = Mathf.Clamp(megaMeteorSkillDamageMultiplier * (1f + percent), 1f, 5f);
+    }
+
+    public void IncreaseSwordSkillDamage(float percent)
+    {
+        swordRmbDamageMultiplier = Mathf.Clamp(swordRmbDamageMultiplier * (1f + percent), 1f, 5f);
+    }
+
     public void ApplyMetaProgressionBonuses()
     {
         MetaProgressionData.ApplyRunBonuses(this, GetComponent<PlayerController>());
@@ -202,6 +223,9 @@ public class PlayerStats : MonoBehaviour
         starterProjectileSpeedMultiplier = 1f;
         megaMeteorCooldownMultiplier = 1f;
         swordSkillCooldownMultiplier = 1f;
+        arrowRainDamageMultiplier = 1f;
+        megaMeteorSkillDamageMultiplier = 1f;
+        swordRmbDamageMultiplier = 1f;
     }
 
     private void Start()
