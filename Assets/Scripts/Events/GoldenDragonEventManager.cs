@@ -92,6 +92,24 @@ public class GoldenDragonEventManager : MonoBehaviour
         }
     }
 
+    public bool DevSpawnGoldenDragon()
+    {
+        if (activeDragon != null || !GoldenDragonSpawnTracker.CanSpawn) return false;
+
+        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+
+        if (playerObject == null) return false;
+
+        if (cachedSpawner == null)
+        {
+            cachedSpawner = FindFirstObjectByType<EnemySpawner>();
+        }
+
+        int wave = cachedSpawner != null ? Mathf.Max(1, cachedSpawner.CurrentWave) : 6;
+        cachedPlayer = playerObject.transform;
+        return SpawnGoldenDragonAt(wave, cachedPlayer.position, 25f, 35f);
+    }
+
     private void TryRollSpawn()
     {
         if (!GoldenDragonSpawnTracker.CanSpawn) return;
@@ -131,7 +149,14 @@ public class GoldenDragonEventManager : MonoBehaviour
 
         if (cachedPlayer == null) return false;
 
-        Vector3 spawnPosition = GetSpawnPosition(cachedPlayer.position);
+        return SpawnGoldenDragonAt(wave, cachedPlayer.position, 28f, 34f);
+    }
+
+    private bool SpawnGoldenDragonAt(int wave, Vector3 playerPosition, float minDistance, float maxDistance)
+    {
+        if (activeDragon != null || !GoldenDragonSpawnTracker.CanSpawn) return false;
+
+        Vector3 spawnPosition = GetSpawnPosition(playerPosition, minDistance, maxDistance);
 
         GameObject dragonObject = new GameObject("GoldenDragon");
         dragonObject.transform.position = spawnPosition;
@@ -146,17 +171,17 @@ public class GoldenDragonEventManager : MonoBehaviour
         return true;
     }
 
-    private static Vector3 GetSpawnPosition(Vector3 playerPosition)
+    private static Vector3 GetSpawnPosition(Vector3 playerPosition, float minDistance = 28f, float maxDistance = 34f)
     {
         Vector3 spawnPosition;
 
         if (ProceduralGrassArena.Instance != null)
         {
-            spawnPosition = ProceduralGrassArena.Instance.GetSafePointInsideArena(30f, 4f);
+            spawnPosition = ProceduralGrassArena.Instance.GetSafePointInsideArena(minDistance, 4f);
         }
         else
         {
-            Vector2 randomCircle = Random.insideUnitCircle.normalized * Random.Range(28f, 34f);
+            Vector2 randomCircle = Random.insideUnitCircle.normalized * Random.Range(minDistance, maxDistance);
             spawnPosition = new Vector3(
                 playerPosition.x + randomCircle.x,
                 ProceduralGrassArena.GetLootSpawnY(0.5f),
@@ -166,7 +191,9 @@ public class GoldenDragonEventManager : MonoBehaviour
         Vector3 awayFromPlayer = spawnPosition - playerPosition;
         awayFromPlayer.y = 0f;
 
-        if (awayFromPlayer.sqrMagnitude < 400f)
+        float minDistanceSqr = minDistance * minDistance;
+
+        if (awayFromPlayer.sqrMagnitude < minDistanceSqr)
         {
             if (awayFromPlayer.sqrMagnitude < 0.001f)
             {
@@ -175,12 +202,12 @@ public class GoldenDragonEventManager : MonoBehaviour
             }
 
             awayFromPlayer.Normalize();
-            spawnPosition = playerPosition + awayFromPlayer * Random.Range(28f, 34f);
+            spawnPosition = playerPosition + awayFromPlayer * Random.Range(minDistance, maxDistance);
         }
 
         spawnPosition.y = ProceduralGrassArena.GetLootSpawnY(0.5f);
         ProceduralGrassArena.TryClampHorizontal(ref spawnPosition, 4f);
-        ProceduralGrassArena.TryResolveBlockedSpawn(ref spawnPosition, 28f, 2f);
+        ProceduralGrassArena.TryResolveBlockedSpawn(ref spawnPosition, minDistance, 2f);
         return spawnPosition;
     }
 

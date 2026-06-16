@@ -157,6 +157,7 @@ public class DevAdminPanel : MonoBehaviour
         CreateButton(scrollContent, "Next Wave", AdvanceWave);
         CreateButton(scrollContent, "Spawn Boss", SpawnBoss);
         CreateButton(scrollContent, "Spawn Mimic Chest", SpawnMimicChest);
+        CreateButton(scrollContent, "Spawn Golden Dragon", SpawnGoldenDragon);
         CreateButton(scrollContent, "Give Rocket Launcher", GiveRocketLauncher);
         CreateButton(scrollContent, "Give Laser Beam", GiveLaserBeam);
         CreateButton(scrollContent, "Give Chain Lightning", GiveChainLightning);
@@ -400,6 +401,20 @@ public class DevAdminPanel : MonoBehaviour
         if (spawner == null) return;
 
         spawner.DevSpawnBoss();
+    }
+
+    private void SpawnGoldenDragon()
+    {
+        if (!panelVisible || !IsDevPanelEnabled()) return;
+
+        GoldenDragonEventManager manager = GoldenDragonEventManager.Instance;
+
+        if (manager == null)
+        {
+            manager = FindFirstObjectByType<GoldenDragonEventManager>();
+        }
+
+        manager?.DevSpawnGoldenDragon();
     }
 
     private void SpawnMimicChest()
