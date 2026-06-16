@@ -127,7 +127,11 @@ public class StarterWeaponProjectile : MonoBehaviour
 
         if (enemy == null) return;
 
+        hasImpacted = true;
+        initialized = false;
+        CancelInvoke(nameof(Expire));
         StarterWeaponDamageUtility.DamageEnemy(enemy, damage);
+        StarterWeaponDamageUtility.LogLmbCombat(enemy, damage, 1);
         Destroy(gameObject);
     }
 

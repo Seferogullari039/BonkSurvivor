@@ -276,7 +276,7 @@ public class StarterWeaponController : MonoBehaviour
             16f,
             damage,
             4f,
-            true,
+            false,
             fireballExplosionRadius);
     }
 
@@ -291,15 +291,15 @@ public class StarterWeaponController : MonoBehaviour
         Vector3 origin = fireCamera.position;
         Vector3 forward = fireCamera.forward;
 
-        int hitCount = StarterWeaponDamageUtility.DamageMeleeHybrid(
-            origin,
-            forward,
+        int candidateCount;
+        bool hitEnemy = StarterWeaponDamageUtility.TryDamageSingleMeleeTarget(
+            fireCamera,
             meleeRange,
-            meleeHalfAngle,
-            meleeSphereRadius,
-            damage);
+            0.35f,
+            damage,
+            out candidateCount);
 
-        LogStarterDebug($"[StarterWeapon] Sword LMB Slash hits={hitCount} dmg={damage}");
+        LogStarterDebug($"[StarterWeapon] Sword LMB Slash hit={hitEnemy} dmg={damage}");
         SpawnSwordSwingVisual(origin, forward, meleeRange, meleeHalfAngle);
         fpsViewModel?.PlayRecoil();
 

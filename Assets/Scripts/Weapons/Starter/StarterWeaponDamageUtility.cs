@@ -112,6 +112,116 @@ public static class StarterWeaponDamageUtility
         return hitCount;
     }
 
+    public static bool TryDamageSingleMeleeTarget(
+        Transform aimCamera,
+        float range,
+        float assistRadius,
+        int damage,
+        out int candidateCount)
+    {
+        candidateCount = 0;
+
+        if (aimCamera == null || range <= 0f || damage <= 0)
+        {
+            return false;
+        }
+
+        Vector3 origin = aimCamera.position;
+        Vector3 forward = aimCamera.forward;
+
+        if (Physics.Raycast(origin, forward, out RaycastHit hit, range + 1f, ~0, QueryTriggerInteraction.Collide))
+        {
+            Enemy rayEnemy = ResolveEnemy(hit.collider);
+
+            if (rayEnemy != null)
+            {
+                candidateCount = 1;
+                TryApplyDamage(rayEnemy, damage);
+                LogLmbCombat(rayEnemy, damage, candidateCount);
+                return true;
+            }
+        }
+
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        Enemy bestEnemy = null;
+        float bestScore = float.MaxValue;
+
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            GameObject enemyObject = enemies[i];
+
+            if (enemyObject == null)
+            {
+                continue;
+            }
+
+            Enemy enemy = enemyObject.GetComponent<Enemy>() ?? enemyObject.GetComponentInParent<Enemy>();
+
+            if (enemy == null)
+            {
+                continue;
+            }
+
+            Vector3 aimPoint = enemyObject.transform.position + Vector3.up * 0.5f;
+            Vector3 toEnemy = aimPoint - origin;
+            float distance = toEnemy.magnitude;
+
+            if (distance > range || distance < 0.01f)
+            {
+                continue;
+            }
+
+            float forwardDistance = Vector3.Dot(toEnemy, forward);
+
+            if (forwardDistance <= 0f)
+            {
+                continue;
+            }
+
+            Vector3 closestPointOnRay = origin + forward * forwardDistance;
+            float perpendicularDistance = Vector3.Distance(aimPoint, closestPointOnRay);
+
+            if (perpendicularDistance > assistRadius)
+            {
+                continue;
+            }
+
+            candidateCount++;
+
+            float angle = Vector3.Angle(forward, toEnemy);
+            float dot = Vector3.Dot(forward, toEnemy.normalized);
+            float score = angle - dot * 45f + distance * 0.08f;
+
+            if (score >= bestScore)
+            {
+                continue;
+            }
+
+            bestScore = score;
+            bestEnemy = enemy;
+        }
+
+        if (bestEnemy == null)
+        {
+            return false;
+        }
+
+        TryApplyDamage(bestEnemy, damage);
+        LogLmbCombat(bestEnemy, damage, candidateCount);
+        return true;
+    }
+
+    public static void LogLmbCombat(Enemy enemy, int damage, int candidateCount)
+    {
+        string enemyName = enemy != null ? enemy.name : "none";
+        Debug.Log("[Combat] LMB target=" + enemyName + " damage=" + damage);
+
+        if (candidateCount > 1)
+        {
+            Debug.Log("[Combat] LMB candidates=" + candidateCount + " selected=" + enemyName);
+        }
+    }
+
     public static int DamageMeleeHybrid(
         Vector3 origin,
         Vector3 forward,

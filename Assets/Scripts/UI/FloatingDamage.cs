@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class FloatingDamage : MonoBehaviour
 {
+    private static bool faceCameraLogShown;
+
     [SerializeField] private TMP_Text textMesh;
     [SerializeField] private float lifetime = 0.9f;
     [SerializeField] private float moveSpeed = 1.4f;
@@ -23,6 +25,31 @@ public class FloatingDamage : MonoBehaviour
             startColor = textMesh.color;
             startFontSize = textMesh.fontSize;
         }
+
+        FaceCamera();
+
+        if (!faceCameraLogShown)
+        {
+            faceCameraLogShown = true;
+            Debug.Log("[DamageNumber] faceCamera ok");
+        }
+    }
+
+    private void LateUpdate()
+    {
+        FaceCamera();
+    }
+
+    private void FaceCamera()
+    {
+        Camera camera = Camera.main;
+
+        if (camera == null)
+        {
+            return;
+        }
+
+        transform.rotation = Quaternion.LookRotation(transform.position - camera.transform.position, Vector3.up);
     }
 
     private void Update()
