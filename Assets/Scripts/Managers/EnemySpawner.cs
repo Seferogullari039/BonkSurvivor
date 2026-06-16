@@ -383,14 +383,13 @@ public class EnemySpawner : MonoBehaviour
 
         if (enemy == null) return;
 
-        if (ShouldSpawnElite() && !IsBlockedEliteSpawn(fpsSpawnZone))
-        {
-            ApplyEliteEnemy(enemy, enemyObject.transform);
-            return;
-        }
-
         Enemy.EnemyType enemyType = GetRandomEnemyType(fpsSpawnZone);
         ApplyEnemyType(enemy, enemyObject.transform, enemyType);
+
+        if (ShouldSpawnElite() && !IsBlockedEliteSpawn(fpsSpawnZone))
+        {
+            ApplyEliteMutation(enemy, enemyObject.transform);
+        }
     }
 
     private static bool IsBlockedEliteSpawn(FPSSpawnZone fpsSpawnZone)
@@ -400,27 +399,20 @@ public class EnemySpawner : MonoBehaviour
 
     private bool ShouldSpawnElite()
     {
-        if (FPSPlayerController.IsFpsModeActive && currentWave <= 3) return false;
-        if (currentWave <= 5) return false;
+        if (currentWave <= 2) return false;
 
-        float eliteChance = 0.02f + (currentWave - 5) * 0.012f;
-        eliteChance = Mathf.Min(eliteChance, 0.18f);
+        float eliteChance = 0.05f + (currentWave - 3) * 0.004f;
+        eliteChance = Mathf.Min(eliteChance, 0.15f);
 
         return Random.value < eliteChance;
     }
 
-    private void ApplyEliteEnemy(Enemy enemy, Transform enemyTransform)
+    private static void ApplyEliteMutation(Enemy enemy, Transform enemyTransform)
     {
-        const float normalSpeed = 4f;
-        const int normalHealth = 3;
+        if (enemy == null || enemyTransform == null) return;
 
-        enemy.Configure(
-            normalSpeed * 1.3f,
-            normalHealth * 2,
-            GameVisualPalette.EliteEnemy,
-            Enemy.EnemyType.Elite
-        );
-        enemyTransform.localScale = Vector3.one * 1.1f;
+        enemy.ApplyEliteMutation(GameVisualPalette.EliteEnemy);
+        enemyTransform.localScale *= 1.2f;
 
         if (JuiceManager.Instance != null)
         {

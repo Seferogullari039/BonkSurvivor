@@ -38,6 +38,7 @@ public class Enemy : MonoBehaviour
     private Coroutine contactTelegraphRoutine;
 
     public EnemyType Type => enemyType;
+    public bool IsElite { get; private set; }
     public BossAbilityType BossAbility => bossAbility;
 
     public void SetMovementLocked(bool locked)
@@ -71,6 +72,7 @@ public class Enemy : MonoBehaviour
         maxHealth = newMaxHealth;
         currentHealth = maxHealth;
         enemyType = type;
+        IsElite = type == EnemyType.Elite;
 
         if (enemyRenderer != null)
         {
@@ -94,6 +96,27 @@ public class Enemy : MonoBehaviour
     public void SetBossAbility(BossAbilityType ability)
     {
         bossAbility = ability;
+    }
+
+    public void ApplyEliteMutation(Color eliteColor)
+    {
+        if (enemyType == EnemyType.MiniBoss || enemyType == EnemyType.DragonBoss || IsElite)
+        {
+            return;
+        }
+
+        IsElite = true;
+        maxHealth = Mathf.Max(1, maxHealth * 2);
+        currentHealth = maxHealth;
+        enemyType = EnemyType.Elite;
+
+        if (enemyRenderer != null)
+        {
+            GameVisualStyle.ApplyColor(enemyRenderer, eliteColor, 0.88f, true);
+            baseVisualColor = eliteColor;
+            baseVisualSmoothness = 0.88f;
+            baseVisualGlow = true;
+        }
     }
 
     private void Update()
@@ -298,7 +321,11 @@ public class Enemy : MonoBehaviour
                 FPSCrosshair.KillFeedback();
             }
 
-            if (xpOrbPrefab != null && LootLimits.CanSpawnXPOrb())
+            if (enemyType != EnemyType.Elite
+                && enemyType != EnemyType.MiniBoss
+                && enemyType != EnemyType.DragonBoss
+                && xpOrbPrefab != null
+                && LootLimits.CanSpawnXPOrb())
             {
                 Instantiate(
                     xpOrbPrefab,
@@ -361,31 +388,36 @@ public class Enemy : MonoBehaviour
 
     private void DropEliteRewards(Vector3 dropPosition)
     {
-        for (int i = 0; i < 2; i++)
+        if (xpOrbPrefab != null && LootLimits.CanSpawnXPOrb())
         {
-            if (xpOrbPrefab == null || !LootLimits.CanSpawnXPOrb()) break;
-
-            Vector3 xpOffset = new Vector3(
-                Random.Range(-0.6f, 0.6f),
-                0f,
-                Random.Range(-0.6f, 0.6f)
-            );
-
             Instantiate(
                 xpOrbPrefab,
-                dropPosition + xpOffset,
+                dropPosition,
                 Quaternion.identity
             );
         }
 
-        for (int i = 0; i < 2; i++)
+        if (Random.value < 0.5f && xpOrbPrefab != null && LootLimits.CanSpawnXPOrb())
         {
-            if (coinPrefab == null || !LootLimits.CanSpawnCoin()) break;
-
-            Vector3 coinOffset = new Vector3(
-                Random.Range(-0.6f, 0.6f),
+            Vector3 bonusXpOffset = new Vector3(
+                Random.Range(-0.5f, 0.5f),
                 0f,
-                Random.Range(-0.6f, 0.6f)
+                Random.Range(-0.5f, 0.5f)
+            );
+
+            Instantiate(
+                xpOrbPrefab,
+                dropPosition + bonusXpOffset,
+                Quaternion.identity
+            );
+        }
+
+        if (coinPrefab != null && LootLimits.CanSpawnCoin())
+        {
+            Vector3 coinOffset = new Vector3(
+                Random.Range(-0.5f, 0.5f),
+                0f,
+                Random.Range(-0.5f, 0.5f)
             );
 
             Instantiate(
