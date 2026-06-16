@@ -352,9 +352,14 @@ public class Enemy : MonoBehaviour
 
                 DropMiniBossRewards(dropPosition);
             }
-            else if (enemyType == EnemyType.Elite)
+            else if (enemyType == EnemyType.Elite && IsElite)
             {
                 DropEliteRewards(dropPosition);
+
+                if (JuiceManager.Instance != null)
+                {
+                    JuiceManager.Instance.PlayEliteKill(dropPosition);
+                }
             }
             else
             {

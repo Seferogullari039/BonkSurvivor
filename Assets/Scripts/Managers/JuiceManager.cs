@@ -49,6 +49,11 @@ public class JuiceManager : MonoBehaviour
         StartEffect(FlashRoutine(position, new Color(1f, 0.86f, 0.12f), 0.35f, 1.1f, 0.4f));
     }
 
+    public void PlayEliteKill(Vector3 position)
+    {
+        StartEffect(EliteKillRoutine(position));
+    }
+
     public void PlayRocketExplosion(Vector3 position)
     {
         // FPSScreenShake.Shake(0.12f, 0.24f);
@@ -105,6 +110,125 @@ public class JuiceManager : MonoBehaviour
 
         DestroyEffect(ring);
         DestroyEffect(innerRing);
+    }
+
+    private IEnumerator EliteKillRoutine(Vector3 position)
+    {
+        Vector3 effectPosition = position + Vector3.up * 0.35f;
+        Color goldColor = new Color(1f, 0.82f, 0.12f);
+        Color coinColor = new Color(1f, 0.88f, 0.15f);
+        Color xpColor = new Color(0.2f, 0.82f, 1f);
+        const float duration = 0.55f;
+
+        GameObject flash = CreateSphere(effectPosition, 0.3f, goldColor);
+        GameObject ring = CreateRing(effectPosition, 0.5f, goldColor);
+        GameObject coinSpark = CreateSphere(effectPosition + new Vector3(-0.22f, 0.08f, 0.12f), 0.12f, coinColor);
+        GameObject xpSpark = CreateSphere(effectPosition + new Vector3(0.22f, 0.08f, -0.12f), 0.12f, xpColor);
+        GameObject label = CreateEliteDownLabel(effectPosition + Vector3.up * 0.45f);
+
+        Renderer flashRenderer = flash != null ? flash.GetComponent<Renderer>() : null;
+        Material flashMaterial = flashRenderer != null ? flashRenderer.material : null;
+        Renderer ringRenderer = ring != null ? ring.GetComponent<Renderer>() : null;
+        Material ringMaterial = ringRenderer != null ? ringRenderer.material : null;
+        Renderer coinRenderer = coinSpark != null ? coinSpark.GetComponent<Renderer>() : null;
+        Material coinMaterial = coinRenderer != null ? coinRenderer.material : null;
+        Renderer xpRenderer = xpSpark != null ? xpSpark.GetComponent<Renderer>() : null;
+        Material xpMaterial = xpRenderer != null ? xpRenderer.material : null;
+        TextMesh labelMesh = label != null ? label.GetComponent<TextMesh>() : null;
+
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = elapsed / duration;
+            float fade = 1f - progress;
+
+            if (flash != null)
+            {
+                flash.transform.localScale = Vector3.one * Mathf.Lerp(0.3f, 1.05f, progress);
+            }
+
+            SetRingScale(ring, Mathf.Lerp(0.5f, 2.1f, progress));
+            FadeEmission(flashMaterial, 0.8f * fade);
+            FadeEmission(ringMaterial, 0.65f * fade);
+            SetBaseAlpha(flashMaterial, fade);
+            SetBaseAlpha(ringMaterial, fade * 0.85f);
+
+            if (coinSpark != null)
+            {
+                coinSpark.transform.localScale = Vector3.one * (0.12f + progress * 0.08f);
+            }
+
+            if (xpSpark != null)
+            {
+                xpSpark.transform.localScale = Vector3.one * (0.12f + progress * 0.08f);
+            }
+
+            FadeEmission(coinMaterial, 0.55f * fade);
+            FadeEmission(xpMaterial, 0.55f * fade);
+            SetBaseAlpha(coinMaterial, fade);
+            SetBaseAlpha(xpMaterial, fade);
+
+            if (label != null)
+            {
+                label.transform.position = effectPosition + Vector3.up * (0.45f + progress * 0.35f);
+                FaceWorldLabel(label.transform);
+
+                if (labelMesh != null)
+                {
+                    Color labelColor = labelMesh.color;
+                    labelColor.a = fade;
+                    labelMesh.color = labelColor;
+                }
+            }
+
+            yield return null;
+        }
+
+        DestroyEffect(flash);
+        DestroyEffect(ring);
+        DestroyEffect(coinSpark);
+        DestroyEffect(xpSpark);
+        DestroyEffect(label);
+    }
+
+    private static GameObject CreateEliteDownLabel(Vector3 position)
+    {
+        GameObject labelObject = new GameObject("EliteDownLabel");
+        labelObject.transform.position = position;
+
+        TextMesh textMesh = labelObject.AddComponent<TextMesh>();
+        textMesh.text = "ELITE DOWN";
+        textMesh.fontSize = 32;
+        textMesh.characterSize = 0.06f;
+        textMesh.anchor = TextAnchor.MiddleCenter;
+        textMesh.alignment = TextAlignment.Center;
+        textMesh.color = new Color(1f, 0.86f, 0.2f, 1f);
+        textMesh.fontStyle = FontStyle.Bold;
+
+        Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+        if (font != null)
+        {
+            textMesh.font = font;
+        }
+
+        FaceWorldLabel(labelObject.transform);
+        return labelObject;
+    }
+
+    private static void FaceWorldLabel(Transform labelTransform)
+    {
+        if (labelTransform == null) return;
+
+        Camera camera = Camera.main;
+
+        if (camera == null) return;
+
+        labelTransform.rotation = Quaternion.LookRotation(
+            labelTransform.position - camera.transform.position,
+            Vector3.up);
     }
 
     private IEnumerator FlashRoutine(Vector3 position, Color color, float startSize, float endSize, float duration)
