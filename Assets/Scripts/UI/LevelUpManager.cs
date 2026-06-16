@@ -44,8 +44,8 @@ public class LevelUpManager : MonoBehaviour
         public Button Button;
         public Image BackgroundImage;
         public Image GlowImage;
+        public Transform IconRoot;
         public Image IconImage;
-        public TMP_Text IconFallbackText;
         public TMP_Text RarityText;
         public TMP_Text TitleText;
         public TMP_Text DescriptionText;
@@ -144,15 +144,15 @@ public class LevelUpManager : MonoBehaviour
 
         Image backgroundImage = button.GetComponent<Image>();
         Image glowImage = EnsureCardGlow(buttonRect);
-        EnsureCardIconSlot(buttonRect, legacyText, out Image iconImage, out TMP_Text iconFallbackText);
+        EnsureCardIconSlot(buttonRect, out Transform iconRoot, out Image iconImage);
 
         upgradeCards[index] = new UpgradeCardView
         {
             Button = button,
             BackgroundImage = backgroundImage,
             GlowImage = glowImage,
+            IconRoot = iconRoot,
             IconImage = iconImage,
-            IconFallbackText = iconFallbackText,
             RarityText = CreateCardText(buttonRect, legacyText, "RarityText", new Vector2(0f, 92f), new Vector2(228f, 28f), 19f, FontStyles.Bold),
             TitleText = CreateCardText(buttonRect, legacyText, "TitleText", new Vector2(0f, 28f), new Vector2(228f, 88f), 32f, FontStyles.Bold),
             DescriptionText = CreateCardText(buttonRect, legacyText, "DescriptionText", new Vector2(0f, -68f), new Vector2(228f, 120f), 20f, FontStyles.Normal)
@@ -194,25 +194,35 @@ public class LevelUpManager : MonoBehaviour
         return glowImage;
     }
 
-    private static void EnsureCardIconSlot(RectTransform buttonRect, TMP_Text fontSource, out Image iconImage, out TMP_Text iconFallbackText)
+    private static void EnsureCardIconSlot(RectTransform buttonRect, out Transform iconRoot, out Image iconImage)
     {
         Transform existingIconRoot = buttonRect.Find("CardIconRoot");
 
         if (existingIconRoot != null)
         {
+            iconRoot = existingIconRoot;
             iconImage = existingIconRoot.Find("IconImage")?.GetComponent<Image>();
-            iconFallbackText = existingIconRoot.Find("IconFallbackText")?.GetComponent<TMP_Text>();
+
+            Transform existingFallback = existingIconRoot.Find("IconFallbackText");
+
+            if (existingFallback != null)
+            {
+                existingFallback.gameObject.SetActive(false);
+            }
+
+            iconRoot.gameObject.SetActive(false);
             return;
         }
 
-        GameObject iconRoot = new GameObject("CardIconRoot");
-        iconRoot.transform.SetParent(buttonRect, false);
+        GameObject iconRootObject = new GameObject("CardIconRoot");
+        iconRootObject.transform.SetParent(buttonRect, false);
+        iconRootObject.SetActive(false);
 
-        RectTransform iconRootRect = iconRoot.AddComponent<RectTransform>();
+        RectTransform iconRootRect = iconRootObject.AddComponent<RectTransform>();
         UiLayoutUtility.SetAnchorCenter(iconRootRect, new Vector2(0f, 124f), new Vector2(44f, 44f));
 
         GameObject iconImageObject = new GameObject("IconImage");
-        iconImageObject.transform.SetParent(iconRoot.transform, false);
+        iconImageObject.transform.SetParent(iconRootObject.transform, false);
 
         RectTransform iconImageRect = iconImageObject.AddComponent<RectTransform>();
         iconImageRect.anchorMin = Vector2.zero;
@@ -223,28 +233,9 @@ public class LevelUpManager : MonoBehaviour
         iconImage = iconImageObject.AddComponent<Image>();
         iconImage.raycastTarget = false;
         iconImage.preserveAspect = true;
-        iconImage.enabled = false;
-        iconImageObject.SetActive(false);
+        iconImage.enabled = true;
 
-        GameObject iconFallbackObject = new GameObject("IconFallbackText");
-        iconFallbackObject.transform.SetParent(iconRoot.transform, false);
-
-        RectTransform iconFallbackRect = iconFallbackObject.AddComponent<RectTransform>();
-        iconFallbackRect.anchorMin = Vector2.zero;
-        iconFallbackRect.anchorMax = Vector2.one;
-        iconFallbackRect.offsetMin = Vector2.zero;
-        iconFallbackRect.offsetMax = Vector2.zero;
-
-        TextMeshProUGUI iconFallbackMesh = iconFallbackObject.AddComponent<TextMeshProUGUI>();
-        CopyTmpFontFrom(fontSource, iconFallbackMesh);
-        iconFallbackMesh.alignment = TextAlignmentOptions.Center;
-        iconFallbackMesh.fontSize = 24f;
-        iconFallbackMesh.raycastTarget = false;
-        iconFallbackMesh.enableAutoSizing = true;
-        iconFallbackMesh.fontSizeMin = 18f;
-        iconFallbackMesh.fontSizeMax = 26f;
-        iconFallbackText = iconFallbackMesh;
-        iconFallbackObject.SetActive(false);
+        iconRoot = iconRootObject.transform;
     }
 
     private static TMP_Text CreateCardText(
@@ -453,39 +444,22 @@ public class LevelUpManager : MonoBehaviour
 
         Sprite iconSprite = UpgradeCardIconUtility.TryLoadSprite(iconKey);
 
-        if (iconSprite != null && card.IconImage != null)
+        if (iconSprite != null && card.IconRoot != null && card.IconImage != null)
         {
             card.IconImage.sprite = iconSprite;
             card.IconImage.enabled = true;
-            card.IconImage.gameObject.SetActive(true);
-
-            if (card.IconFallbackText != null)
-            {
-                card.IconFallbackText.gameObject.SetActive(false);
-            }
-
+            card.IconRoot.gameObject.SetActive(true);
             return;
         }
 
         if (card.IconImage != null)
         {
             card.IconImage.sprite = null;
-            card.IconImage.enabled = false;
-            card.IconImage.gameObject.SetActive(false);
         }
 
-        string fallbackLabel = UpgradeCardIconUtility.GetFallbackLabel(iconKey);
-
-        if (card.IconFallbackText != null && !string.IsNullOrEmpty(fallbackLabel))
+        if (card.IconRoot != null)
         {
-            card.IconFallbackText.text = fallbackLabel;
-            card.IconFallbackText.gameObject.SetActive(true);
-            return;
-        }
-
-        if (card.IconFallbackText != null)
-        {
-            card.IconFallbackText.gameObject.SetActive(false);
+            card.IconRoot.gameObject.SetActive(false);
         }
     }
 

@@ -19,40 +19,24 @@ public static class UpgradeCardIconUtility
             return cachedSprite;
         }
 
-        Sprite loadedSprite = Resources.Load<Sprite>(ResourceFolder + iconKey);
-        SpriteCache[iconKey] = loadedSprite;
-        return loadedSprite;
-    }
+        string resourcePath = ResourceFolder + iconKey;
+        Sprite loadedSprite = Resources.Load<Sprite>(resourcePath);
 
-    public static string GetFallbackLabel(string iconKey)
-    {
-        if (string.IsNullOrEmpty(iconKey))
+        if (loadedSprite == null)
         {
-            return string.Empty;
+            Sprite[] sprites = Resources.LoadAll<Sprite>(resourcePath);
+
+            if (sprites != null && sprites.Length > 0)
+            {
+                loadedSprite = sprites[0];
+            }
         }
 
-        return iconKey switch
+        if (loadedSprite != null)
         {
-            "rapid_mechanism" => "⚡",
-            "swift_projectiles" => "➤",
-            "magnet_sense" => "◎",
-            "sharp_instinct" => "✦",
-            "spread_shot" => "⋔",
-            "piercing_shot" => "➹",
-            "orbiting_orb" => "◉",
-            "rocket_launcher" => "🚀",
-            "chain_lightning" => "⚡",
-            "laser_beam" => "═",
-            "meteor_focus" => "☄",
-            "whirlwind_training" => "🌀",
-            "arrow_storm" => "🏹",
-            "inferno_ritual" => "🔥",
-            "blade_tempest" => "⚔",
-            "rain_caller" => "🌧",
-            "ember_core" => "🔥",
-            "sharpened_arrows" => "🏹",
-            "honed_blade" => "⚔",
-            _ => "✦"
-        };
+            SpriteCache[iconKey] = loadedSprite;
+        }
+
+        return loadedSprite;
     }
 }
