@@ -337,7 +337,7 @@ public class LevelUpManager : MonoBehaviour
 
     private void AssignRandomUpgradeOptions()
     {
-        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 };
         List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
 
         for (int i = 0; i < shownUpgradeIndices.Length; i++)
@@ -461,6 +461,10 @@ public class LevelUpManager : MonoBehaviour
                 return new UpgradeCardContent(
                     "Honed Blade",
                     GetSwordDamageDescription(multiplier));
+            case 13:
+                return new UpgradeCardContent(
+                    "Rain Caller",
+                    GetArrowRainCooldownDescription(multiplier));
             default:
                 return new UpgradeCardContent(string.Empty, string.Empty);
         }
@@ -503,6 +507,16 @@ public class LevelUpManager : MonoBehaviour
             2 => "Sword basic damage +30%.",
             3 => "Sword basic damage +45%.",
             _ => "Sword basic damage +15%."
+        };
+    }
+
+    private static string GetArrowRainCooldownDescription(int multiplier)
+    {
+        return multiplier switch
+        {
+            2 => "Arrow Rain cooldown -24%.",
+            3 => "Arrow Rain cooldown -36%.",
+            _ => "Arrow Rain cooldown -12%."
         };
     }
 
@@ -792,6 +806,9 @@ public class LevelUpManager : MonoBehaviour
             case 12:
                 ApplySwordDamageUpgrade(0.15f * multiplier);
                 break;
+            case 13:
+                ApplyArrowRainCooldownUpgrade(0.12f * multiplier);
+                break;
         }
     }
 
@@ -870,6 +887,12 @@ public class LevelUpManager : MonoBehaviour
     {
         PlayerStats playerStats = FindPlayerStats();
         playerStats?.IncreaseSwordDamage(percent);
+    }
+
+    private void ApplyArrowRainCooldownUpgrade(float percent)
+    {
+        PlayerStats playerStats = FindPlayerStats();
+        playerStats?.ReduceArrowRainCooldown(percent);
     }
 
     private void ApplySpreadShotUpgrade()

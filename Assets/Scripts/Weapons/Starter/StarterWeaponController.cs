@@ -213,7 +213,7 @@ public class StarterWeaponController : MonoBehaviour
         {
             case StarterWeaponType.HunterBow:
                 skillRoutine = StartCoroutine(ArrowRainRoutine());
-                nextSkillTime = Time.time + bowSkillCooldown;
+                nextSkillTime = Time.time + GetArrowRainCooldown(bowSkillCooldown);
                 break;
             case StarterWeaponType.FireStaff:
                 LogStarterDebug("[StarterWeapon] FireStaff RMB Mega Meteor");
@@ -307,6 +307,16 @@ public class StarterWeaponController : MonoBehaviour
         }
 
         return baseSpeed * playerStats.StarterProjectileSpeedMultiplier;
+    }
+
+    private float GetArrowRainCooldown(float baseCooldown)
+    {
+        if (playerStats == null)
+        {
+            return baseCooldown;
+        }
+
+        return baseCooldown * playerStats.ArrowRainCooldownMultiplier;
     }
 
     private int ApplyBowPrimaryDamage(int damage)

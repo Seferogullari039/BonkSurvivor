@@ -13,7 +13,12 @@ Items not implemented yet. Do not describe these in upgrade cards until supporte
 - Fire Rate upgrade still primarily affects the legacy auto-aim `ProjectileWeapon` path on this branch.
 - Projectile Speed upgrade affects legacy `Projectile.cs` and FPS Bow / Fire Staff LMB projectiles.
 - Bow / Fire Staff / Sword **basic attack (LMB) damage** upgrade cards are implemented (Sharpened Arrows, Ember Core, Honed Blade).
-- Arrow Rain / Mega Meteor / Sword RMB skill damage upgrade cards are **not** in this task; separate task later.
+- **Rain Caller / Arrow Rain cooldown** upgrade is implemented (Bow RMB only).
+- Arrow Rain damage upgrade is a separate task.
+- Arrow Rain duration / hit count upgrades are separate tasks.
+- Mega Meteor cooldown / damage upgrades are separate tasks.
+- Sword RMB cooldown / damage upgrades are separate tasks.
+- Skill upgrade cards should be added one at a time with safe runtime hooks.
 - Spread / Pierce FPS starter integration is still a separate task.
 
 ## Content / UX ideas
