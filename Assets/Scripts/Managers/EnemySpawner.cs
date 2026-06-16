@@ -61,6 +61,8 @@ public class EnemySpawner : MonoBehaviour
         {
             HUDManager.Instance.UpdateWave(currentWave);
         }
+
+        RunEventMessageDisplay.ShowWave(currentWave);
     }
 
     public void DevSpawnBoss()
@@ -225,12 +227,12 @@ public class EnemySpawner : MonoBehaviour
         {
             currentWave = newWave;
 
-            Debug.Log("===== WAVE " + currentWave + " =====");
-
             if (HUDManager.Instance != null)
             {
                 HUDManager.Instance.UpdateWave(currentWave);
             }
+
+            RunEventMessageDisplay.ShowWave(currentWave);
 
             TrySpawnMiniBoss();
         }
@@ -285,7 +287,7 @@ public class EnemySpawner : MonoBehaviour
         }
 
         AudioManager.Instance?.PlayBossSpawn();
-        Debug.LogWarning("DRAGON BOSS SPAWNED - WAVE " + wave);
+        RunEventMessageDisplay.ShowDragonBossIncoming();
         return true;
     }
 
@@ -375,7 +377,7 @@ public class EnemySpawner : MonoBehaviour
         }
 
         AudioManager.Instance?.PlayBossSpawn();
-        Debug.LogWarning("MINI BOSS SPAWNED - WAVE " + wave);
+        RunEventMessageDisplay.ShowBossIncoming();
     }
 
     private BossAbilityType GetBossAbilityType(int wave)

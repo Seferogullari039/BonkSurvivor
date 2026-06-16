@@ -1,7 +1,4 @@
-using System.Collections;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class GoldenDragonEventManager : MonoBehaviour
 {
@@ -9,18 +6,11 @@ public class GoldenDragonEventManager : MonoBehaviour
 
     private const int MinWave = 6;
     private const float TriggerChance = 0.03f;
-    private const float WarningDuration = 2.8f;
-
-    private static readonly Color WarningTextColor = new Color(1f, 0.82f, 0.18f, 1f);
-    private static readonly Color EscapeTextColor = new Color(0.92f, 0.72f, 0.22f, 1f);
 
     private int lastRollWave;
     private GoldenDragonController activeDragon;
     private EnemySpawner cachedSpawner;
     private Transform cachedPlayer;
-    private Canvas overlayCanvas;
-    private TextMeshProUGUI warningText;
-    private Coroutine warningRoutine;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -40,8 +30,6 @@ public class GoldenDragonEventManager : MonoBehaviour
         }
 
         Instance = this;
-        BuildOverlay();
-        HideWarningImmediate();
     }
 
     private void OnDestroy()
@@ -71,18 +59,11 @@ public class GoldenDragonEventManager : MonoBehaviour
 
     public void ResetRunState()
     {
-        if (warningRoutine != null)
-        {
-            StopCoroutine(warningRoutine);
-            warningRoutine = null;
-        }
-
         lastRollWave = 0;
         activeDragon = null;
         cachedSpawner = null;
         cachedPlayer = null;
         GoldenDragonSpawnTracker.ResetRun();
-        HideWarningImmediate();
     }
 
     public void NotifyDragonResolved(GoldenDragonController dragon)
@@ -168,8 +149,13 @@ public class GoldenDragonEventManager : MonoBehaviour
 
         GoldenDragonSpawnTracker.RegisterActive();
         activeDragon = controller;
-        ShowWarning();
+        RunEventMessageDisplay.ShowGoldenDragonAppears();
         return true;
+    }
+
+    public void ShowEscapeWarning()
+    {
+        RunEventMessageDisplay.ShowGoldenDragonEscaped();
     }
 
     private static Vector3 GetSpawnPosition(Vector3 playerPosition, float minDistance = 28f, float maxDistance = 34f)
@@ -210,110 +196,5 @@ public class GoldenDragonEventManager : MonoBehaviour
         ProceduralGrassArena.TryClampHorizontal(ref spawnPosition, 4f);
         ProceduralGrassArena.TryResolveBlockedSpawn(ref spawnPosition, minDistance, 2f);
         return spawnPosition;
-    }
-
-    private void ShowWarning()
-    {
-        ShowMessage("GOLDEN DRAGON APPEARS", WarningTextColor, WarningDuration);
-    }
-
-    public void ShowEscapeWarning()
-    {
-        ShowMessage("DRAGON ESCAPED", EscapeTextColor, 2.2f);
-    }
-
-    private void ShowMessage(string message, Color textColor, float duration)
-    {
-        if (warningText == null) return;
-
-        if (warningRoutine != null)
-        {
-            StopCoroutine(warningRoutine);
-        }
-
-        warningRoutine = StartCoroutine(WarningRoutine(message, textColor, duration));
-    }
-
-    private IEnumerator WarningRoutine(string message, Color textColor, float duration)
-    {
-        if (warningText == null) yield break;
-
-        warningText.gameObject.SetActive(true);
-        warningText.text = message;
-        Color color = textColor;
-        color.a = 0f;
-        warningText.color = color;
-
-        const float fadeInDuration = 0.25f;
-        float elapsed = 0f;
-
-        while (elapsed < fadeInDuration)
-        {
-            elapsed += Time.deltaTime;
-            color.a = Mathf.Clamp01(elapsed / fadeInDuration);
-            warningText.color = color;
-            yield return null;
-        }
-
-        color.a = 1f;
-        warningText.color = color;
-
-        float holdElapsed = 0f;
-        const float fadeOutDuration = 0.45f;
-        float holdDuration = Mathf.Max(0f, duration - fadeInDuration - fadeOutDuration);
-
-        while (holdElapsed < holdDuration)
-        {
-            holdElapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        elapsed = 0f;
-
-        while (elapsed < fadeOutDuration)
-        {
-            elapsed += Time.deltaTime;
-            color.a = 1f - Mathf.Clamp01(elapsed / fadeOutDuration);
-            warningText.color = color;
-            yield return null;
-        }
-
-        warningText.gameObject.SetActive(false);
-        warningRoutine = null;
-    }
-
-    private void HideWarningImmediate()
-    {
-        if (warningText != null)
-        {
-            warningText.gameObject.SetActive(false);
-        }
-    }
-
-    private void BuildOverlay()
-    {
-        GameObject canvasObject = new GameObject("GoldenDragonOverlayCanvas");
-        canvasObject.transform.SetParent(transform, false);
-
-        overlayCanvas = canvasObject.AddComponent<Canvas>();
-        overlayCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        overlayCanvas.sortingOrder = 36;
-        overlayCanvas.pixelPerfect = false;
-
-        CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight = 0.5f;
-
-        GameObject warningObject = new GameObject("GoldenDragonWarning");
-        warningObject.transform.SetParent(canvasObject.transform, false);
-        warningText = warningObject.AddComponent<TextMeshProUGUI>();
-        warningText.alignment = TextAlignmentOptions.Center;
-        warningText.fontSize = 52f;
-        warningText.fontStyle = FontStyles.Bold;
-        warningText.color = WarningTextColor;
-        warningText.raycastTarget = false;
-        UiLayoutUtility.SetAnchorCenter(warningText.rectTransform, new Vector2(0f, 240f), new Vector2(980f, 72f));
     }
 }

@@ -1,5 +1,3 @@
-using System.Collections;
-using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
@@ -13,10 +11,8 @@ public class BloodMoonEventManager : MonoBehaviour
     private const float MinDuration = 30f;
     private const float MaxDuration = 45f;
     private const float ActiveTintAlpha = 0.14f;
-    private const float WarningDuration = 2.6f;
 
     private static readonly Color TintColor = new Color(0.55f, 0.04f, 0.06f, 0f);
-    private static readonly Color WarningTextColor = new Color(0.95f, 0.18f, 0.16f, 1f);
 
     private bool isActive;
     private float eventTimer;
@@ -25,8 +21,6 @@ public class BloodMoonEventManager : MonoBehaviour
     private EnemySpawner cachedSpawner;
     private Canvas overlayCanvas;
     private Image tintImage;
-    private TextMeshProUGUI warningText;
-    private Coroutine warningRoutine;
 
     public bool IsActive => isActive;
     public float SpawnIntervalMultiplier => isActive ? SpawnTempoMultiplier : 1f;
@@ -91,12 +85,6 @@ public class BloodMoonEventManager : MonoBehaviour
 
     public void ResetRunState()
     {
-        if (warningRoutine != null)
-        {
-            StopCoroutine(warningRoutine);
-            warningRoutine = null;
-        }
-
         isActive = false;
         eventTimer = 0f;
         eventDuration = 0f;
@@ -140,7 +128,7 @@ public class BloodMoonEventManager : MonoBehaviour
         eventTimer = 0f;
         eventDuration = Random.Range(MinDuration, MaxDuration);
         SetTintAlpha(ActiveTintAlpha);
-        ShowWarning();
+        RunEventMessageDisplay.ShowBloodMoon();
     }
 
     private void EndEvent()
@@ -149,66 +137,6 @@ public class BloodMoonEventManager : MonoBehaviour
         eventTimer = 0f;
         eventDuration = 0f;
         HideOverlayImmediate();
-    }
-
-    private void ShowWarning()
-    {
-        if (warningText == null) return;
-
-        if (warningRoutine != null)
-        {
-            StopCoroutine(warningRoutine);
-        }
-
-        warningRoutine = StartCoroutine(WarningRoutine());
-    }
-
-    private IEnumerator WarningRoutine()
-    {
-        if (warningText == null) yield break;
-
-        warningText.gameObject.SetActive(true);
-        warningText.text = "BLOOD MOON RISES";
-        Color color = WarningTextColor;
-        color.a = 0f;
-        warningText.color = color;
-
-        const float fadeInDuration = 0.25f;
-        float elapsed = 0f;
-
-        while (elapsed < fadeInDuration)
-        {
-            elapsed += Time.deltaTime;
-            color.a = Mathf.Clamp01(elapsed / fadeInDuration);
-            warningText.color = color;
-            yield return null;
-        }
-
-        color.a = 1f;
-        warningText.color = color;
-
-        float holdElapsed = 0f;
-        const float holdDuration = WarningDuration - fadeInDuration - 0.45f;
-
-        while (holdElapsed < holdDuration)
-        {
-            holdElapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        const float fadeOutDuration = 0.45f;
-        elapsed = 0f;
-
-        while (elapsed < fadeOutDuration)
-        {
-            elapsed += Time.deltaTime;
-            color.a = 1f - Mathf.Clamp01(elapsed / fadeOutDuration);
-            warningText.color = color;
-            yield return null;
-        }
-
-        warningText.gameObject.SetActive(false);
-        warningRoutine = null;
     }
 
     private void UpdateActiveTint()
@@ -232,11 +160,6 @@ public class BloodMoonEventManager : MonoBehaviour
     private void HideOverlayImmediate()
     {
         SetTintAlpha(0f);
-
-        if (warningText != null)
-        {
-            warningText.gameObject.SetActive(false);
-        }
     }
 
     private void BuildOverlay()
@@ -261,15 +184,5 @@ public class BloodMoonEventManager : MonoBehaviour
         tintImage.color = TintColor;
         tintImage.raycastTarget = false;
         UiLayoutUtility.StretchToParent(tintImage.rectTransform);
-
-        GameObject warningObject = new GameObject("BloodMoonWarning");
-        warningObject.transform.SetParent(canvasObject.transform, false);
-        warningText = warningObject.AddComponent<TextMeshProUGUI>();
-        warningText.alignment = TextAlignmentOptions.Center;
-        warningText.fontSize = 54f;
-        warningText.fontStyle = FontStyles.Bold;
-        warningText.color = WarningTextColor;
-        warningText.raycastTarget = false;
-        UiLayoutUtility.SetAnchorCenter(warningText.rectTransform, new Vector2(0f, 280f), new Vector2(920f, 72f));
     }
 }

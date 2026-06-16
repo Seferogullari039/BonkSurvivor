@@ -1,7 +1,4 @@
-using System.Collections;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class VoidPortalEventManager : MonoBehaviour
 {
@@ -9,17 +6,11 @@ public class VoidPortalEventManager : MonoBehaviour
 
     private const int MinWave = 8;
     private const float TriggerChance = 0.04f;
-    private const float WarningDuration = 2.4f;
-
-    private static readonly Color WarningTextColor = new Color(0.78f, 0.38f, 1f, 1f);
 
     private int lastRollWave;
     private VoidPortalController activePortal;
     private EnemySpawner cachedSpawner;
     private Transform cachedPlayer;
-    private Canvas overlayCanvas;
-    private TextMeshProUGUI warningText;
-    private Coroutine warningRoutine;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -39,8 +30,6 @@ public class VoidPortalEventManager : MonoBehaviour
         }
 
         Instance = this;
-        BuildOverlay();
-        HideWarningImmediate();
     }
 
     private void OnDestroy()
@@ -70,18 +59,11 @@ public class VoidPortalEventManager : MonoBehaviour
 
     public void ResetRunState()
     {
-        if (warningRoutine != null)
-        {
-            StopCoroutine(warningRoutine);
-            warningRoutine = null;
-        }
-
         lastRollWave = 0;
         activePortal = null;
         cachedSpawner = null;
         cachedPlayer = null;
         VoidPortalSpawnTracker.ResetRun();
-        HideWarningImmediate();
     }
 
     public void NotifyPortalClosed(VoidPortalController portal)
@@ -184,8 +166,13 @@ public class VoidPortalEventManager : MonoBehaviour
 
         VoidPortalSpawnTracker.RegisterActive();
         activePortal = controller;
-        ShowOpenWarning();
+        RunEventMessageDisplay.ShowVoidPortalOpens();
         return true;
+    }
+
+    public void ShowCloseWarning()
+    {
+        RunEventMessageDisplay.ShowVoidPortalClosed();
     }
 
     private static Vector3 GetSpawnPosition(Vector3 playerPosition)
@@ -203,110 +190,5 @@ public class VoidPortalEventManager : MonoBehaviour
         ProceduralGrassArena.TryClampHorizontal(ref spawnPosition, 4f);
         ProceduralGrassArena.TryResolveBlockedSpawn(ref spawnPosition, minDistance, 2f);
         return spawnPosition;
-    }
-
-    private void ShowOpenWarning()
-    {
-        ShowMessage("VOID PORTAL OPENS", WarningTextColor, WarningDuration);
-    }
-
-    public void ShowCloseWarning()
-    {
-        ShowMessage("VOID PORTAL CLOSED", WarningTextColor, 2.1f);
-    }
-
-    private void ShowMessage(string message, Color textColor, float duration)
-    {
-        if (warningText == null) return;
-
-        if (warningRoutine != null)
-        {
-            StopCoroutine(warningRoutine);
-        }
-
-        warningRoutine = StartCoroutine(WarningRoutine(message, textColor, duration));
-    }
-
-    private IEnumerator WarningRoutine(string message, Color textColor, float duration)
-    {
-        if (warningText == null) yield break;
-
-        warningText.gameObject.SetActive(true);
-        warningText.text = message;
-        Color color = textColor;
-        color.a = 0f;
-        warningText.color = color;
-
-        const float fadeInDuration = 0.25f;
-        float elapsed = 0f;
-
-        while (elapsed < fadeInDuration)
-        {
-            elapsed += Time.deltaTime;
-            color.a = Mathf.Clamp01(elapsed / fadeInDuration);
-            warningText.color = color;
-            yield return null;
-        }
-
-        color.a = 1f;
-        warningText.color = color;
-
-        float holdElapsed = 0f;
-        const float fadeOutDuration = 0.45f;
-        float holdDuration = Mathf.Max(0f, duration - fadeInDuration - fadeOutDuration);
-
-        while (holdElapsed < holdDuration)
-        {
-            holdElapsed += Time.deltaTime;
-            yield return null;
-        }
-
-        elapsed = 0f;
-
-        while (elapsed < fadeOutDuration)
-        {
-            elapsed += Time.deltaTime;
-            color.a = 1f - Mathf.Clamp01(elapsed / fadeOutDuration);
-            warningText.color = color;
-            yield return null;
-        }
-
-        warningText.gameObject.SetActive(false);
-        warningRoutine = null;
-    }
-
-    private void HideWarningImmediate()
-    {
-        if (warningText != null)
-        {
-            warningText.gameObject.SetActive(false);
-        }
-    }
-
-    private void BuildOverlay()
-    {
-        GameObject canvasObject = new GameObject("VoidPortalOverlayCanvas");
-        canvasObject.transform.SetParent(transform, false);
-
-        overlayCanvas = canvasObject.AddComponent<Canvas>();
-        overlayCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
-        overlayCanvas.sortingOrder = 34;
-        overlayCanvas.pixelPerfect = false;
-
-        CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
-        scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1920f, 1080f);
-        scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
-        scaler.matchWidthOrHeight = 0.5f;
-
-        GameObject warningObject = new GameObject("VoidPortalWarning");
-        warningObject.transform.SetParent(canvasObject.transform, false);
-        warningText = warningObject.AddComponent<TextMeshProUGUI>();
-        warningText.alignment = TextAlignmentOptions.Center;
-        warningText.fontSize = 50f;
-        warningText.fontStyle = FontStyles.Bold;
-        warningText.color = WarningTextColor;
-        warningText.raycastTarget = false;
-        UiLayoutUtility.SetAnchorCenter(warningText.rectTransform, new Vector2(0f, 220f), new Vector2(920f, 72f));
     }
 }

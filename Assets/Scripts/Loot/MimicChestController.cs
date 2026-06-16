@@ -47,6 +47,7 @@ public class MimicChestController : MonoBehaviour
         HidePriceText();
         ApplyAwakenedVisuals();
         awakenedLocalScale = transform.localScale;
+        RunEventMessageDisplay.ShowMimicChest();
         PlayWakeFeedback();
         EnsureHitProxy();
         CachePlayerTarget();
