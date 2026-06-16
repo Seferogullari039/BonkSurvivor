@@ -6,6 +6,7 @@ public class GoldenDragonController : MonoBehaviour
     private static readonly Color HitProxyColor = new Color(0.92f, 0.72f, 0.14f);
 
     private GoldenDragonEventManager eventManager;
+    private GoldenDragonVisual dragonVisual;
     private Transform playerTarget;
     private GameObject hitProxy;
     private int maxHealth;
@@ -36,9 +37,11 @@ public class GoldenDragonController : MonoBehaviour
             visual = gameObject.AddComponent<GoldenDragonVisual>();
         }
 
+        dragonVisual = visual;
         visual.BuildVisual();
         EnsureHitProxy();
         CachePlayerTarget();
+        GoldenDragonFeedback.PlaySpawnFeedback(transform.position);
     }
 
     private void Update()
@@ -61,6 +64,7 @@ public class GoldenDragonController : MonoBehaviour
         if (isResolved || damage <= 0) return;
 
         currentHealth -= damage;
+        dragonVisual?.PlayHitFlash();
 
         if (currentHealth > 0) return;
 
@@ -102,13 +106,15 @@ public class GoldenDragonController : MonoBehaviour
         if (isResolved) return;
 
         isResolved = true;
+        Vector3 deathPosition = transform.position;
+        GoldenDragonFeedback.PlayDeathBurst(deathPosition);
         GrantRewards();
         GoldenDragonSpawnTracker.UnregisterActive();
         eventManager?.NotifyDragonResolved(this);
 
         if (JuiceManager.Instance != null)
         {
-            JuiceManager.Instance.PlayEliteKill(transform.position);
+            JuiceManager.Instance.PlayEliteKill(deathPosition);
         }
 
         Destroy(gameObject);
@@ -119,6 +125,8 @@ public class GoldenDragonController : MonoBehaviour
         if (isResolved) return;
 
         isResolved = true;
+        GoldenDragonFeedback.PlayEscapePuff(transform.position);
+        eventManager?.ShowEscapeWarning();
         GoldenDragonSpawnTracker.UnregisterActive();
         eventManager?.NotifyDragonResolved(this);
         Destroy(gameObject);

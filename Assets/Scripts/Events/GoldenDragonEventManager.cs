@@ -12,6 +12,7 @@ public class GoldenDragonEventManager : MonoBehaviour
     private const float WarningDuration = 2.8f;
 
     private static readonly Color WarningTextColor = new Color(1f, 0.82f, 0.18f, 1f);
+    private static readonly Color EscapeTextColor = new Color(0.92f, 0.72f, 0.22f, 1f);
 
     private int lastRollWave;
     private GoldenDragonController activeDragon;
@@ -213,6 +214,16 @@ public class GoldenDragonEventManager : MonoBehaviour
 
     private void ShowWarning()
     {
+        ShowMessage("GOLDEN DRAGON APPEARS", WarningTextColor, WarningDuration);
+    }
+
+    public void ShowEscapeWarning()
+    {
+        ShowMessage("DRAGON ESCAPED", EscapeTextColor, 2.2f);
+    }
+
+    private void ShowMessage(string message, Color textColor, float duration)
+    {
         if (warningText == null) return;
 
         if (warningRoutine != null)
@@ -220,16 +231,16 @@ public class GoldenDragonEventManager : MonoBehaviour
             StopCoroutine(warningRoutine);
         }
 
-        warningRoutine = StartCoroutine(WarningRoutine());
+        warningRoutine = StartCoroutine(WarningRoutine(message, textColor, duration));
     }
 
-    private IEnumerator WarningRoutine()
+    private IEnumerator WarningRoutine(string message, Color textColor, float duration)
     {
         if (warningText == null) yield break;
 
         warningText.gameObject.SetActive(true);
-        warningText.text = "GOLDEN DRAGON APPEARS";
-        Color color = WarningTextColor;
+        warningText.text = message;
+        Color color = textColor;
         color.a = 0f;
         warningText.color = color;
 
@@ -248,7 +259,8 @@ public class GoldenDragonEventManager : MonoBehaviour
         warningText.color = color;
 
         float holdElapsed = 0f;
-        const float holdDuration = WarningDuration - fadeInDuration - 0.45f;
+        const float fadeOutDuration = 0.45f;
+        float holdDuration = Mathf.Max(0f, duration - fadeInDuration - fadeOutDuration);
 
         while (holdElapsed < holdDuration)
         {
@@ -256,7 +268,6 @@ public class GoldenDragonEventManager : MonoBehaviour
             yield return null;
         }
 
-        const float fadeOutDuration = 0.45f;
         elapsed = 0f;
 
         while (elapsed < fadeOutDuration)
