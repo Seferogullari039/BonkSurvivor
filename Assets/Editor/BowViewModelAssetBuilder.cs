@@ -9,11 +9,12 @@ public static class BowViewModelAssetBuilder
     private const string BowObjPath = "Assets/Art/Weapons/Bow/CompoundBow_wert/CompoundBow.obj";
     private const string PrefabsFolder = "Assets/Prefabs/Weapons";
     private const string PrefabPath = PrefabsFolder + "/Bow_ViewModel.prefab";
-    private const float ViewModelTargetWidth = 0.34f;
+    private const float ViewModelTargetWidth = 0.76f;
 
-    private static readonly Vector3 BowRootLocalPosition = new Vector3(0.32f, -0.18f, 0.52f);
-    private static readonly Vector3 BowRootLocalRotation = new Vector3(6f, -22f, 4f);
+    private static readonly Vector3 BowRootLocalPosition = new Vector3(0.18f, -0.08f, 0.45f);
+    private static readonly Vector3 BowRootLocalRotation = new Vector3(10f, -32f, 6f);
     private static readonly Vector3 BowModelLocalRotation = new Vector3(-12f, 90f, 8f);
+    private static readonly Vector3 BowModelLocalOffset = new Vector3(0f, 0.012f, 0.035f);
 
     private static bool autoBuildAttempted;
 
@@ -44,19 +45,19 @@ public static class BowViewModelAssetBuilder
 
         EnsureFolder("Assets/Prefabs", "Weapons");
 
-        if (!LoadFallbackMaterials(out Material bodyMaterial, out Material trimMaterial))
+        if (!LoadFallbackMaterials(out Material bodyMaterial, out Material trimMaterial, out Material stringMaterial))
         {
             Debug.LogWarning("[BowViewModelAssetBuilder] Could not resolve fallback materials. Using basic defaults.");
-            CreateRuntimeFallbackMaterials(out bodyMaterial, out trimMaterial);
+            CreateRuntimeFallbackMaterials(out bodyMaterial, out trimMaterial, out stringMaterial);
 
-            if (bodyMaterial == null || trimMaterial == null)
+            if (bodyMaterial == null || trimMaterial == null || stringMaterial == null)
             {
                 Debug.LogWarning("[BowViewModelAssetBuilder] Shader fallback unavailable. Aborting prefab build.");
                 return;
             }
         }
 
-        if (!BuildBowViewModelPrefab(bowObjPath, bodyMaterial, trimMaterial))
+        if (!BuildBowViewModelPrefab(bowObjPath, bodyMaterial, trimMaterial, stringMaterial))
         {
             Debug.LogWarning("[BowViewModelAssetBuilder] Failed to create Bow_ViewModel prefab.");
             return;
@@ -201,7 +202,11 @@ public static class BowViewModelAssetBuilder
         return null;
     }
 
-    private static bool BuildBowViewModelPrefab(string bowObjPath, Material bodyMaterial, Material trimMaterial)
+    private static bool BuildBowViewModelPrefab(
+        string bowObjPath,
+        Material bodyMaterial,
+        Material trimMaterial,
+        Material stringMaterial)
     {
         GameObject source = ResolveBowSourceGameObject(bowObjPath);
 
@@ -241,13 +246,13 @@ public static class BowViewModelAssetBuilder
         bowModel.name = "BowModel";
         Transform bowModelTransform = bowModel.transform;
         bowModelTransform.SetParent(bowRootTransform, false);
-        bowModelTransform.localPosition = Vector3.zero;
         bowModelTransform.localRotation = Quaternion.Euler(BowModelLocalRotation);
         bowModelTransform.localScale = Vector3.one;
 
         DisablePhysicsComponents(bowModel);
-        AssignFallbackMaterials(bowModelTransform, bodyMaterial, trimMaterial);
+        AssignFallbackMaterials(bowModelTransform, bodyMaterial, trimMaterial, stringMaterial);
         FitBowModelTransform(bowRootTransform, bowModelTransform, ViewModelTargetWidth);
+        bowModelTransform.localPosition += BowModelLocalOffset;
 
         GameObject savedPrefab = PrefabUtility.SaveAsPrefabAsset(prefabRoot, PrefabPath);
         Object.DestroyImmediate(prefabRoot);
@@ -339,7 +344,11 @@ public static class BowViewModelAssetBuilder
         }
     }
 
-    private static void AssignFallbackMaterials(Transform root, Material bodyMaterial, Material trimMaterial)
+    private static void AssignFallbackMaterials(
+        Transform root,
+        Material bodyMaterial,
+        Material trimMaterial,
+        Material stringMaterial)
     {
         Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
 
@@ -352,48 +361,70 @@ public static class BowViewModelAssetBuilder
                 continue;
             }
 
+            string label = renderer.gameObject.name.ToLowerInvariant();
+            Material resolvedMaterial = ResolveBowMaterial(label, bodyMaterial, trimMaterial, stringMaterial);
             Material[] sharedMaterials = renderer.sharedMaterials;
-            bool changed = false;
 
             for (int materialIndex = 0; materialIndex < sharedMaterials.Length; materialIndex++)
             {
-                if (sharedMaterials[materialIndex] != null)
-                {
-                    continue;
-                }
-
-                string label = renderer.gameObject.name.ToLowerInvariant();
-                sharedMaterials[materialIndex] = label.Contains("string")
-                    || label.Contains("wire")
-                    || label.Contains("metal")
-                    || label.Contains("steel")
-                    || label.Contains("sight")
-                    ? trimMaterial
-                    : bodyMaterial;
-                changed = true;
+                sharedMaterials[materialIndex] = resolvedMaterial;
             }
 
-            if (changed)
-            {
-                renderer.sharedMaterials = sharedMaterials;
-            }
-
+            renderer.sharedMaterials = sharedMaterials;
             renderer.shadowCastingMode = ShadowCastingMode.Off;
             renderer.receiveShadows = false;
         }
     }
 
-    private static bool LoadFallbackMaterials(out Material bodyMaterial, out Material trimMaterial)
+    private static Material ResolveBowMaterial(
+        string label,
+        Material bodyMaterial,
+        Material trimMaterial,
+        Material stringMaterial)
+    {
+        if (label.Contains("arrow")
+            && (label.Contains("head") || label.Contains("tip") || label.Contains("point") || label.Contains("metal")))
+        {
+            return trimMaterial ?? bodyMaterial;
+        }
+
+        if (label.Contains("string") || label.Contains("wire") || label.Contains("cable"))
+        {
+            return stringMaterial ?? trimMaterial ?? bodyMaterial;
+        }
+
+        if (label.Contains("steel") || label.Contains("metal") || label.Contains("sight"))
+        {
+            return trimMaterial ?? bodyMaterial;
+        }
+
+        if (label.Contains("arrow"))
+        {
+            return bodyMaterial;
+        }
+
+        return bodyMaterial;
+    }
+
+    private static bool LoadFallbackMaterials(
+        out Material bodyMaterial,
+        out Material trimMaterial,
+        out Material stringMaterial)
     {
         bodyMaterial = LoadMaterial("Assets/Art/Weapons/Firestaff/Materials/FireStaff_Wood.mat")
             ?? LoadMaterial("Assets/Art/Weapons/Firestaff/Materials/M_Staff_Wood.mat");
         trimMaterial = LoadMaterial("Assets/Art/Weapons/Firestaff/Materials/FireStaff_Metal.mat")
             ?? LoadMaterial("Assets/Art/Weapons/Firestaff/Materials/M_Staff_Metal.mat");
+        stringMaterial = LoadMaterial("Assets/Art/Weapons/Firestaff/Materials/FireStaff_DarkTrim.mat")
+            ?? trimMaterial;
 
-        return bodyMaterial != null && trimMaterial != null;
+        return bodyMaterial != null && trimMaterial != null && stringMaterial != null;
     }
 
-    private static void CreateRuntimeFallbackMaterials(out Material bodyMaterial, out Material trimMaterial)
+    private static void CreateRuntimeFallbackMaterials(
+        out Material bodyMaterial,
+        out Material trimMaterial,
+        out Material stringMaterial)
     {
         Shader urpLit = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
 
@@ -401,16 +432,21 @@ public static class BowViewModelAssetBuilder
         {
             bodyMaterial = null;
             trimMaterial = null;
+            stringMaterial = null;
             return;
         }
 
         bodyMaterial = new Material(urpLit);
         bodyMaterial.name = "BowFallbackBody";
-        bodyMaterial.SetColor("_BaseColor", new Color(0.42f, 0.26f, 0.13f));
+        bodyMaterial.SetColor("_BaseColor", new Color(0.34f, 0.2f, 0.1f));
 
         trimMaterial = new Material(urpLit);
         trimMaterial.name = "BowFallbackTrim";
-        trimMaterial.SetColor("_BaseColor", new Color(0.62f, 0.62f, 0.66f));
+        trimMaterial.SetColor("_BaseColor", new Color(0.38f, 0.4f, 0.44f));
+
+        stringMaterial = new Material(urpLit);
+        stringMaterial.name = "BowFallbackString";
+        stringMaterial.SetColor("_BaseColor", new Color(0.14f, 0.14f, 0.15f));
     }
 
     private static Material LoadMaterial(string path)
