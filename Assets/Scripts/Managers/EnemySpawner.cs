@@ -70,6 +70,49 @@ public class EnemySpawner : MonoBehaviour
         SpawnMiniBoss(Mathf.Max(1, currentWave));
     }
 
+    public void DevSpawnElite()
+    {
+        if (enemyPrefab == null || player == null) return;
+
+        if (GameObject.FindGameObjectsWithTag("Enemy").Length >= MaxEnemies)
+        {
+            return;
+        }
+
+        Vector3 spawnPosition;
+
+        if (FPSPlayerController.IsFpsModeActive)
+        {
+            Vector3 offset = FPSSpawnUtility.GetSpawnOffset(player, FPSSpawnZone.Front);
+            spawnPosition = new Vector3(
+                player.position.x + offset.x,
+                0.5f,
+                player.position.z + offset.z
+            );
+        }
+        else
+        {
+            Vector2 randomCircle = Random.insideUnitCircle.normalized * spawnDistance;
+
+            spawnPosition = new Vector3(
+                player.position.x + randomCircle.x,
+                0.5f,
+                player.position.z + randomCircle.y
+            );
+        }
+
+        ProceduralGrassArena.TryClampHorizontal(ref spawnPosition);
+        ProceduralGrassArena.TryResolveBlockedSpawn(ref spawnPosition, 12f, 1.5f);
+
+        GameObject enemyObject = Instantiate(enemyPrefab, spawnPosition, Quaternion.identity);
+        Enemy enemy = enemyObject.GetComponent<Enemy>();
+
+        if (enemy == null) return;
+
+        ApplyEnemyType(enemy, enemyObject.transform, Enemy.EnemyType.Normal);
+        ApplyEliteMutation(enemy, enemyObject.transform);
+    }
+
     public void ResetRun()
     {
         timer = 0f;

@@ -156,8 +156,11 @@ public class DevAdminPanel : MonoBehaviour
         CreateButton(scrollContent, "Level Up", ForceLevelUp);
         CreateButton(scrollContent, "Next Wave", AdvanceWave);
         CreateButton(scrollContent, "Spawn Boss", SpawnBoss);
+        CreateHeaderLabel(scrollContent, "Event Tests", SubtitleFontSize, FontStyles.Bold);
+        CreateButton(scrollContent, "Spawn Elite Enemy", SpawnEliteEnemy);
         CreateButton(scrollContent, "Spawn Mimic Chest", SpawnMimicChest);
         CreateButton(scrollContent, "Spawn Golden Dragon", SpawnGoldenDragon);
+        CreateButton(scrollContent, "Trigger Blood Moon", TriggerBloodMoon);
         CreateButton(scrollContent, "Give Rocket Launcher", GiveRocketLauncher);
         CreateButton(scrollContent, "Give Laser Beam", GiveLaserBeam);
         CreateButton(scrollContent, "Give Chain Lightning", GiveChainLightning);
@@ -415,6 +418,31 @@ public class DevAdminPanel : MonoBehaviour
         }
 
         manager?.DevSpawnGoldenDragon();
+    }
+
+    private void SpawnEliteEnemy()
+    {
+        if (!panelVisible || !IsDevPanelEnabled()) return;
+
+        EnemySpawner spawner = GetEnemySpawner();
+
+        if (spawner == null) return;
+
+        spawner.DevSpawnElite();
+    }
+
+    private void TriggerBloodMoon()
+    {
+        if (!panelVisible || !IsDevPanelEnabled()) return;
+
+        BloodMoonEventManager manager = BloodMoonEventManager.Instance;
+
+        if (manager == null)
+        {
+            manager = FindFirstObjectByType<BloodMoonEventManager>();
+        }
+
+        manager?.DevTriggerBloodMoon();
     }
 
     private void SpawnMimicChest()

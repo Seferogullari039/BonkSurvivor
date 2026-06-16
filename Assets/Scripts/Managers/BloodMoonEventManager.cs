@@ -105,6 +105,14 @@ public class BloodMoonEventManager : MonoBehaviour
         HideOverlayImmediate();
     }
 
+    public bool DevTriggerBloodMoon()
+    {
+        if (isActive || !MainMenuManager.IsRunActive) return false;
+
+        StartEvent();
+        return true;
+    }
+
     private void TryRollEvent()
     {
         if (cachedSpawner == null)
