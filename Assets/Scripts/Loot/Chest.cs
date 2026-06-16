@@ -1,0 +1,143 @@
+using TMPro;
+using UnityEngine;
+
+public class Chest : MonoBehaviour
+{
+    [SerializeField] private int basePrice = 10;
+    [SerializeField] private TMP_Text priceText;
+
+    private int price;
+    private bool isOpened;
+    private ChestRarity chestRarity = ChestRarity.Normal;
+
+    private void Start()
+    {
+        EnsurePriceText();
+        ApplyVisuals();
+        UpdatePrice();
+    }
+
+    public void Configure(ChestRarity rarity)
+    {
+        chestRarity = rarity;
+        ApplyVisuals();
+    }
+
+    private void ApplyVisuals()
+    {
+        ChestVisual chestVisual = GetComponent<ChestVisual>();
+
+        if (chestVisual != null)
+        {
+            chestVisual.ApplyRarity(chestRarity);
+            return;
+        }
+
+        Renderer chestRenderer = GetComponent<Renderer>();
+
+        if (chestRenderer != null)
+        {
+            Color chestColor = ChestRarityUtility.GetChestColor(chestRarity);
+            bool glow = chestRarity != ChestRarity.Normal;
+            float smoothness = chestRarity == ChestRarity.Epic ? 0.78f : 0.42f;
+            GameVisualStyle.ApplyColor(chestRenderer, chestColor, smoothness, glow);
+        }
+    }
+
+    private void EnsurePriceText()
+    {
+        if (priceText != null) return;
+
+        Transform existingPriceText = transform.Find("PriceText");
+
+        if (existingPriceText != null)
+        {
+            priceText = existingPriceText.GetComponent<TMP_Text>();
+
+            if (priceText != null) return;
+        }
+
+        GameObject priceTextObject = new GameObject("PriceText");
+        priceTextObject.transform.SetParent(transform, false);
+        priceTextObject.transform.localPosition = new Vector3(0f, 1.2f, 0f);
+        priceTextObject.transform.localScale = new Vector3(0.08f, 0.08f, 0.08f);
+
+        TextMeshPro textMeshPro = priceTextObject.AddComponent<TextMeshPro>();
+        textMeshPro.alignment = TextAlignmentOptions.Center;
+        textMeshPro.fontSize = 5f;
+        textMeshPro.color = Color.yellow;
+
+        priceText = textMeshPro;
+    }
+
+    public void ApplyBossDropTextColor()
+    {
+        EnsurePriceText();
+
+        if (priceText != null)
+        {
+            priceText.color = new Color(1f, 0.95f, 0.65f);
+        }
+
+        ChestVisual chestVisual = GetComponent<ChestVisual>();
+
+        if (chestVisual != null)
+        {
+            chestVisual.ApplyBossPresentation();
+        }
+    }
+
+    private void UpdatePrice()
+    {
+        float runTime = Time.timeSinceLevelLoad;
+
+        if (runTime < 30f)
+        {
+            price = basePrice;
+        }
+        else if (runTime < 60f)
+        {
+            price = 15;
+        }
+        else if (runTime < 90f)
+        {
+            price = 20;
+        }
+        else
+        {
+            price = 25;
+        }
+
+        if (priceText != null)
+        {
+            priceText.text = price + " Coin";
+        }
+    }
+
+    private void OnTriggerEnter(Collider other)
+    {
+        if (isOpened) return;
+        if (!other.CompareTag("Player")) return;
+
+        PlayerStats playerStats = other.GetComponent<PlayerStats>();
+
+        if (playerStats == null) return;
+
+        if (!playerStats.SpendCoins(price)) return;
+
+        isOpened = true;
+        AudioManager.Instance?.PlayChestOpen();
+
+        if (LevelUpManager.Instance != null)
+        {
+            LevelUpManager.Instance.OpenChestUpgradeMenu(chestRarity);
+        }
+
+        if (JuiceManager.Instance != null)
+        {
+            JuiceManager.Instance.PlayChestOpen(transform.position);
+        }
+
+        Destroy(gameObject);
+    }
+}
