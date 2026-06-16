@@ -22,9 +22,9 @@ public class StarterWeaponViewModel : MonoBehaviour
     private static bool weaponVisualDiagnosticsLogged;
     private static bool staffPrefabWarningLogged;
 
-    private static readonly Vector3 StaffPrefabLocalPosition = new Vector3(0.14f, -0.16f, 0.30f);
-    private static readonly Vector3 StaffPrefabLocalRotation = new Vector3(14f, -18f, 10f);
-    private static readonly Vector3 StaffPrefabLocalScale = new Vector3(1.05f, 1.05f, 1.05f);
+    private static readonly Vector3 StaffPrefabLocalPosition = new Vector3(0.32f, -0.34f, 0.24f);
+    private static readonly Vector3 StaffPrefabLocalRotation = new Vector3(20f, -38f, 18f);
+    private static readonly Vector3 StaffPrefabLocalScale = new Vector3(0.82f, 0.82f, 0.82f);
     private const string StaffPrefabAssetPath = "Assets/Prefabs/Weapons/Staff_ViewModel.prefab";
 
     private readonly HashSet<GameObject> defaultWeaponParts = new HashSet<GameObject>();
