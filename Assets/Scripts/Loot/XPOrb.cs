@@ -9,6 +9,11 @@ public class XPOrb : MonoBehaviour
 
     private Transform player;
 
+    private void Awake()
+    {
+        PickupVisual.Apply(transform, PickupVisualType.XPOrb);
+    }
+
     private void Start()
     {
         GameObject playerObject = GameObject.Find("Player");

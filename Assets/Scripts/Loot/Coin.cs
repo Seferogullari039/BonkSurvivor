@@ -9,6 +9,11 @@ public class Coin : MonoBehaviour
 
     private Transform player;
 
+    private void Awake()
+    {
+        PickupVisual.Apply(transform, PickupVisualType.Coin);
+    }
+
     private void Start()
     {
         GameObject playerObject = GameObject.Find("Player");
