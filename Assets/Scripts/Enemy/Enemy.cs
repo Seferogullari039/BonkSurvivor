@@ -75,7 +75,15 @@ public class Enemy : MonoBehaviour
         if (enemyRenderer != null)
         {
             bool glow = type == EnemyType.Elite || type == EnemyType.MiniBoss || type == EnemyType.DragonBoss;
-            float smoothness = type == EnemyType.Elite ? 0.88f : type == EnemyType.DragonBoss ? 0.72f : 0.42f;
+            float smoothness = type switch
+            {
+                EnemyType.Elite => 0.88f,
+                EnemyType.MiniBoss => 0.78f,
+                EnemyType.DragonBoss => 0.72f,
+                EnemyType.Fast => 0.48f,
+                EnemyType.Tank => 0.38f,
+                _ => 0.44f
+            };
             GameVisualStyle.ApplyColor(enemyRenderer, enemyColor, smoothness, glow);
             baseVisualColor = enemyColor;
             baseVisualSmoothness = smoothness;

@@ -4,12 +4,12 @@ using UnityEngine;
 [DefaultExecutionOrder(100)]
 public class EnemyHitFeedback : MonoBehaviour
 {
-    private const float HitFlashDuration = 0.1f;
+    private const float HitFlashDuration = 0.12f;
     private const float KnockbackDuration = 0.08f;
     private const float NormalKnockbackDistance = 0.35f;
     private const float BossKnockbackDistance = 0.05f;
 
-    private static readonly Color HitFlashColor = new Color(1f, 0.28f, 0.22f);
+    private static readonly Color HitFlashColor = new Color(1f, 0.58f, 0.48f);
     private static readonly Color DeathBurstColor = new Color(0.95f, 0.25f, 0.2f);
     private static MaterialPropertyBlock sharedFlashBlock;
 
@@ -27,9 +27,14 @@ public class EnemyHitFeedback : MonoBehaviour
 
     public void PlayHit(Vector3 hitSource)
     {
-        if (flashRenderers == null || flashRenderers.Length == 0)
+        if (NeedsRendererRefresh())
         {
             CacheRenderers();
+        }
+
+        if (flashRenderers == null || flashRenderers.Length == 0)
+        {
+            return;
         }
 
         hitFlashTimer = HitFlashDuration;
@@ -180,6 +185,14 @@ public class EnemyHitFeedback : MonoBehaviour
         }
 
         knockbackRoutine = null;
+    }
+
+    private bool NeedsRendererRefresh()
+    {
+        Renderer[] currentRenderers = GetComponentsInChildren<Renderer>(false);
+        return flashRenderers == null
+            || baseColors == null
+            || currentRenderers.Length != flashRenderers.Length;
     }
 
     private void CacheRenderers()

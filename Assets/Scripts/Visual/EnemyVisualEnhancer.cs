@@ -5,14 +5,15 @@ public class EnemyVisualEnhancer : MonoBehaviour
 {
     private const string VisualRootName = "EnemyVisualRoot";
 
-    private static readonly Color EyeColor = new Color(0.95f, 0.92f, 0.35f);
-    private static readonly Color FrontGlowColor = new Color(1f, 0.35f, 0.2f);
-    private static readonly Color ArmorDarkRed = new Color(0.42f, 0.08f, 0.1f);
-    private static readonly Color ArmorPlateColor = new Color(0.28f, 0.06f, 0.08f);
-    private static readonly Color EliteRingColor = new Color(1f, 0.82f, 0.18f);
-    private static readonly Color BossHornColor = new Color(0.35f, 0.05f, 0.28f);
-    private static readonly Color BossArmorColor = new Color(0.22f, 0.04f, 0.18f);
-    private static readonly Color FastWingColor = new Color(0.95f, 0.42f, 0.12f);
+    private static readonly Color EyeColor = new Color(1f, 0.96f, 0.42f);
+    private static readonly Color FrontGlowColor = new Color(1f, 0.42f, 0.24f);
+    private static readonly Color ArmorDarkRed = new Color(0.34f, 0.08f, 0.14f);
+    private static readonly Color ArmorPlateColor = new Color(0.24f, 0.08f, 0.18f);
+    private static readonly Color EliteRingColor = new Color(1f, 0.86f, 0.12f);
+    private static readonly Color BossRingColor = new Color(1f, 0.42f, 0.62f);
+    private static readonly Color BossHornColor = new Color(0.42f, 0.08f, 0.32f);
+    private static readonly Color BossArmorColor = new Color(0.18f, 0.04f, 0.16f);
+    private static readonly Color FastWingColor = new Color(1f, 0.48f, 0.1f);
 
     private Enemy enemy;
     private Renderer rootRenderer;
@@ -64,7 +65,12 @@ public class EnemyVisualEnhancer : MonoBehaviour
     {
         if (rootRenderer == null || bodyRenderer == null) return;
 
-        Color rootColor = rootRenderer.material.color;
+        Material rootMaterial = rootRenderer.sharedMaterial;
+        if (rootMaterial == null) return;
+
+        Color rootColor = rootMaterial.HasProperty("_BaseColor")
+            ? rootMaterial.GetColor("_BaseColor")
+            : rootMaterial.color;
 
         if (IsTelegraphFlash(rootColor))
         {
@@ -110,9 +116,9 @@ public class EnemyVisualEnhancer : MonoBehaviour
     private void BuildNormalVisuals(Transform visualRoot)
     {
         bodyBaseColor = GameVisualPalette.NormalEnemy;
-        bodyRenderer = CreateBody(visualRoot, PrimitiveType.Capsule, Vector3.zero, new Vector3(0.82f, 0.58f, 0.82f), bodyBaseColor, 0.42f, false);
-        CreatePart(visualRoot, "FrontMarker", PrimitiveType.Cube, new Vector3(0f, 0f, 0.42f), new Vector3(0.18f, 0.12f, 0.08f), FrontGlowColor, 0.62f, true, 0.35f);
-        CreateEyes(visualRoot, 0.34f, 0.14f, 0.08f);
+        bodyRenderer = CreateBody(visualRoot, PrimitiveType.Capsule, Vector3.zero, new Vector3(0.84f, 0.6f, 0.84f), bodyBaseColor, 0.44f, false);
+        CreatePart(visualRoot, "FrontMarker", PrimitiveType.Cube, new Vector3(0f, 0f, 0.44f), new Vector3(0.2f, 0.14f, 0.1f), FrontGlowColor, 0.62f, true, 0.42f);
+        CreateEyes(visualRoot, 0.36f, 0.15f, 0.085f);
     }
 
     private void BuildFastVisuals(Transform visualRoot)
@@ -128,10 +134,10 @@ public class EnemyVisualEnhancer : MonoBehaviour
 
     private void BuildTankVisuals(Transform visualRoot)
     {
-        bodyBaseColor = new Color(0.52f, 0.1f, 0.12f);
+        bodyBaseColor = GameVisualPalette.TankEnemy;
         bodyGlow = false;
-        bodySmoothness = 0.38f;
-        bodyRenderer = CreateBody(visualRoot, PrimitiveType.Cube, new Vector3(0f, 0.02f, 0f), new Vector3(0.92f, 0.72f, 0.92f), bodyBaseColor, bodySmoothness, bodyGlow);
+        bodySmoothness = 0.4f;
+        bodyRenderer = CreateBody(visualRoot, PrimitiveType.Cube, new Vector3(0f, 0.02f, 0f), new Vector3(0.96f, 0.76f, 0.96f), bodyBaseColor, bodySmoothness, bodyGlow);
         CreatePart(visualRoot, "ArmorTop", PrimitiveType.Cube, new Vector3(0f, 0.34f, 0f), new Vector3(0.72f, 0.12f, 0.72f), ArmorPlateColor, 0.45f, false);
         CreatePart(visualRoot, "ArmorFront", PrimitiveType.Cube, new Vector3(0f, 0.02f, 0.38f), new Vector3(0.62f, 0.48f, 0.12f), ArmorDarkRed, 0.42f, false);
         CreatePart(visualRoot, "ArmorSide_L", PrimitiveType.Cube, new Vector3(-0.42f, 0.02f, 0f), new Vector3(0.12f, 0.42f, 0.62f), ArmorPlateColor, 0.4f, false);
@@ -143,20 +149,22 @@ public class EnemyVisualEnhancer : MonoBehaviour
     {
         bodyBaseColor = GameVisualPalette.EliteEnemy;
         bodyGlow = true;
-        bodySmoothness = 0.82f;
-        bodyRenderer = CreateBody(visualRoot, PrimitiveType.Capsule, Vector3.zero, new Vector3(0.88f, 0.66f, 0.88f), bodyBaseColor, bodySmoothness, bodyGlow);
-        CreatePart(visualRoot, "EliteRing", PrimitiveType.Cylinder, new Vector3(0f, 0.02f, 0f), Quaternion.Euler(90f, 0f, 0f), new Vector3(1.15f, 0.015f, 1.15f), EliteRingColor, 0.85f, true, 0.45f);
-        CreatePart(visualRoot, "EliteCrown", PrimitiveType.Cube, new Vector3(0f, 0.34f, 0.12f), new Vector3(0.22f, 0.08f, 0.14f), EliteRingColor, 0.78f, true, 0.4f);
-        CreateEyes(visualRoot, 0.34f, 0.12f, 0.08f);
+        bodySmoothness = 0.86f;
+        bodyRenderer = CreateBody(visualRoot, PrimitiveType.Capsule, Vector3.zero, new Vector3(0.92f, 0.68f, 0.92f), bodyBaseColor, bodySmoothness, bodyGlow);
+        CreatePart(visualRoot, "EliteRing", PrimitiveType.Cylinder, new Vector3(0f, 0.02f, 0f), Quaternion.Euler(90f, 0f, 0f), new Vector3(1.22f, 0.018f, 1.22f), EliteRingColor, 0.88f, true, 0.55f);
+        CreatePart(visualRoot, "EliteRingInner", PrimitiveType.Cylinder, new Vector3(0f, 0.03f, 0f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.82f, 0.012f, 0.82f), EliteRingColor, 0.82f, true, 0.35f);
+        CreatePart(visualRoot, "EliteCrown", PrimitiveType.Cube, new Vector3(0f, 0.36f, 0.14f), new Vector3(0.24f, 0.1f, 0.16f), EliteRingColor, 0.8f, true, 0.48f);
+        CreateEyes(visualRoot, 0.36f, 0.13f, 0.085f);
     }
 
     private void BuildBossVisuals(Transform visualRoot)
     {
         bodyBaseColor = GameVisualPalette.MiniBoss;
         bodyGlow = true;
-        bodySmoothness = 0.72f;
-        bodyRenderer = CreateBody(visualRoot, PrimitiveType.Capsule, new Vector3(0f, 0.04f, 0f), new Vector3(1f, 0.78f, 1f), bodyBaseColor, bodySmoothness, bodyGlow);
-        CreatePart(visualRoot, "BossArmorFront", PrimitiveType.Cube, new Vector3(0f, 0.04f, 0.42f), new Vector3(0.72f, 0.56f, 0.16f), BossArmorColor, 0.48f, false);
+        bodySmoothness = 0.78f;
+        bodyRenderer = CreateBody(visualRoot, PrimitiveType.Capsule, new Vector3(0f, 0.04f, 0f), new Vector3(1.04f, 0.82f, 1.04f), bodyBaseColor, bodySmoothness, bodyGlow);
+        CreatePart(visualRoot, "BossAuraRing", PrimitiveType.Cylinder, new Vector3(0f, -0.1f, 0f), Quaternion.Euler(90f, 0f, 0f), new Vector3(1.42f, 0.022f, 1.42f), BossRingColor, 0.88f, true, 0.62f);
+        CreatePart(visualRoot, "BossArmorFront", PrimitiveType.Cube, new Vector3(0f, 0.04f, 0.44f), new Vector3(0.76f, 0.58f, 0.18f), BossArmorColor, 0.48f, false);
         CreatePart(visualRoot, "BossArmorSide_L", PrimitiveType.Cube, new Vector3(-0.46f, 0.04f, 0f), new Vector3(0.14f, 0.52f, 0.72f), BossArmorColor, 0.45f, false);
         CreatePart(visualRoot, "BossArmorSide_R", PrimitiveType.Cube, new Vector3(0.46f, 0.04f, 0f), new Vector3(0.14f, 0.52f, 0.72f), BossArmorColor, 0.45f, false);
         CreatePart(visualRoot, "Horn_L", PrimitiveType.Cylinder, new Vector3(-0.18f, 0.42f, 0.18f), Quaternion.Euler(-35f, 0f, -18f), new Vector3(0.08f, 0.22f, 0.08f), BossHornColor, 0.52f, true, 0.28f);
