@@ -22,9 +22,9 @@ public class StarterWeaponViewModel : MonoBehaviour
     private static bool weaponVisualDiagnosticsLogged;
     private static bool staffPrefabWarningLogged;
 
-    private static readonly Vector3 StaffPrefabLocalPosition = new Vector3(0.04f, -0.06f, 0.08f);
-    private static readonly Vector3 StaffPrefabLocalRotation = new Vector3(18f, -12f, 10f);
-    private static readonly float StaffPrefabLocalScale = 1f;
+    private static readonly Vector3 StaffPrefabLocalPosition = new Vector3(0.14f, -0.16f, 0.30f);
+    private static readonly Vector3 StaffPrefabLocalRotation = new Vector3(14f, -18f, 10f);
+    private static readonly Vector3 StaffPrefabLocalScale = new Vector3(1.05f, 1.05f, 1.05f);
     private const string StaffPrefabAssetPath = "Assets/Prefabs/Weapons/Staff_ViewModel.prefab";
 
     private readonly HashSet<GameObject> defaultWeaponParts = new HashSet<GameObject>();
@@ -344,7 +344,36 @@ public class StarterWeaponViewModel : MonoBehaviour
                 break;
         }
 
+        if (usingStaffPrefabVisual)
+        {
+            ApplyStaffPrefabContainerPose(visualRoot);
+        }
+
         EnsureWeaponVisualVisible();
+    }
+
+    private static void ApplyStaffPrefabContainerPose(Transform visualRoot)
+    {
+        if (visualRoot == null)
+        {
+            return;
+        }
+
+        visualRoot.localPosition = Vector3.zero;
+        visualRoot.localRotation = Quaternion.identity;
+        visualRoot.localScale = Vector3.one;
+    }
+
+    private static void ApplyStaffPrefabInstancePose(Transform instanceTransform)
+    {
+        if (instanceTransform == null)
+        {
+            return;
+        }
+
+        instanceTransform.localPosition = StaffPrefabLocalPosition;
+        instanceTransform.localRotation = Quaternion.Euler(StaffPrefabLocalRotation);
+        instanceTransform.localScale = StaffPrefabLocalScale;
     }
 
     private void EnsureWeaponVisualVisible()
@@ -358,9 +387,17 @@ public class StarterWeaponViewModel : MonoBehaviour
         SetLayerRecursively(activeVisualRoot, 0);
 
         Transform visualTransform = activeVisualRoot.transform;
-        visualTransform.localPosition = VisibleWeaponLocalPosition;
-        visualTransform.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
-        visualTransform.localScale = usingStaffPrefabVisual ? Vector3.one : VisibleWeaponLocalScale;
+
+        if (usingStaffPrefabVisual)
+        {
+            ApplyStaffPrefabContainerPose(visualTransform);
+        }
+        else
+        {
+            visualTransform.localPosition = VisibleWeaponLocalPosition;
+            visualTransform.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
+            visualTransform.localScale = VisibleWeaponLocalScale;
+        }
 
         Renderer[] renderers = activeVisualRoot.GetComponentsInChildren<Renderer>(true);
 
@@ -383,11 +420,11 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             Bounds bounds = ComputeCombinedBounds(renderers);
 
-            if (IsVisualClipping(camera, bounds))
+            if (IsVisualClipping(camera, bounds) && !usingStaffPrefabVisual)
             {
                 visualTransform.localPosition = VisibleWeaponLocalPosition;
                 visualTransform.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
-                visualTransform.localScale = usingStaffPrefabVisual ? Vector3.one : VisibleWeaponLocalScale;
+                visualTransform.localScale = VisibleWeaponLocalScale;
             }
         }
 
@@ -663,13 +700,11 @@ public class StarterWeaponViewModel : MonoBehaviour
         instance.name = "StaffViewModelPrefab";
 
         Transform instanceTransform = instance.transform;
-        instanceTransform.localPosition = StaffPrefabLocalPosition;
-        instanceTransform.localRotation = Quaternion.Euler(StaffPrefabLocalRotation);
-        instanceTransform.localScale = Vector3.one * StaffPrefabLocalScale;
+        ApplyStaffPrefabInstancePose(instanceTransform);
 
         DisableStaffPrefabPhysics(instance);
         SetLayerRecursively(instance, 0);
-        EnsureStaffVisualMaterials(instanceTransform);
+        RepairStaffPrefabMissingMaterials(instanceTransform);
 
         CacheStaffSpawnPoints(instanceTransform);
         CacheStaffGlowRenderers(instanceTransform);
@@ -822,7 +857,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         staffGlowRenderers = glowRenderers.ToArray();
     }
 
-    private void EnsureStaffVisualMaterials(Transform staffRoot)
+    private void RepairStaffPrefabMissingMaterials(Transform staffRoot)
     {
         if (staffRoot == null)
         {
