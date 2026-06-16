@@ -33,6 +33,7 @@ public class VoidPortalController : MonoBehaviour
         }
 
         visual.BuildVisual();
+        VoidPortalFeedback.PlayOpenFeedback(transform.position);
     }
 
     private void Update()
@@ -58,6 +59,10 @@ public class VoidPortalController : MonoBehaviour
         if (enemySpawner.TrySpawnPortalEnemy(transform.position))
         {
             enemiesSpawned++;
+
+            Vector2 offset = Random.insideUnitCircle * Random.Range(2f, 5f);
+            Vector3 flashPosition = transform.position + new Vector3(offset.x, 0.5f, offset.y);
+            VoidPortalFeedback.PlayEnemySpawnFlash(flashPosition);
         }
 
         nextSpawnTime = Time.time + spawnInterval;
@@ -68,6 +73,9 @@ public class VoidPortalController : MonoBehaviour
         if (isClosed) return;
 
         isClosed = true;
+        Vector3 closePosition = transform.position;
+        VoidPortalFeedback.PlayCloseFeedback(closePosition);
+        eventManager?.ShowCloseWarning();
         VoidPortalSpawnTracker.UnregisterActive();
         eventManager?.NotifyPortalClosed(this);
         Destroy(gameObject);

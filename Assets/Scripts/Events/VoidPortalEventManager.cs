@@ -184,7 +184,7 @@ public class VoidPortalEventManager : MonoBehaviour
 
         VoidPortalSpawnTracker.RegisterActive();
         activePortal = controller;
-        ShowWarning();
+        ShowOpenWarning();
         return true;
     }
 
@@ -205,7 +205,17 @@ public class VoidPortalEventManager : MonoBehaviour
         return spawnPosition;
     }
 
-    private void ShowWarning()
+    private void ShowOpenWarning()
+    {
+        ShowMessage("VOID PORTAL OPENS", WarningTextColor, WarningDuration);
+    }
+
+    public void ShowCloseWarning()
+    {
+        ShowMessage("VOID PORTAL CLOSED", WarningTextColor, 2.1f);
+    }
+
+    private void ShowMessage(string message, Color textColor, float duration)
     {
         if (warningText == null) return;
 
@@ -214,16 +224,16 @@ public class VoidPortalEventManager : MonoBehaviour
             StopCoroutine(warningRoutine);
         }
 
-        warningRoutine = StartCoroutine(WarningRoutine());
+        warningRoutine = StartCoroutine(WarningRoutine(message, textColor, duration));
     }
 
-    private IEnumerator WarningRoutine()
+    private IEnumerator WarningRoutine(string message, Color textColor, float duration)
     {
         if (warningText == null) yield break;
 
         warningText.gameObject.SetActive(true);
-        warningText.text = "VOID PORTAL OPENS";
-        Color color = WarningTextColor;
+        warningText.text = message;
+        Color color = textColor;
         color.a = 0f;
         warningText.color = color;
 
@@ -243,7 +253,7 @@ public class VoidPortalEventManager : MonoBehaviour
 
         float holdElapsed = 0f;
         const float fadeOutDuration = 0.45f;
-        float holdDuration = WarningDuration - fadeInDuration - fadeOutDuration;
+        float holdDuration = Mathf.Max(0f, duration - fadeInDuration - fadeOutDuration);
 
         while (holdElapsed < holdDuration)
         {
