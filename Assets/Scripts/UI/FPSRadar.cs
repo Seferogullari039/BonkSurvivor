@@ -44,7 +44,7 @@ public class FPSRadar : MonoBehaviour
 
     private void BuildRadarUi()
     {
-        Canvas canvas = FindFirstObjectByType<Canvas>();
+        Canvas canvas = UiLayoutUtility.GetGameplayCanvas();
 
         if (canvas == null) return;
 

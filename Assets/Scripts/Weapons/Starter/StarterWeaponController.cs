@@ -81,12 +81,17 @@ public class StarterWeaponController : MonoBehaviour
 
     private void Start()
     {
-        ApplyWeapon(activeWeapon);
+        weaponViewModel?.PrepareSelectedWeapon(activeWeapon);
     }
 
     public void RefreshWeaponVisual()
     {
-        weaponViewModel?.RefreshCurrentWeapon();
+        if (weaponViewModel == null)
+        {
+            return;
+        }
+
+        weaponViewModel.ApplyWeapon(activeWeapon);
     }
 
     private void Update()

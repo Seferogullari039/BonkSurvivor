@@ -107,7 +107,7 @@ public class FPSCrosshair : MonoBehaviour
 
     private void BuildCrosshairUi()
     {
-        Canvas canvas = FindFirstObjectByType<Canvas>();
+        Canvas canvas = UiLayoutUtility.GetGameplayCanvas();
 
         if (canvas == null) return;
 

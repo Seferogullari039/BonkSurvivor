@@ -4,8 +4,8 @@ public class FPSViewModel : MonoBehaviour
 {
     public static FPSViewModel Instance { get; private set; }
 
-    private static readonly Vector3 RootLocalPosition = new Vector3(0.35f, -0.35f, 0.65f);
-    private static readonly Vector3 RootLocalEuler = new Vector3(4f, -10f, -2f);
+    private static readonly Vector3 RootLocalPosition = new Vector3(0f, -0.35f, 0.65f);
+    private static readonly Vector3 WeaponMountLocalPosition = Vector3.zero;
 
     private static readonly Color UpperArmColor = new Color(0.76f, 0.62f, 0.52f);
     private static readonly Color ForearmColor = new Color(0.72f, 0.58f, 0.48f);
@@ -41,11 +41,6 @@ public class FPSViewModel : MonoBehaviour
 
     private void Start()
     {
-        if (TryGetViewModelCamera(out Camera camera))
-        {
-            BuildViewModel(camera);
-        }
-
         ApplyCameraNearClip();
     }
 
@@ -69,9 +64,28 @@ public class FPSViewModel : MonoBehaviour
             return;
         }
 
-        if (!IsViewModelHierarchyValid(camera))
+        if (!MainMenuManager.IsRunActive)
         {
-            BuildViewModel(camera);
+            if (viewModelRoot != null && viewModelRoot.gameObject.activeSelf)
+            {
+                viewModelRoot.gameObject.SetActive(false);
+            }
+
+            return;
+        }
+
+        ResolveViewModelReferences(camera);
+
+        if (!IsViewModelParentChainValid(camera))
+        {
+            if (viewModelRoot == null)
+            {
+                BuildViewModel(camera);
+            }
+            else
+            {
+                RepairViewModelTransformChain(camera);
+            }
         }
 
         if (viewModelRoot == null)
@@ -79,7 +93,7 @@ public class FPSViewModel : MonoBehaviour
             return;
         }
 
-        bool showViewModel = ShouldShowViewModel();
+        bool showViewModel = MainMenuManager.IsRunActive;
 
         if (viewModelRoot.gameObject.activeSelf != showViewModel)
         {
@@ -117,24 +131,52 @@ public class FPSViewModel : MonoBehaviour
         dashOffset = new Vector3(0.05f, -0.07f, 0.02f);
     }
 
-    public void RefreshForGameplayStart()
+    public void EnsureViewModelVisible()
     {
         if (!TryGetViewModelCamera(out Camera camera))
         {
             return;
         }
 
-        if (!IsViewModelHierarchyValid(camera))
+        ResolveViewModelReferences(camera);
+
+        if (viewModelRoot == null)
         {
             BuildViewModel(camera);
         }
-
-        if (viewModelRoot != null)
+        else
         {
-            viewModelRoot.gameObject.SetActive(ShouldShowViewModel());
+            RepairViewModelTransformChain(camera);
+        }
+
+        if (viewModelRoot == null)
+        {
+            return;
+        }
+
+        viewModelRoot.gameObject.SetActive(true);
+
+        if (weaponMountTransform != null)
+        {
+            weaponMountTransform.gameObject.SetActive(true);
         }
 
         ApplyCameraNearClip();
+        Debug.Log("[Recovery] ViewModel visible");
+        StarterWeaponViewModel.NotifyViewModelRebuilt();
+    }
+
+    public void HideViewModelForMenu()
+    {
+        if (viewModelRoot != null)
+        {
+            viewModelRoot.gameObject.SetActive(false);
+        }
+    }
+
+    public void RefreshForGameplayStart()
+    {
+        EnsureViewModelVisible();
     }
 
     private static bool ShouldShowViewModel()
@@ -149,9 +191,39 @@ public class FPSViewModel : MonoBehaviour
         return camera != null && camera.enabled;
     }
 
-    private bool IsViewModelHierarchyValid(Camera camera)
+    private void ResolveViewModelReferences(Camera camera)
     {
+        if (camera == null)
+        {
+            return;
+        }
+
         if (viewModelRoot == null)
+        {
+            Transform existingRoot = camera.transform.Find("ViewModelRoot");
+
+            if (existingRoot == null)
+            {
+                existingRoot = FindTransformByName("ViewModelRoot");
+            }
+
+            viewModelRoot = existingRoot;
+        }
+
+        if (weaponMountTransform == null && viewModelRoot != null)
+        {
+            weaponMountTransform = viewModelRoot.Find("WeaponMount");
+        }
+
+        if (weaponMountTransform == null)
+        {
+            weaponMountTransform = FindTransformByName("WeaponMount");
+        }
+    }
+
+    private bool IsViewModelParentChainValid(Camera camera)
+    {
+        if (camera == null || viewModelRoot == null || weaponMountTransform == null)
         {
             return false;
         }
@@ -161,12 +233,99 @@ public class FPSViewModel : MonoBehaviour
             return false;
         }
 
-        if (weaponMountTransform == null)
+        return weaponMountTransform.parent == viewModelRoot;
+    }
+
+    private bool IsViewModelTransformChainValid(Camera camera)
+    {
+        if (!IsViewModelParentChainValid(camera))
         {
             return false;
         }
 
-        return weaponMountTransform.parent == viewModelRoot;
+        if ((viewModelRoot.localPosition - RootLocalPosition).sqrMagnitude > 0.0001f)
+        {
+            return false;
+        }
+
+        return weaponMountTransform.localPosition.sqrMagnitude <= 0.0001f;
+    }
+
+    private void RepairViewModelTransformChain(Camera camera)
+    {
+        if (camera == null)
+        {
+            return;
+        }
+
+        ResolveViewModelReferences(camera);
+
+        if (viewModelRoot == null)
+        {
+            BuildViewModel(camera);
+            return;
+        }
+
+        viewModelRoot.SetParent(camera.transform, false);
+        viewModelRoot.localPosition = RootLocalPosition;
+        viewModelRoot.localRotation = Quaternion.identity;
+        viewModelRoot.localScale = Vector3.one;
+
+        baseLocalPosition = RootLocalPosition;
+        baseLocalRotation = Quaternion.identity;
+
+        if (weaponMountTransform == null)
+        {
+            weaponMountTransform = viewModelRoot.Find("WeaponMount");
+        }
+
+        if (weaponMountTransform == null)
+        {
+            weaponMountTransform = FindTransformByName("WeaponMount");
+        }
+
+        if (weaponMountTransform == null)
+        {
+            weaponMountTransform = CreateMount(
+                viewModelRoot,
+                "WeaponMount",
+                WeaponMountLocalPosition,
+                Quaternion.identity);
+        }
+        else
+        {
+            weaponMountTransform.SetParent(viewModelRoot, false);
+            weaponMountTransform.localPosition = WeaponMountLocalPosition;
+            weaponMountTransform.localRotation = Quaternion.identity;
+            weaponMountTransform.localScale = Vector3.one;
+        }
+
+        Transform weaponVisual = weaponMountTransform.Find("StarterWeaponVisual");
+
+        if (weaponVisual != null && weaponVisual.parent != weaponMountTransform)
+        {
+            weaponVisual.SetParent(weaponMountTransform, false);
+        }
+
+        viewModelRoot.gameObject.SetActive(true);
+        weaponMountTransform.gameObject.SetActive(true);
+    }
+
+    private static Transform FindTransformByName(string objectName)
+    {
+        Transform[] transforms = Object.FindObjectsByType<Transform>(FindObjectsSortMode.None);
+
+        for (int i = 0; i < transforms.Length; i++)
+        {
+            Transform candidate = transforms[i];
+
+            if (candidate != null && candidate.name == objectName)
+            {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 
     private void BuildViewModel(Camera camera)
@@ -191,11 +350,11 @@ public class FPSViewModel : MonoBehaviour
         viewModelRoot = rootObject.transform;
         viewModelRoot.SetParent(camera.transform, false);
         viewModelRoot.localPosition = RootLocalPosition;
-        viewModelRoot.localRotation = Quaternion.Euler(RootLocalEuler);
+        viewModelRoot.localRotation = Quaternion.identity;
         viewModelRoot.localScale = Vector3.one;
 
         baseLocalPosition = RootLocalPosition;
-        baseLocalRotation = Quaternion.Euler(RootLocalEuler);
+        baseLocalRotation = Quaternion.identity;
 
         CreatePart(
             "UpperArm",
@@ -250,8 +409,8 @@ public class FPSViewModel : MonoBehaviour
         weaponMountTransform = CreateMount(
             viewModelRoot,
             "WeaponMount",
-            new Vector3(0.03f, -0.02f, 0.05f),
-            Quaternion.Euler(-2f, -4f, 0f));
+            WeaponMountLocalPosition,
+            Quaternion.identity);
 
         CreatePart(
             "WeaponBody",
@@ -317,7 +476,8 @@ public class FPSViewModel : MonoBehaviour
             false,
             0.45f);
 
-        viewModelRoot.gameObject.SetActive(ShouldShowViewModel());
+        viewModelRoot.gameObject.SetActive(true);
+        weaponMountTransform.gameObject.SetActive(true);
         StarterWeaponViewModel.NotifyViewModelRebuilt();
     }
 

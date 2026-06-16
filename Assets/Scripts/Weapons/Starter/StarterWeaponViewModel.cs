@@ -14,17 +14,12 @@ public class StarterWeaponViewModel : MonoBehaviour
     private static readonly Color SwordGuardColor = new Color(0.55f, 0.45f, 0.2f);
     private static readonly Color SwordGripColor = new Color(0.22f, 0.12f, 0.08f);
 
-    private static readonly Vector3 BowWeaponLocalPosition = Vector3.zero;
-    private static readonly Vector3 BowWeaponLocalRotation = Vector3.zero;
-    private static readonly float BowWeaponLocalScale = 1f;
-
-    private static readonly Vector3 StaffWeaponLocalPosition = Vector3.zero;
-    private static readonly Vector3 StaffWeaponLocalRotation = Vector3.zero;
-    private static readonly float StaffWeaponLocalScale = 1f;
-
-    private static readonly Vector3 SwordWeaponLocalPosition = Vector3.zero;
-    private static readonly Vector3 SwordWeaponLocalRotation = Vector3.zero;
-    private static readonly float SwordWeaponLocalScale = 1f;
+    private static readonly Vector3 VisibleWeaponLocalPosition = new Vector3(0.34f, -0.16f, 0.58f);
+    private static readonly Vector3 VisibleWeaponLocalRotation = new Vector3(8f, -24f, 6f);
+    private static readonly Vector3 VisibleWeaponLocalScale = new Vector3(2.8f, 2.8f, 2.8f);
+    private const float MinVisualBoundsExtent = 0.06f;
+    private const float MaxVisualScaleMultiplier = 3f;
+    private static bool weaponVisualDiagnosticsLogged;
 
     private static readonly Vector3 StaffPrefabLocalPosition = new Vector3(0.04f, -0.06f, 0.08f);
     private static readonly Vector3 StaffPrefabLocalRotation = new Vector3(18f, -12f, 10f);
@@ -84,7 +79,35 @@ public class StarterWeaponViewModel : MonoBehaviour
     {
         pendingWeapon = weaponType;
         needsApply = true;
-        TryApplyPending();
+
+        if (MainMenuManager.IsRunActive)
+        {
+            TryApplyPending();
+        }
+    }
+
+    public void PrepareSelectedWeapon(StarterWeaponType weaponType)
+    {
+        pendingWeapon = weaponType;
+        needsApply = true;
+    }
+
+    public void HideWeaponVisualForMenu()
+    {
+        if (activeVisualRoot != null)
+        {
+            Destroy(activeVisualRoot);
+            activeVisualRoot = null;
+        }
+
+        bowStringTransform = null;
+        staffOrbRenderer = null;
+        staffGlowRenderers = System.Array.Empty<Renderer>();
+        fireballSpawnPoint = null;
+        meteorCastPoint = null;
+        usingStaffPrefabVisual = false;
+        weaponVisualDiagnosticsLogged = false;
+        needsApply = true;
     }
 
     public void RefreshCurrentWeapon()
@@ -92,6 +115,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         pendingWeapon = currentWeapon;
         needsApply = true;
         TryApplyPending();
+        LogRecoveryWeaponVisual();
     }
 
     public void PlayBowStringKick()
@@ -146,11 +170,16 @@ public class StarterWeaponViewModel : MonoBehaviour
 
         bowStringKickTimer -= Time.deltaTime;
         float kick = Mathf.Sin(Mathf.Clamp01(bowStringKickTimer / 0.12f) * Mathf.PI) * 0.035f;
-        bowStringTransform.localPosition = new Vector3(kick, 0f, 0.062f);
+        bowStringTransform.localPosition = new Vector3(-0.015f + kick, 0f, 0f);
     }
 
     private void TryApplyPending()
     {
+        if (!MainMenuManager.IsRunActive)
+        {
+            return;
+        }
+
         EnsureWeaponMount();
 
         if (weaponMount == null)
@@ -243,9 +272,27 @@ public class StarterWeaponViewModel : MonoBehaviour
     {
         foreach (GameObject part in defaultWeaponParts)
         {
-            if (part != null)
+            if (part != null && part.name != "StarterWeaponVisual")
             {
                 part.SetActive(false);
+            }
+        }
+    }
+
+    private void ClearStarterWeaponVisualChildren()
+    {
+        if (weaponMount == null)
+        {
+            return;
+        }
+
+        for (int i = weaponMount.childCount - 1; i >= 0; i--)
+        {
+            Transform child = weaponMount.GetChild(i);
+
+            if (child != null && child.name == "StarterWeaponVisual")
+            {
+                Destroy(child.gameObject);
             }
         }
     }
@@ -272,68 +319,325 @@ public class StarterWeaponViewModel : MonoBehaviour
             return;
         }
 
+        ClearStarterWeaponVisualChildren();
+
         activeVisualRoot = new GameObject("StarterWeaponVisual");
-        activeVisualRoot.transform.SetParent(weaponMount, false);
-        ApplyWeaponTransform(activeVisualRoot.transform, currentWeapon);
+        activeVisualRoot.layer = 0;
+
+        Transform visualRoot = activeVisualRoot.transform;
+        visualRoot.SetParent(weaponMount, false);
+        visualRoot.localPosition = VisibleWeaponLocalPosition;
+        visualRoot.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
+        visualRoot.localScale = VisibleWeaponLocalScale;
 
         switch (currentWeapon)
         {
             case StarterWeaponType.HunterBow:
-                BuildBowVisual(activeVisualRoot.transform);
+                BuildBowVisual(visualRoot);
                 break;
             case StarterWeaponType.FireStaff:
-                BuildStaffVisual(activeVisualRoot.transform);
+                BuildStaffVisual(visualRoot);
                 break;
             case StarterWeaponType.KnightSword:
-                BuildSwordVisual(activeVisualRoot.transform);
+                BuildSwordVisual(visualRoot);
                 break;
+        }
+
+        EnsureWeaponVisualVisible();
+    }
+
+    private void EnsureWeaponVisualVisible()
+    {
+        if (activeVisualRoot == null || weaponMount == null)
+        {
+            return;
         }
 
         activeVisualRoot.SetActive(true);
+        SetLayerRecursively(activeVisualRoot, 0);
+
+        Transform visualTransform = activeVisualRoot.transform;
+        visualTransform.localPosition = VisibleWeaponLocalPosition;
+        visualTransform.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
+        visualTransform.localScale = VisibleWeaponLocalScale;
+
+        Renderer[] renderers = activeVisualRoot.GetComponentsInChildren<Renderer>(true);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null)
+            {
+                renderers[i].enabled = true;
+                EnsureOpaqueMaterial(renderers[i]);
+            }
+        }
+
+        Camera camera = Camera.main;
+
+        if (camera != null)
+        {
+            Bounds bounds = ComputeCombinedBounds(renderers);
+
+            if (IsVisualClipping(camera, bounds))
+            {
+                visualTransform.localPosition = VisibleWeaponLocalPosition;
+                visualTransform.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
+                visualTransform.localScale = VisibleWeaponLocalScale;
+            }
+        }
+
+        LogWeaponVisualDiagnostics(visualTransform, renderers);
     }
 
-    private static void ApplyWeaponTransform(Transform root, StarterWeaponType weaponType)
+    private static void EnsureOpaqueMaterial(Renderer renderer)
     {
-        switch (weaponType)
+        if (renderer == null)
         {
-            case StarterWeaponType.FireStaff:
-                root.localPosition = StaffWeaponLocalPosition;
-                root.localRotation = Quaternion.Euler(StaffWeaponLocalRotation);
-                root.localScale = Vector3.one * StaffWeaponLocalScale;
-                break;
-            case StarterWeaponType.KnightSword:
-                root.localPosition = SwordWeaponLocalPosition;
-                root.localRotation = Quaternion.Euler(SwordWeaponLocalRotation);
-                root.localScale = Vector3.one * SwordWeaponLocalScale;
-                break;
-            default:
-                root.localPosition = BowWeaponLocalPosition;
-                root.localRotation = Quaternion.Euler(BowWeaponLocalRotation);
-                root.localScale = Vector3.one * BowWeaponLocalScale;
-                break;
+            return;
         }
+
+        Material[] materials = renderer.materials;
+
+        for (int i = 0; i < materials.Length; i++)
+        {
+            Material material = materials[i];
+
+            if (material == null)
+            {
+                continue;
+            }
+
+            if (material.HasProperty("_Surface"))
+            {
+                material.SetFloat("_Surface", 0f);
+            }
+
+            if (material.HasProperty("_Mode"))
+            {
+                material.SetFloat("_Mode", 0f);
+            }
+
+            Color baseColor = material.HasProperty("_BaseColor")
+                ? material.GetColor("_BaseColor")
+                : material.color;
+            baseColor.a = 1f;
+
+            if (material.HasProperty("_BaseColor"))
+            {
+                material.SetColor("_BaseColor", baseColor);
+            }
+
+            material.color = baseColor;
+        }
+    }
+
+    private static Bounds ComputeCombinedBounds(Renderer[] renderers)
+    {
+        bool hasBounds = false;
+        Bounds bounds = new Bounds(Vector3.zero, Vector3.zero);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer == null || !renderer.enabled)
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                bounds = renderer.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        return bounds;
+    }
+
+    private static float GetMaxExtent(Bounds bounds)
+    {
+        return Mathf.Max(bounds.extents.x, bounds.extents.y, bounds.extents.z);
+    }
+
+    private static bool IsVisualClipping(Camera camera, Bounds bounds)
+    {
+        if (camera == null || bounds.size.sqrMagnitude <= 0.000001f)
+        {
+            return true;
+        }
+
+        Vector3 center = bounds.center;
+        Vector3 extents = bounds.extents;
+        Vector3[] corners =
+        {
+            center + new Vector3(-extents.x, -extents.y, -extents.z),
+            center + new Vector3(-extents.x, -extents.y, extents.z),
+            center + new Vector3(-extents.x, extents.y, -extents.z),
+            center + new Vector3(-extents.x, extents.y, extents.z),
+            center + new Vector3(extents.x, -extents.y, -extents.z),
+            center + new Vector3(extents.x, -extents.y, extents.z),
+            center + new Vector3(extents.x, extents.y, -extents.z),
+            center + new Vector3(extents.x, extents.y, extents.z)
+        };
+
+        float nearLimit = -camera.nearClipPlane + 0.015f;
+        bool anyInFront = false;
+
+        for (int i = 0; i < corners.Length; i++)
+        {
+            float viewZ = camera.worldToCameraMatrix.MultiplyPoint(corners[i]).z;
+
+            if (viewZ < nearLimit)
+            {
+                anyInFront = true;
+            }
+
+            if (viewZ > nearLimit)
+            {
+                return true;
+            }
+        }
+
+        return !anyInFront;
+    }
+
+    private void LogWeaponVisualDiagnostics(Transform visualTransform, Renderer[] renderers)
+    {
+        if (visualTransform == null || weaponVisualDiagnosticsLogged)
+        {
+            return;
+        }
+
+        weaponVisualDiagnosticsLogged = true;
+        int enabledCount = 0;
+
+        Debug.Log(
+            "[WeaponVisual] StarterWeaponVisual"
+            + " localPosition="
+            + visualTransform.localPosition
+            + " localRotation="
+            + visualTransform.localRotation.eulerAngles
+            + " localScale="
+            + visualTransform.localScale);
+
+        for (int i = 0; i < visualTransform.childCount; i++)
+        {
+            Transform child = visualTransform.GetChild(i);
+
+            if (child == null)
+            {
+                continue;
+            }
+
+            Renderer childRenderer = child.GetComponent<Renderer>();
+            string boundsText = " boundsCenter=none";
+
+            if (childRenderer != null)
+            {
+                Bounds bounds = childRenderer.bounds;
+                boundsText = " boundsCenter=" + bounds.center + " boundsSize=" + bounds.size;
+
+                if (childRenderer.enabled)
+                {
+                    enabledCount++;
+                }
+            }
+
+            Debug.Log(
+                "[WeaponVisual] child "
+                + child.name
+                + " localPosition="
+                + child.localPosition
+                + " localRotation="
+                + child.localRotation.eulerAngles
+                + " localScale="
+                + child.localScale
+                + boundsText);
+        }
+
+        Debug.Log(
+            "[WeaponVisual] Summary enabledRenderers="
+            + enabledCount
+            + " totalRenderers="
+            + renderers.Length);
+    }
+
+    private static void SetLayerRecursively(GameObject target, int layer)
+    {
+        if (target == null)
+        {
+            return;
+        }
+
+        target.layer = layer;
+
+        Transform transform = target.transform;
+
+        for (int i = 0; i < transform.childCount; i++)
+        {
+            SetLayerRecursively(transform.GetChild(i).gameObject, layer);
+        }
+    }
+
+    private void LogRecoveryWeaponVisual()
+    {
+        if (activeVisualRoot == null)
+        {
+            return;
+        }
+
+        Debug.Log("[Recovery] Weapon visual visible: " + GetRecoveryWeaponLabel(currentWeapon));
+    }
+
+    private static string GetRecoveryWeaponLabel(StarterWeaponType weaponType)
+    {
+        return weaponType switch
+        {
+            StarterWeaponType.FireStaff => "Staff",
+            StarterWeaponType.KnightSword => "Sword",
+            _ => "Bow"
+        };
     }
 
     private void BuildBowVisual(Transform root)
     {
-        CreatePart("BowGrip", PrimitiveType.Cylinder, root, new Vector3(0f, 0f, 0.015f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.018f, 0.038f, 0.018f), BowGripColor, false, 0.3f);
-        CreatePart("BowUpperLimb", PrimitiveType.Cylinder, root, new Vector3(0.008f, 0.048f, -0.018f), Quaternion.Euler(58f, 8f, -16f), new Vector3(0.007f, 0.095f, 0.007f), BowWoodColor, false, 0.32f);
-        CreatePart("BowLowerLimb", PrimitiveType.Cylinder, root, new Vector3(0.008f, -0.048f, -0.018f), Quaternion.Euler(-58f, 8f, 16f), new Vector3(0.007f, 0.095f, 0.007f), BowWoodColor, false, 0.32f);
+        CreatePart("BowGrip", PrimitiveType.Cylinder, root, new Vector3(0f, 0f, 0f), Quaternion.Euler(0f, 0f, 90f), new Vector3(0.04f, 0.07f, 0.04f), BowGripColor, false, 0.3f);
+        CreatePart("BowUpperLimb", PrimitiveType.Cylinder, root, new Vector3(0.03f, 0.09f, 0f), Quaternion.Euler(0f, 0f, -28f), new Vector3(0.03f, 0.14f, 0.03f), BowWoodColor, false, 0.32f);
+        CreatePart("BowLowerLimb", PrimitiveType.Cylinder, root, new Vector3(0.03f, -0.09f, 0f), Quaternion.Euler(0f, 0f, 28f), new Vector3(0.03f, 0.14f, 0.03f), BowWoodColor, false, 0.32f);
 
-        GameObject bowString = CreatePart("BowString", PrimitiveType.Cylinder, root, new Vector3(0f, 0f, 0.062f), Quaternion.identity, new Vector3(0.001f, 0.108f, 0.001f), BowStringColor, false, 0.15f);
+        GameObject bowString = CreatePart("BowString", PrimitiveType.Cube, root, new Vector3(-0.015f, 0f, 0f), Quaternion.identity, new Vector3(0.012f, 0.18f, 0.012f), BowStringColor, false, 0.15f);
         bowStringTransform = bowString != null ? bowString.transform : null;
 
-        CreatePart("NockedArrowShaft", PrimitiveType.Cylinder, root, new Vector3(0f, 0.003f, 0.098f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.004f, 0.055f, 0.004f), BowArrowShaftColor, false, 0.28f);
-        CreatePart("NockedArrowHead", PrimitiveType.Cylinder, root, new Vector3(0f, 0.003f, 0.138f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.007f, 0.016f, 0.007f), BowArrowHeadColor, false, 0.62f);
+        CreatePart("NockedArrowShaft", PrimitiveType.Cylinder, root, new Vector3(0.02f, 0.01f, 0.12f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.012f, 0.08f, 0.012f), BowArrowShaftColor, false, 0.28f);
+        CreatePart("NockedArrowHead", PrimitiveType.Cylinder, root, new Vector3(0.02f, 0.01f, 0.2f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.018f, 0.03f, 0.018f), BowArrowHeadColor, false, 0.62f);
     }
 
     private void BuildStaffVisual(Transform root)
     {
-        CreatePart("StaffShaft", PrimitiveType.Cylinder, root, new Vector3(0f, 0f, 0.11f), Quaternion.Euler(72f, 0f, 0f), new Vector3(0.024f, 0.19f, 0.024f), StaffWoodColor, false, 0.28f);
-        CreatePart("StaffCap", PrimitiveType.Cylinder, root, new Vector3(0f, -0.05f, 0.03f), Quaternion.Euler(72f, 0f, 0f), new Vector3(0.028f, 0.022f, 0.028f), StaffWoodColor, false, 0.25f);
+        CreatePart("StaffShaft", PrimitiveType.Cylinder, root, new Vector3(0.02f, -0.04f, 0.08f), Quaternion.Euler(68f, -12f, 0f), new Vector3(0.04f, 0.24f, 0.04f), StaffWoodColor, false, 0.28f);
+        CreatePart("StaffCap", PrimitiveType.Cylinder, root, new Vector3(0f, -0.1f, 0.02f), Quaternion.Euler(68f, -12f, 0f), new Vector3(0.045f, 0.03f, 0.045f), StaffWoodColor, false, 0.25f);
 
-        GameObject staffOrb = CreatePart("StaffOrb", PrimitiveType.Sphere, root, new Vector3(0f, 0.045f, 0.2f), Quaternion.identity, new Vector3(0.055f, 0.055f, 0.055f), StaffCoreColor, true, 0.55f, 0.55f);
+        GameObject staffOrb = CreatePart("StaffOrb", PrimitiveType.Sphere, root, new Vector3(0.04f, 0.06f, 0.18f), Quaternion.identity, new Vector3(0.08f, 0.08f, 0.08f), StaffCoreColor, true, 0.55f, 0.75f);
         staffOrbRenderer = staffOrb != null ? staffOrb.GetComponent<Renderer>() : null;
+
+        fireballSpawnPoint = CreateSpawnPoint(root, "FireballSpawnPoint", new Vector3(0.04f, 0.06f, 0.18f));
+        meteorCastPoint = CreateSpawnPoint(root, "MeteorCastPoint", new Vector3(0.04f, 0.06f, 0.18f));
+    }
+
+    private static Transform CreateSpawnPoint(Transform parent, string pointName, Vector3 localPosition)
+    {
+        GameObject pointObject = new GameObject(pointName);
+        Transform pointTransform = pointObject.transform;
+        pointTransform.SetParent(parent, false);
+        pointTransform.localPosition = localPosition;
+        pointTransform.localRotation = Quaternion.identity;
+        pointTransform.localScale = Vector3.one;
+        return pointTransform;
     }
 
     private GameObject GetStaffViewModelPrefab()
@@ -606,9 +910,9 @@ public class StarterWeaponViewModel : MonoBehaviour
 
     private void BuildSwordVisual(Transform root)
     {
-        CreatePart("SwordGrip", PrimitiveType.Cylinder, root, new Vector3(0f, -0.015f, 0.035f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.02f, 0.048f, 0.02f), SwordGripColor, false, 0.28f);
-        CreatePart("SwordGuard", PrimitiveType.Cylinder, root, new Vector3(0f, 0.004f, 0.075f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.09f, 0.012f, 0.09f), SwordGuardColor, false, 0.5f);
-        CreatePart("SwordBlade", PrimitiveType.Cylinder, root, new Vector3(0f, 0.008f, 0.16f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.022f, 0.14f, 0.006f), SwordBladeColor, false, 0.68f);
+        CreatePart("SwordGrip", PrimitiveType.Cylinder, root, new Vector3(0f, -0.03f, 0.04f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.035f, 0.07f, 0.035f), SwordGripColor, false, 0.28f);
+        CreatePart("SwordGuard", PrimitiveType.Cylinder, root, new Vector3(0f, 0f, 0.1f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.12f, 0.018f, 0.12f), SwordGuardColor, false, 0.5f);
+        CreatePart("SwordBlade", PrimitiveType.Cylinder, root, new Vector3(0f, 0.01f, 0.22f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.035f, 0.2f, 0.012f), SwordBladeColor, false, 0.68f);
     }
 
     private static GameObject CreatePart(
@@ -623,27 +927,77 @@ public class StarterWeaponViewModel : MonoBehaviour
         float smoothness = 0.45f,
         float emissionIntensity = 0.2f)
     {
-        GameObject partObject = GameObject.CreatePrimitive(primitive);
-        partObject.name = partName;
-        partObject.transform.SetParent(parent, false);
-        partObject.transform.localPosition = localPosition;
-        partObject.transform.localRotation = localRotation;
-        partObject.transform.localScale = localScale;
+        GameObject partObject = new GameObject(partName);
+        partObject.layer = 0;
 
-        Collider collider = partObject.GetComponent<Collider>();
+        Transform partTransform = partObject.transform;
+        partTransform.SetParent(parent, false);
+        partTransform.localPosition = localPosition;
+        partTransform.localRotation = localRotation;
+        partTransform.localScale = localScale;
 
-        if (collider != null)
+        MeshFilter meshFilter = partObject.AddComponent<MeshFilter>();
+        meshFilter.sharedMesh = PrimitiveMeshCache.GetMesh(primitive);
+
+        MeshRenderer renderer = partObject.AddComponent<MeshRenderer>();
+        Material defaultMaterial = PrimitiveMeshCache.GetDefaultMaterial();
+
+        if (defaultMaterial != null)
         {
-            collider.enabled = false;
+            renderer.sharedMaterial = defaultMaterial;
         }
 
-        Renderer renderer = partObject.GetComponent<Renderer>();
-
-        if (renderer != null)
-        {
-            GameVisualStyle.ApplyColor(renderer, color, smoothness, glow, emissionIntensity);
-        }
-
+        renderer.enabled = true;
+        GameVisualStyle.ApplyColor(renderer, color, smoothness, glow, emissionIntensity);
         return partObject;
+    }
+
+    private static class PrimitiveMeshCache
+    {
+        private static readonly Dictionary<PrimitiveType, Mesh> Meshes = new Dictionary<PrimitiveType, Mesh>();
+        private static Material defaultMaterial;
+
+        public static Mesh GetMesh(PrimitiveType primitive)
+        {
+            if (Meshes.TryGetValue(primitive, out Mesh cachedMesh) && cachedMesh != null)
+            {
+                return cachedMesh;
+            }
+
+            GameObject tempPrimitive = GameObject.CreatePrimitive(primitive);
+
+            try
+            {
+                MeshFilter tempFilter = tempPrimitive.GetComponent<MeshFilter>();
+                Mesh mesh = tempFilter != null ? tempFilter.sharedMesh : null;
+
+                if (defaultMaterial == null)
+                {
+                    Renderer tempRenderer = tempPrimitive.GetComponent<Renderer>();
+
+                    if (tempRenderer != null)
+                    {
+                        defaultMaterial = tempRenderer.sharedMaterial;
+                    }
+                }
+
+                Meshes[primitive] = mesh;
+                return mesh;
+            }
+            finally
+            {
+                Object.Destroy(tempPrimitive);
+            }
+        }
+
+        public static Material GetDefaultMaterial()
+        {
+            if (defaultMaterial == null)
+            {
+                GetMesh(PrimitiveType.Cube);
+            }
+
+            return defaultMaterial;
+        }
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -14,6 +15,7 @@ public class MainMenuManager : MonoBehaviour
     private TMP_Text[] upgradeDescriptionTexts = new TMP_Text[4];
     private Button[] buyButtons = new Button[4];
     private bool gameStarted;
+    private Coroutine forceGameplayHudRoutine;
 
     private void Awake()
     {
@@ -41,6 +43,7 @@ public class MainMenuManager : MonoBehaviour
         }
 
         ApplyMenuPresentationState();
+        HideMenuWeaponVisuals();
     }
 
     public void PlayGame()
@@ -82,16 +85,46 @@ public class MainMenuManager : MonoBehaviour
         FPSPlayerController fpsPlayerController = FindFirstObjectByType<FPSPlayerController>();
         fpsPlayerController?.ForceGameplayCameraReady();
 
-        if (HUDManager.Instance != null)
+        if (forceGameplayHudRoutine != null)
         {
-            HUDManager.Instance.OnGameplayStarted();
-            HUDManager.Instance.UpdateWave(1);
+            StopCoroutine(forceGameplayHudRoutine);
         }
 
-        FPSViewModel.Instance?.RefreshForGameplayStart();
+        forceGameplayHudRoutine = StartCoroutine(ForceGameplayHUDNextFrame());
+    }
 
-        StarterWeaponController starterWeaponController = FindFirstObjectByType<StarterWeaponController>();
-        starterWeaponController?.RefreshWeaponVisual();
+    private IEnumerator ForceGameplayHUDNextFrame()
+    {
+        yield return null;
+        yield return new WaitForEndOfFrame();
+
+        HUDManager hud = FindFirstObjectByType<HUDManager>();
+
+        if (hud != null)
+        {
+            hud.EnsureHUDVisible();
+            hud.SetGameplayHUDVisible(true);
+            hud.ForceHudElementsVisibleForRecovery();
+        }
+
+        forceGameplayHudRoutine = null;
+    }
+
+    private static void HideLevelUpPanelForGameplay()
+    {
+        Canvas canvas = UiLayoutUtility.GetGameplayCanvas();
+
+        if (canvas == null)
+        {
+            return;
+        }
+
+        Transform levelUpPanel = canvas.transform.Find("LevelUpPanel");
+
+        if (levelUpPanel != null)
+        {
+            levelUpPanel.gameObject.SetActive(false);
+        }
     }
 
     public void ReturnToMainMenu()
@@ -115,6 +148,7 @@ public class MainMenuManager : MonoBehaviour
         }
 
         ApplyMenuPresentationState();
+        HideMenuWeaponVisuals();
     }
 
     public void OpenUpgrades()
@@ -169,6 +203,21 @@ public class MainMenuManager : MonoBehaviour
         }
     }
 
+    private static void HideMenuWeaponVisuals()
+    {
+        FPSViewModel.Instance?.HideViewModelForMenu();
+
+        StarterWeaponViewModel[] weaponViewModels = FindObjectsByType<StarterWeaponViewModel>(FindObjectsSortMode.None);
+
+        for (int i = 0; i < weaponViewModels.Length; i++)
+        {
+            if (weaponViewModels[i] != null)
+            {
+                weaponViewModels[i].HideWeaponVisualForMenu();
+            }
+        }
+    }
+
     private static MainMenuCameraController FindMenuCameraController()
     {
         if (MainMenuCameraController.Instance != null)
@@ -190,7 +239,7 @@ public class MainMenuManager : MonoBehaviour
 
     private void BuildMenuUI()
     {
-        Canvas canvas = FindFirstObjectByType<Canvas>();
+        Canvas canvas = UiLayoutUtility.GetGameplayCanvas();
 
         if (canvas == null)
         {
@@ -296,7 +345,7 @@ public class MainMenuManager : MonoBehaviour
 
     private void ApplyMenuLayout()
     {
-        Canvas canvas = FindFirstObjectByType<Canvas>();
+        Canvas canvas = UiLayoutUtility.GetGameplayCanvas();
         UiLayoutUtility.ConfigureGameplayCanvas(canvas);
 
         if (mainMenuPanel != null)

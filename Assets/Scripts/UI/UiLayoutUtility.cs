@@ -3,6 +3,43 @@ using UnityEngine.UI;
 
 public static class UiLayoutUtility
 {
+    public static Canvas GetGameplayCanvas()
+    {
+        Canvas[] canvases = Object.FindObjectsByType<Canvas>(FindObjectsSortMode.None);
+
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            Canvas canvas = canvases[i];
+
+            if (canvas == null || canvas.name == "DevAdminCanvas")
+            {
+                continue;
+            }
+
+            Transform root = canvas.transform;
+
+            if (root.Find("HPBarBackground") != null
+                || root.Find("MainMenuPanel") != null
+                || root.Find("LevelUpPanel") != null
+                || canvas.name == "Canvas")
+            {
+                return canvas;
+            }
+        }
+
+        for (int i = 0; i < canvases.Length; i++)
+        {
+            Canvas canvas = canvases[i];
+
+            if (canvas != null && canvas.name != "DevAdminCanvas")
+            {
+                return canvas;
+            }
+        }
+
+        return Object.FindFirstObjectByType<Canvas>();
+    }
+
     public static void ConfigureGameplayCanvas(Canvas canvas)
     {
         if (canvas == null) return;
