@@ -3,11 +3,13 @@ using UnityEngine;
 
 public class StarterWeaponViewModel : MonoBehaviour
 {
-    private static readonly Color BowWoodColor = new Color(0.38f, 0.22f, 0.11f);
-    private static readonly Color BowGripColor = new Color(0.2f, 0.11f, 0.06f);
-    private static readonly Color BowStringColor = new Color(0.9f, 0.88f, 0.82f);
-    private static readonly Color BowArrowShaftColor = new Color(0.55f, 0.42f, 0.28f);
-    private static readonly Color BowArrowHeadColor = new Color(0.74f, 0.76f, 0.8f);
+    private static readonly Color BowWoodColor = new Color(0.42f, 0.26f, 0.13f);
+    private static readonly Color BowWoodHighlight = new Color(0.52f, 0.34f, 0.18f);
+    private static readonly Color BowGripColor = new Color(0.22f, 0.12f, 0.07f);
+    private static readonly Color BowStringColor = new Color(0.86f, 0.84f, 0.78f);
+    private static readonly Color BowArrowShaftColor = new Color(0.5f, 0.38f, 0.24f);
+    private static readonly Color BowArrowHeadColor = new Color(0.7f, 0.72f, 0.76f);
+    private static readonly Color BowArrowFletchColor = new Color(0.36f, 0.18f, 0.12f);
     private static readonly Color StaffWoodColor = new Color(0.32f, 0.18f, 0.1f);
     private static readonly Color StaffCoreColor = new Color(1f, 0.45f, 0.08f);
     private static readonly Color SwordBladeColor = new Color(0.78f, 0.82f, 0.88f);
@@ -17,6 +19,10 @@ public class StarterWeaponViewModel : MonoBehaviour
     private static readonly Vector3 VisibleWeaponLocalPosition = new Vector3(0.34f, -0.16f, 0.58f);
     private static readonly Vector3 VisibleWeaponLocalRotation = new Vector3(8f, -24f, 6f);
     private static readonly Vector3 VisibleWeaponLocalScale = new Vector3(2.8f, 2.8f, 2.8f);
+    private static readonly Vector3 BowWeaponLocalPosition = new Vector3(0.32f, -0.18f, 0.52f);
+    private static readonly Vector3 BowWeaponLocalRotation = new Vector3(6f, -22f, 4f);
+    private static readonly Vector3 BowWeaponLocalScale = new Vector3(2.35f, 2.35f, 2.35f);
+    private const float BowStringRestX = -0.018f;
     private const float MinVisualBoundsExtent = 0.06f;
     private const float MaxVisualScaleMultiplier = 3f;
     private static bool weaponVisualDiagnosticsLogged;
@@ -32,6 +38,9 @@ public class StarterWeaponViewModel : MonoBehaviour
     private Transform weaponMount;
     private GameObject activeVisualRoot;
     private Transform bowStringTransform;
+    private Renderer bowStringRenderer;
+    private Renderer bowArrowTipRenderer;
+    private Vector3 bowRestLocalPosition = BowWeaponLocalPosition;
     private Renderer staffOrbRenderer;
     private Renderer[] staffGlowRenderers = System.Array.Empty<Renderer>();
     private Transform fireballSpawnPoint;
@@ -43,6 +52,7 @@ public class StarterWeaponViewModel : MonoBehaviour
     private StarterWeaponType pendingWeapon = StarterWeaponType.HunterBow;
     private bool needsApply = true;
     private float bowStringKickTimer;
+    private float bowFireFeedbackTimer;
     private float staffGlowPulseTimer;
     private float staffChargeGlowTimer;
 
@@ -69,6 +79,9 @@ public class StarterWeaponViewModel : MonoBehaviour
         defaultWeaponParts.Clear();
         activeVisualRoot = null;
         bowStringTransform = null;
+        bowStringRenderer = null;
+        bowArrowTipRenderer = null;
+        bowFireFeedbackTimer = 0f;
         staffOrbRenderer = null;
         staffGlowRenderers = System.Array.Empty<Renderer>();
         fireballSpawnPoint = null;
@@ -103,6 +116,9 @@ public class StarterWeaponViewModel : MonoBehaviour
         }
 
         bowStringTransform = null;
+        bowStringRenderer = null;
+        bowArrowTipRenderer = null;
+        bowFireFeedbackTimer = 0f;
         staffOrbRenderer = null;
         staffGlowRenderers = System.Array.Empty<Renderer>();
         fireballSpawnPoint = null;
@@ -122,7 +138,8 @@ public class StarterWeaponViewModel : MonoBehaviour
 
     public void PlayBowStringKick()
     {
-        bowStringKickTimer = 0.12f;
+        bowStringKickTimer = 0.14f;
+        bowFireFeedbackTimer = 0.16f;
     }
 
     public void PlayStaffGlowPulse()
@@ -171,17 +188,91 @@ public class StarterWeaponViewModel : MonoBehaviour
             TryApplyPending();
         }
 
-        UpdateBowStringKick();
+        UpdateBowVisualFeedback();
         UpdateStaffGlowEffects();
+    }
+
+    private void UpdateBowVisualFeedback()
+    {
+        if (currentWeapon != StarterWeaponType.HunterBow)
+        {
+            return;
+        }
+
+        UpdateBowStringKick();
+        UpdateBowFireRecoil();
     }
 
     private void UpdateBowStringKick()
     {
-        if (bowStringTransform == null || bowStringKickTimer <= 0f) return;
+        if (bowStringTransform == null)
+        {
+            return;
+        }
+
+        if (bowStringKickTimer <= 0f)
+        {
+            bowStringTransform.localPosition = new Vector3(BowStringRestX, 0f, 0f);
+
+            if (bowStringRenderer != null)
+            {
+                GameVisualStyle.ApplyColor(bowStringRenderer, BowStringColor, 0.14f, false, 0f);
+            }
+
+            if (bowArrowTipRenderer != null)
+            {
+                GameVisualStyle.ApplyColor(bowArrowTipRenderer, BowArrowHeadColor, 0.6f, false, 0f);
+            }
+
+            return;
+        }
 
         bowStringKickTimer -= Time.deltaTime;
-        float kick = Mathf.Sin(Mathf.Clamp01(bowStringKickTimer / 0.12f) * Mathf.PI) * 0.035f;
-        bowStringTransform.localPosition = new Vector3(-0.015f + kick, 0f, 0f);
+        float kick = Mathf.Sin(Mathf.Clamp01(bowStringKickTimer / 0.14f) * Mathf.PI) * 0.028f;
+        bowStringTransform.localPosition = new Vector3(BowStringRestX + kick, 0f, 0f);
+
+        if (bowStringRenderer != null)
+        {
+            float glow = Mathf.Sin(Mathf.Clamp01(bowStringKickTimer / 0.14f) * Mathf.PI);
+            Color stringColor = Color.Lerp(BowStringColor, new Color(1f, 0.92f, 0.72f), glow * 0.45f);
+            GameVisualStyle.ApplyColor(bowStringRenderer, stringColor, 0.16f, glow > 0.35f, 0.22f);
+        }
+
+        if (bowArrowTipRenderer != null && bowStringKickTimer > 0.04f)
+        {
+            float tipGlow = Mathf.Sin(Mathf.Clamp01(bowStringKickTimer / 0.14f) * Mathf.PI);
+            GameVisualStyle.ApplyColor(
+                bowArrowTipRenderer,
+                Color.Lerp(BowArrowHeadColor, new Color(0.92f, 0.94f, 1f), tipGlow * 0.35f),
+                0.62f,
+                tipGlow > 0.4f,
+                0.18f);
+        }
+    }
+
+    private void UpdateBowFireRecoil()
+    {
+        if (activeVisualRoot == null)
+        {
+            return;
+        }
+
+        Transform visualTransform = activeVisualRoot.transform;
+
+        if (bowFireFeedbackTimer <= 0f)
+        {
+            if (visualTransform.localPosition != bowRestLocalPosition)
+            {
+                visualTransform.localPosition = bowRestLocalPosition;
+            }
+
+            return;
+        }
+
+        bowFireFeedbackTimer -= Time.deltaTime;
+        float progress = Mathf.Clamp01(bowFireFeedbackTimer / 0.16f);
+        float recoil = Mathf.Sin((1f - progress) * Mathf.PI) * 0.016f;
+        visualTransform.localPosition = bowRestLocalPosition + new Vector3(0f, 0.002f, -recoil);
     }
 
     private void TryApplyPending()
@@ -317,6 +408,9 @@ public class StarterWeaponViewModel : MonoBehaviour
         }
 
         bowStringTransform = null;
+        bowStringRenderer = null;
+        bowArrowTipRenderer = null;
+        bowFireFeedbackTimer = 0f;
         staffOrbRenderer = null;
         staffGlowRenderers = System.Array.Empty<Renderer>();
         fireballSpawnPoint = null;
@@ -337,9 +431,18 @@ public class StarterWeaponViewModel : MonoBehaviour
 
         Transform visualRoot = activeVisualRoot.transform;
         visualRoot.SetParent(weaponMount, false);
-        visualRoot.localPosition = VisibleWeaponLocalPosition;
-        visualRoot.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
-        visualRoot.localScale = VisibleWeaponLocalScale;
+
+        if (currentWeapon == StarterWeaponType.HunterBow)
+        {
+            ApplyBowContainerPose(visualRoot);
+            bowRestLocalPosition = BowWeaponLocalPosition;
+        }
+        else
+        {
+            visualRoot.localPosition = VisibleWeaponLocalPosition;
+            visualRoot.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
+            visualRoot.localScale = VisibleWeaponLocalScale;
+        }
 
         switch (currentWeapon)
         {
@@ -402,6 +505,11 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             ApplyStaffPrefabContainerPose(visualTransform);
         }
+        else if (currentWeapon == StarterWeaponType.HunterBow)
+        {
+            ApplyBowContainerPose(visualTransform);
+            bowRestLocalPosition = BowWeaponLocalPosition;
+        }
         else
         {
             visualTransform.localPosition = VisibleWeaponLocalPosition;
@@ -432,9 +540,17 @@ public class StarterWeaponViewModel : MonoBehaviour
 
             if (IsVisualClipping(camera, bounds) && !usingStaffPrefabVisual)
             {
-                visualTransform.localPosition = VisibleWeaponLocalPosition;
-                visualTransform.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
-                visualTransform.localScale = VisibleWeaponLocalScale;
+                if (currentWeapon == StarterWeaponType.HunterBow)
+                {
+                    ApplyBowContainerPose(visualTransform);
+                    bowRestLocalPosition = BowWeaponLocalPosition;
+                }
+                else
+                {
+                    visualTransform.localPosition = VisibleWeaponLocalPosition;
+                    visualTransform.localRotation = Quaternion.Euler(VisibleWeaponLocalRotation);
+                    visualTransform.localScale = VisibleWeaponLocalScale;
+                }
             }
         }
 
@@ -656,17 +772,136 @@ public class StarterWeaponViewModel : MonoBehaviour
         };
     }
 
+    private static void ApplyBowContainerPose(Transform visualTransform)
+    {
+        if (visualTransform == null)
+        {
+            return;
+        }
+
+        visualTransform.localPosition = BowWeaponLocalPosition;
+        visualTransform.localRotation = Quaternion.Euler(BowWeaponLocalRotation);
+        visualTransform.localScale = BowWeaponLocalScale;
+    }
+
     private void BuildBowVisual(Transform root)
     {
-        CreatePart("BowGrip", PrimitiveType.Cylinder, root, new Vector3(0f, 0f, 0f), Quaternion.Euler(0f, 0f, 90f), new Vector3(0.04f, 0.07f, 0.04f), BowGripColor, false, 0.3f);
-        CreatePart("BowUpperLimb", PrimitiveType.Cylinder, root, new Vector3(0.03f, 0.09f, 0f), Quaternion.Euler(0f, 0f, -28f), new Vector3(0.03f, 0.14f, 0.03f), BowWoodColor, false, 0.32f);
-        CreatePart("BowLowerLimb", PrimitiveType.Cylinder, root, new Vector3(0.03f, -0.09f, 0f), Quaternion.Euler(0f, 0f, 28f), new Vector3(0.03f, 0.14f, 0.03f), BowWoodColor, false, 0.32f);
+        CreatePart(
+            "BowRiser",
+            PrimitiveType.Cylinder,
+            root,
+            new Vector3(0.01f, 0f, 0f),
+            Quaternion.Euler(0f, 0f, 90f),
+            new Vector3(0.048f, 0.08f, 0.048f),
+            BowWoodColor,
+            false,
+            0.34f);
+        CreatePart(
+            "BowGrip",
+            PrimitiveType.Cylinder,
+            root,
+            new Vector3(-0.008f, 0f, 0f),
+            Quaternion.Euler(0f, 0f, 90f),
+            new Vector3(0.034f, 0.058f, 0.034f),
+            BowGripColor,
+            false,
+            0.28f);
+        CreatePart(
+            "BowUpperLimb",
+            PrimitiveType.Cylinder,
+            root,
+            new Vector3(0.024f, 0.082f, 0f),
+            Quaternion.Euler(0f, 0f, -32f),
+            new Vector3(0.026f, 0.12f, 0.026f),
+            BowWoodColor,
+            false,
+            0.32f);
+        CreatePart(
+            "BowUpperLimbTip",
+            PrimitiveType.Sphere,
+            root,
+            new Vector3(0.05f, 0.145f, 0f),
+            Quaternion.identity,
+            new Vector3(0.028f, 0.028f, 0.028f),
+            BowWoodHighlight,
+            false,
+            0.36f);
+        CreatePart(
+            "BowLowerLimb",
+            PrimitiveType.Cylinder,
+            root,
+            new Vector3(0.024f, -0.082f, 0f),
+            Quaternion.Euler(0f, 0f, 32f),
+            new Vector3(0.026f, 0.12f, 0.026f),
+            BowWoodColor,
+            false,
+            0.32f);
+        CreatePart(
+            "BowLowerLimbTip",
+            PrimitiveType.Sphere,
+            root,
+            new Vector3(0.05f, -0.145f, 0f),
+            Quaternion.identity,
+            new Vector3(0.028f, 0.028f, 0.028f),
+            BowWoodHighlight,
+            false,
+            0.36f);
 
-        GameObject bowString = CreatePart("BowString", PrimitiveType.Cube, root, new Vector3(-0.015f, 0f, 0f), Quaternion.identity, new Vector3(0.012f, 0.18f, 0.012f), BowStringColor, false, 0.15f);
+        GameObject bowString = CreatePart(
+            "BowString",
+            PrimitiveType.Cube,
+            root,
+            new Vector3(BowStringRestX, 0f, 0f),
+            Quaternion.identity,
+            new Vector3(0.008f, 0.16f, 0.008f),
+            BowStringColor,
+            false,
+            0.14f);
         bowStringTransform = bowString != null ? bowString.transform : null;
+        bowStringRenderer = bowString != null ? bowString.GetComponent<Renderer>() : null;
 
-        CreatePart("NockedArrowShaft", PrimitiveType.Cylinder, root, new Vector3(0.02f, 0.01f, 0.12f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.012f, 0.08f, 0.012f), BowArrowShaftColor, false, 0.28f);
-        CreatePart("NockedArrowHead", PrimitiveType.Cylinder, root, new Vector3(0.02f, 0.01f, 0.2f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.018f, 0.03f, 0.018f), BowArrowHeadColor, false, 0.62f);
+        CreatePart(
+            "BowStringGripPinch",
+            PrimitiveType.Cube,
+            root,
+            new Vector3(-0.011f, 0f, 0f),
+            Quaternion.identity,
+            new Vector3(0.006f, 0.028f, 0.006f),
+            new Color(0.72f, 0.7f, 0.66f),
+            false,
+            0.12f);
+
+        CreatePart(
+            "NockedArrowShaft",
+            PrimitiveType.Cylinder,
+            root,
+            new Vector3(0.014f, 0.007f, 0.105f),
+            Quaternion.Euler(90f, 0f, 0f),
+            new Vector3(0.009f, 0.062f, 0.009f),
+            BowArrowShaftColor,
+            false,
+            0.26f);
+        GameObject arrowHead = CreatePart(
+            "NockedArrowHead",
+            PrimitiveType.Cylinder,
+            root,
+            new Vector3(0.014f, 0.007f, 0.148f),
+            Quaternion.Euler(90f, 0f, 0f),
+            new Vector3(0.012f, 0.022f, 0.012f),
+            BowArrowHeadColor,
+            false,
+            0.6f);
+        bowArrowTipRenderer = arrowHead != null ? arrowHead.GetComponent<Renderer>() : null;
+        CreatePart(
+            "NockedArrowFletch",
+            PrimitiveType.Cube,
+            root,
+            new Vector3(0.014f, 0.009f, 0.058f),
+            Quaternion.Euler(90f, 0f, 18f),
+            new Vector3(0.014f, 0.004f, 0.018f),
+            BowArrowFletchColor,
+            false,
+            0.22f);
     }
 
     private void BuildStaffVisual(Transform root)
