@@ -19,9 +19,11 @@ public class StarterWeaponViewModel : MonoBehaviour
     private static readonly Vector3 VisibleWeaponLocalPosition = new Vector3(0.34f, -0.16f, 0.58f);
     private static readonly Vector3 VisibleWeaponLocalRotation = new Vector3(8f, -24f, 6f);
     private static readonly Vector3 VisibleWeaponLocalScale = new Vector3(2.8f, 2.8f, 2.8f);
-    private static readonly Vector3 BowWeaponLocalPosition = new Vector3(0.32f, -0.18f, 0.52f);
-    private static readonly Vector3 BowWeaponLocalRotation = new Vector3(6f, -22f, 4f);
-    private static readonly Vector3 BowWeaponLocalScale = new Vector3(2.35f, 2.35f, 2.35f);
+    private static readonly Vector3 BowWeaponLocalPosition = new Vector3(0.28f, -0.16f, 0.48f);
+    private static readonly Vector3 BowWeaponLocalRotation = new Vector3(5f, -20f, 3f);
+    private static readonly Vector3 BowWeaponLocalScale = new Vector3(2.2f, 2.2f, 2.2f);
+    private static readonly Vector3 BowPrefabInstanceLocalPosition = new Vector3(0.045f, 0.015f, 0.05f);
+    private static readonly Vector3 BowPrefabInstanceLocalRotation = new Vector3(2f, -6f, 2f);
     private const float BowStringRestX = -0.018f;
     private const float BowFireAnimDuration = 0.21f;
     private const float BowFireDrawDuration = 0.055f;
@@ -43,13 +45,16 @@ public class StarterWeaponViewModel : MonoBehaviour
     private static bool bowPrefabWarningLogged;
     private static MaterialPropertyBlock staffGlowPropertyBlock;
 
-    private static readonly Vector3 StaffPrefabLocalPosition = new Vector3(0.32f, -0.34f, 0.24f);
-    private static readonly Vector3 StaffPrefabLocalRotation = new Vector3(20f, -38f, 18f);
-    private static readonly Vector3 StaffPrefabLocalScale = new Vector3(0.82f, 0.82f, 0.82f);
+    private static readonly Vector3 StaffPrefabLocalPosition = new Vector3(0.38f, -0.30f, 0.40f);
+    private static readonly Vector3 StaffPrefabLocalRotation = new Vector3(18f, -42f, 14f);
+    private static readonly Vector3 StaffPrefabLocalScale = new Vector3(0.78f, 0.78f, 0.78f);
+    private static readonly Vector3 SwordWeaponLocalPosition = new Vector3(0.36f, -0.22f, 0.46f);
+    private static readonly Vector3 SwordWeaponLocalRotation = new Vector3(10f, -26f, 7f);
+    private static readonly Vector3 SwordWeaponLocalScale = new Vector3(1.75f, 1.75f, 1.75f);
     private const string StaffPrefabAssetPath = "Assets/Prefabs/Weapons/Staff_ViewModel.prefab";
     private const string BowPrefabAssetPath = "Assets/Prefabs/Weapons/Bow_ViewModel.prefab";
     private const string FpsArmsPrefabAssetPath = "Assets/Prefabs/Characters/FPS_Arms_ViewModel.prefab";
-    private static readonly Vector3 BowFpsArmsLocalPosition = new Vector3(0f, -0.18f, 0.32f);
+    private static readonly Vector3 BowFpsArmsLocalPosition = new Vector3(0.015f, -0.165f, 0.34f);
 
     private readonly HashSet<GameObject> defaultWeaponParts = new HashSet<GameObject>();
     private Transform weaponMount;
@@ -574,6 +579,10 @@ public class StarterWeaponViewModel : MonoBehaviour
             bowRestLocalPosition = BowWeaponLocalPosition;
             bowRestLocalRotation = Quaternion.Euler(BowWeaponLocalRotation);
         }
+        else if (currentWeapon == StarterWeaponType.KnightSword)
+        {
+            ApplySwordContainerPose(visualRoot);
+        }
         else
         {
             visualRoot.localPosition = VisibleWeaponLocalPosition;
@@ -670,6 +679,10 @@ public class StarterWeaponViewModel : MonoBehaviour
             bowRestLocalPosition = BowWeaponLocalPosition;
             bowRestLocalRotation = Quaternion.Euler(BowWeaponLocalRotation);
         }
+        else if (currentWeapon == StarterWeaponType.KnightSword)
+        {
+            ApplySwordContainerPose(visualTransform);
+        }
         else
         {
             visualTransform.localPosition = VisibleWeaponLocalPosition;
@@ -705,6 +718,10 @@ public class StarterWeaponViewModel : MonoBehaviour
                     ApplyBowContainerPose(visualTransform);
                     bowRestLocalPosition = BowWeaponLocalPosition;
                     bowRestLocalRotation = Quaternion.Euler(BowWeaponLocalRotation);
+                }
+                else if (currentWeapon == StarterWeaponType.KnightSword)
+                {
+                    ApplySwordContainerPose(visualTransform);
                 }
                 else
                 {
@@ -946,6 +963,30 @@ public class StarterWeaponViewModel : MonoBehaviour
         visualTransform.localScale = BowWeaponLocalScale;
     }
 
+    private static void ApplyBowPrefabInstancePose(Transform instanceTransform)
+    {
+        if (instanceTransform == null)
+        {
+            return;
+        }
+
+        instanceTransform.localPosition = BowPrefabInstanceLocalPosition;
+        instanceTransform.localRotation = Quaternion.Euler(BowPrefabInstanceLocalRotation);
+        instanceTransform.localScale = Vector3.one;
+    }
+
+    private static void ApplySwordContainerPose(Transform visualTransform)
+    {
+        if (visualTransform == null)
+        {
+            return;
+        }
+
+        visualTransform.localPosition = SwordWeaponLocalPosition;
+        visualTransform.localRotation = Quaternion.Euler(SwordWeaponLocalRotation);
+        visualTransform.localScale = SwordWeaponLocalScale;
+    }
+
     private void BuildBowVisual(Transform root)
     {
         GameObject prefab = GetBowViewModelPrefab();
@@ -994,9 +1035,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         instance.name = "BowViewModelPrefab";
 
         Transform instanceTransform = instance.transform;
-        instanceTransform.localPosition = Vector3.zero;
-        instanceTransform.localRotation = Quaternion.identity;
-        instanceTransform.localScale = Vector3.one;
+        ApplyBowPrefabInstancePose(instanceTransform);
 
         DisableBowPrefabPhysics(instance);
         SetLayerRecursively(instance, 0);
