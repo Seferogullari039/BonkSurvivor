@@ -48,6 +48,8 @@ public class StarterWeaponViewModel : MonoBehaviour
     private static readonly Vector3 StaffPrefabLocalScale = new Vector3(0.82f, 0.82f, 0.82f);
     private const string StaffPrefabAssetPath = "Assets/Prefabs/Weapons/Staff_ViewModel.prefab";
     private const string BowPrefabAssetPath = "Assets/Prefabs/Weapons/Bow_ViewModel.prefab";
+    private const string FpsArmsPrefabAssetPath = "Assets/Prefabs/Characters/FPS_Arms_ViewModel.prefab";
+    private static readonly Vector3 BowFpsArmsLocalPosition = new Vector3(0f, -0.18f, 0.32f);
 
     private readonly HashSet<GameObject> defaultWeaponParts = new HashSet<GameObject>();
     private Transform weaponMount;
@@ -72,6 +74,10 @@ public class StarterWeaponViewModel : MonoBehaviour
     private GameObject bowViewModelPrefab;
     private bool bowPrefabLoadAttempted;
     private bool usingBowPrefabVisual;
+    private GameObject bowFpsArmsViewModelPrefab;
+    private bool bowFpsArmsPrefabLoadAttempted;
+    private GameObject bowFpsArmsContainer;
+    private Renderer[] bowFpsArmsDisabledRenderers = System.Array.Empty<Renderer>();
     private StarterWeaponType currentWeapon = StarterWeaponType.HunterBow;
     private StarterWeaponType pendingWeapon = StarterWeaponType.HunterBow;
     private bool needsApply = true;
@@ -113,6 +119,8 @@ public class StarterWeaponViewModel : MonoBehaviour
         meteorCastPoint = null;
         usingStaffPrefabVisual = false;
         usingBowPrefabVisual = false;
+        bowFpsArmsContainer = null;
+        bowFpsArmsDisabledRenderers = System.Array.Empty<Renderer>();
         needsApply = true;
     }
 
@@ -153,6 +161,8 @@ public class StarterWeaponViewModel : MonoBehaviour
         meteorCastPoint = null;
         usingStaffPrefabVisual = false;
         usingBowPrefabVisual = false;
+        bowFpsArmsContainer = null;
+        bowFpsArmsDisabledRenderers = System.Array.Empty<Renderer>();
         weaponVisualDiagnosticsLogged = false;
         needsApply = true;
     }
@@ -540,6 +550,8 @@ public class StarterWeaponViewModel : MonoBehaviour
         meteorCastPoint = null;
         usingStaffPrefabVisual = false;
         usingBowPrefabVisual = false;
+        bowFpsArmsContainer = null;
+        bowFpsArmsDisabledRenderers = System.Array.Empty<Renderer>();
         staffGlowPulseTimer = 0f;
         staffChargeGlowTimer = 0f;
 
@@ -703,6 +715,7 @@ public class StarterWeaponViewModel : MonoBehaviour
             }
         }
 
+        PreserveBowFpsArmsDisabledRenderers();
         LogWeaponVisualDiagnostics(visualTransform, renderers);
     }
 
@@ -942,6 +955,7 @@ public class StarterWeaponViewModel : MonoBehaviour
             usingBowPrefabVisual = true;
             bowRestLocalPosition = Vector3.zero;
             bowRestLocalRotation = Quaternion.identity;
+            TryAttachBowFpsArmsVisual(root);
             return;
         }
 
@@ -949,6 +963,8 @@ public class StarterWeaponViewModel : MonoBehaviour
         usingBowPrefabVisual = false;
         bowRestLocalPosition = BowWeaponLocalPosition;
         bowRestLocalRotation = Quaternion.Euler(BowWeaponLocalRotation);
+
+        TryAttachBowFpsArmsVisual(root);
     }
 
     private bool TryBuildBowPrefabVisual(Transform root, GameObject prefab)
@@ -1182,6 +1198,134 @@ public class StarterWeaponViewModel : MonoBehaviour
         }
 
         return bowViewModelPrefab;
+    }
+
+    private GameObject GetBowFpsArmsViewModelPrefab()
+    {
+        if (bowFpsArmsViewModelPrefab != null)
+        {
+            return bowFpsArmsViewModelPrefab;
+        }
+
+        if (bowFpsArmsPrefabLoadAttempted)
+        {
+            return null;
+        }
+
+        bowFpsArmsPrefabLoadAttempted = true;
+
+#if UNITY_EDITOR
+        bowFpsArmsViewModelPrefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(FpsArmsPrefabAssetPath);
+#endif
+
+        if (bowFpsArmsViewModelPrefab == null)
+        {
+            bowFpsArmsViewModelPrefab = Resources.Load<GameObject>("FPS_Arms_ViewModel");
+        }
+
+        return bowFpsArmsViewModelPrefab;
+    }
+
+    private void TryAttachBowFpsArmsVisual(Transform root)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        GameObject prefab = GetBowFpsArmsViewModelPrefab();
+
+        if (prefab == null)
+        {
+            return;
+        }
+
+        if (bowFpsArmsContainer != null)
+        {
+            Destroy(bowFpsArmsContainer);
+            bowFpsArmsContainer = null;
+            bowFpsArmsDisabledRenderers = System.Array.Empty<Renderer>();
+        }
+
+        GameObject container = new GameObject("BowFpsArmsContainer");
+        Transform containerTransform = container.transform;
+        containerTransform.SetParent(root, false);
+        containerTransform.SetAsFirstSibling();
+        containerTransform.localPosition = BowFpsArmsLocalPosition;
+        containerTransform.localRotation = Quaternion.identity;
+        containerTransform.localScale = Vector3.one;
+
+        GameObject armsInstance = null;
+
+        try
+        {
+            armsInstance = Instantiate(prefab, containerTransform, false);
+        }
+        catch (System.Exception)
+        {
+            Destroy(container);
+            return;
+        }
+
+        if (armsInstance == null)
+        {
+            Destroy(container);
+            return;
+        }
+
+        bowFpsArmsContainer = container;
+        armsInstance.name = "BowFpsArmsViewModel";
+
+        Transform armsTransform = armsInstance.transform;
+        armsTransform.localPosition = Vector3.zero;
+        armsTransform.localRotation = Quaternion.identity;
+        armsTransform.localScale = Vector3.one;
+
+        DisableBowPrefabPhysics(armsInstance);
+        SetLayerRecursively(armsInstance, 0);
+        CacheBowFpsArmsDisabledRenderers(armsInstance);
+    }
+
+    private void CacheBowFpsArmsDisabledRenderers(GameObject armsInstance)
+    {
+        if (armsInstance == null)
+        {
+            bowFpsArmsDisabledRenderers = System.Array.Empty<Renderer>();
+            return;
+        }
+
+        List<Renderer> disabledRenderers = new List<Renderer>();
+        Renderer[] renderers = armsInstance.GetComponentsInChildren<Renderer>(true);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer != null && !renderer.enabled)
+            {
+                disabledRenderers.Add(renderer);
+            }
+        }
+
+        bowFpsArmsDisabledRenderers = disabledRenderers.ToArray();
+    }
+
+    private void PreserveBowFpsArmsDisabledRenderers()
+    {
+        if (currentWeapon != StarterWeaponType.HunterBow || bowFpsArmsDisabledRenderers.Length == 0)
+        {
+            return;
+        }
+
+        for (int i = 0; i < bowFpsArmsDisabledRenderers.Length; i++)
+        {
+            Renderer renderer = bowFpsArmsDisabledRenderers[i];
+
+            if (renderer != null)
+            {
+                renderer.enabled = false;
+            }
+        }
     }
 
     private void BuildBowPrimitiveVisual(Transform root)
