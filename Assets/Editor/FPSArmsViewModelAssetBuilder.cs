@@ -9,13 +9,17 @@ public static class FPSArmsViewModelAssetBuilder
 {
     private const string FpsArmsFolder = "Assets/Art/Characters/FPSArms";
     private const string ModelsFolder = FpsArmsFolder + "/Models";
-    private const string PreferredModelPath = ModelsFolder + "/baconhand_smg.fbx";
+    private const string PsxModelsFolder = ModelsFolder + "/PSX_FirstPersonArms";
+    private const string PsxPreferredModelPath = PsxModelsFolder + "/PSX_First_Person_Arms.fbx";
+    private const string PsxArmsTexturePath = PsxModelsFolder + "/arms.png";
+    private const string FallbackModelPath = ModelsFolder + "/baconhand_smg.fbx";
+    private const string MaterialsFolder = FpsArmsFolder + "/Materials";
+    private const string PsxArmsMaterialPath = MaterialsFolder + "/M_FPSArms_PSX.mat";
     private const string PrefabsFolder = "Assets/Prefabs/Characters";
     private const string PrefabPath = PrefabsFolder + "/FPS_Arms_ViewModel.prefab";
 
     private static readonly Vector3 ArmsRootLocalPosition = new Vector3(0f, -0.25f, 0.35f);
-
-    private static readonly string[] ModelExtensions = { ".fbx", ".obj" };
+    private const float PsxViewModelTargetWidth = 0.62f;
 
     private static readonly string[] WeaponMeshKeywords =
     {
@@ -41,13 +45,15 @@ public static class FPSArmsViewModelAssetBuilder
         if (!TryResolveFpsArmsModelPath(out string modelPath))
         {
             Debug.LogWarning(
-                "[FPSArmsViewModelAssetBuilder] No FPS arms model found under "
-                + FpsArmsFolder
-                + ". Drop an FBX or OBJ into "
-                + ModelsFolder
-                + " (see README).");
+                "[FPSArmsViewModelAssetBuilder] No FPS arms model found. Expected PSX FBX at "
+                + PsxPreferredModelPath
+                + " or fallback "
+                + FallbackModelPath
+                + ".");
             return;
         }
+
+        Debug.Log("[FPSArmsViewModelAssetBuilder] Building FPS arms prefab from " + modelPath);
 
         if (!EnsureFpsArmsSourceImported(modelPath, out string importIssue))
         {
@@ -111,89 +117,19 @@ public static class FPSArmsViewModelAssetBuilder
 
     private static bool TryResolveFpsArmsModelPath(out string modelPath)
     {
-        if (AssetPathExists(PreferredModelPath))
+        if (AssetPathExists(PsxPreferredModelPath))
         {
-            modelPath = PreferredModelPath;
+            modelPath = PsxPreferredModelPath;
             return true;
         }
 
-        modelPath = FindFirstModelAsset(ModelsFolder);
-
-        if (!string.IsNullOrEmpty(modelPath))
+        if (AssetPathExists(FallbackModelPath))
         {
-            return true;
-        }
-
-        modelPath = FindFirstModelAsset(FpsArmsFolder);
-
-        if (!string.IsNullOrEmpty(modelPath))
-        {
+            modelPath = FallbackModelPath;
             return true;
         }
 
         modelPath = string.Empty;
-        return false;
-    }
-
-    private static string FindFirstModelAsset(string folder)
-    {
-        if (AssetDatabase.IsValidFolder(folder))
-        {
-            string[] guids = AssetDatabase.FindAssets("t:Model", new[] { folder });
-
-            for (int i = 0; i < guids.Length; i++)
-            {
-                string path = AssetDatabase.GUIDToAssetPath(guids[i]);
-
-                if (IsSupportedModelPath(path))
-                {
-                    return path;
-                }
-            }
-        }
-
-        string fullFolder = Path.Combine(Application.dataPath, folder.Substring("Assets/".Length));
-
-        if (!Directory.Exists(fullFolder))
-        {
-            return string.Empty;
-        }
-
-        foreach (string extension in ModelExtensions)
-        {
-            string[] files = Directory.GetFiles(fullFolder, "*" + extension, SearchOption.AllDirectories);
-
-            for (int i = 0; i < files.Length; i++)
-            {
-                string assetPath = "Assets" + files[i].Substring(Application.dataPath.Length).Replace('\\', '/');
-
-                if (IsSupportedModelPath(assetPath))
-                {
-                    return assetPath;
-                }
-            }
-        }
-
-        return string.Empty;
-    }
-
-    private static bool IsSupportedModelPath(string assetPath)
-    {
-        if (string.IsNullOrEmpty(assetPath))
-        {
-            return false;
-        }
-
-        string extension = Path.GetExtension(assetPath).ToLowerInvariant();
-
-        for (int i = 0; i < ModelExtensions.Length; i++)
-        {
-            if (extension == ModelExtensions[i])
-            {
-                return true;
-            }
-        }
-
         return false;
     }
 
@@ -231,6 +167,11 @@ public static class FPSArmsViewModelAssetBuilder
         modelImporter.importCameras = false;
         modelImporter.importLights = false;
         modelImporter.SaveAndReimport();
+
+        if (IsPsxModelPath(modelPath))
+        {
+            EnsurePsxArmsTextureImported();
+        }
 
         GameObject source = ResolveFpsArmsSourceGameObject(modelPath);
 
@@ -327,6 +268,13 @@ public static class FPSArmsViewModelAssetBuilder
 
         DisablePhysicsComponents(armsModel);
         int disabledWeaponMeshes = DisableEmbeddedWeaponMeshes(armsModel);
+
+        if (IsPsxModelPath(modelPath))
+        {
+            ApplyPsxArmsMaterials(armsModel);
+            FitArmsModelTransform(armsRootTransform, armsModelTransform, PsxViewModelTargetWidth);
+        }
+
         AssignFallbackMaterialsIfMissing(armsModel);
         ConfigureViewModelRenderers(armsModel);
 
@@ -342,6 +290,171 @@ public static class FPSArmsViewModelAssetBuilder
         Object.DestroyImmediate(prefabRoot);
 
         return savedPrefab != null;
+    }
+
+    private static bool IsPsxModelPath(string modelPath)
+    {
+        return string.Equals(NormalizeAssetPath(modelPath), PsxPreferredModelPath, System.StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string NormalizeAssetPath(string assetPath)
+    {
+        return string.IsNullOrEmpty(assetPath) ? string.Empty : assetPath.Replace('\\', '/');
+    }
+
+    private static void EnsurePsxArmsTextureImported()
+    {
+        if (!AssetPathExists(PsxArmsTexturePath))
+        {
+            return;
+        }
+
+        AssetDatabase.ImportAsset(PsxArmsTexturePath, ImportAssetOptions.ForceUpdate);
+
+        TextureImporter textureImporter = AssetImporter.GetAtPath(PsxArmsTexturePath) as TextureImporter;
+
+        if (textureImporter == null)
+        {
+            return;
+        }
+
+        textureImporter.textureType = TextureImporterType.Default;
+        textureImporter.sRGBTexture = true;
+        textureImporter.alphaSource = TextureImporterAlphaSource.FromInput;
+        textureImporter.SaveAndReimport();
+    }
+
+    private static void ApplyPsxArmsMaterials(GameObject armsModel)
+    {
+        Material psxMaterial = GetOrCreatePsxArmsMaterial();
+
+        if (psxMaterial == null || armsModel == null)
+        {
+            return;
+        }
+
+        Renderer[] renderers = armsModel.GetComponentsInChildren<Renderer>(true);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer == null || !renderer.enabled)
+            {
+                continue;
+            }
+
+            Material[] sharedMaterials = renderer.sharedMaterials;
+
+            for (int materialIndex = 0; materialIndex < sharedMaterials.Length; materialIndex++)
+            {
+                sharedMaterials[materialIndex] = psxMaterial;
+            }
+
+            renderer.sharedMaterials = sharedMaterials;
+        }
+    }
+
+    private static Material GetOrCreatePsxArmsMaterial()
+    {
+        Texture2D armsTexture = AssetDatabase.LoadAssetAtPath<Texture2D>(PsxArmsTexturePath);
+        Material existingMaterial = LoadMaterial(PsxArmsMaterialPath);
+
+        if (existingMaterial != null)
+        {
+            if (armsTexture != null)
+            {
+                if (existingMaterial.HasProperty("_BaseMap"))
+                {
+                    existingMaterial.SetTexture("_BaseMap", armsTexture);
+                }
+
+                if (existingMaterial.HasProperty("_MainTex"))
+                {
+                    existingMaterial.SetTexture("_MainTex", armsTexture);
+                }
+            }
+
+            return existingMaterial;
+        }
+
+        Shader urpLit = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+
+        if (urpLit == null)
+        {
+            return null;
+        }
+
+        EnsureFolder(FpsArmsFolder, "Materials");
+
+        Material material = new Material(urpLit);
+        material.name = "M_FPSArms_PSX";
+
+        if (armsTexture != null)
+        {
+            if (material.HasProperty("_BaseMap"))
+            {
+                material.SetTexture("_BaseMap", armsTexture);
+            }
+
+            if (material.HasProperty("_MainTex"))
+            {
+                material.SetTexture("_MainTex", armsTexture);
+            }
+        }
+        else if (material.HasProperty("_BaseColor"))
+        {
+            material.SetColor("_BaseColor", new Color(0.72f, 0.58f, 0.48f));
+        }
+
+        AssetDatabase.CreateAsset(material, PsxArmsMaterialPath);
+        return material;
+    }
+
+    private static void FitArmsModelTransform(Transform armsRoot, Transform armsModel, float targetWidth)
+    {
+        Bounds bounds = CalculateRendererBounds(armsModel);
+        float sourceWidth = Mathf.Max(0.001f, Mathf.Max(bounds.size.x, bounds.size.y, bounds.size.z));
+        float uniformScale = targetWidth / sourceWidth;
+        armsModel.localScale = Vector3.one * uniformScale;
+
+        bounds = CalculateRendererBounds(armsModel);
+        Vector3 worldOffset = armsRoot.position - bounds.center;
+        armsModel.position += worldOffset;
+    }
+
+    private static Bounds CalculateRendererBounds(Transform root)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        bool hasBounds = false;
+        Bounds bounds = new Bounds(root.position, Vector3.zero);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer == null || !renderer.enabled)
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                bounds = renderer.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        if (!hasBounds)
+        {
+            bounds = new Bounds(root.position, Vector3.one * 0.1f);
+        }
+
+        return bounds;
     }
 
     private static void DisablePhysicsComponents(GameObject root)
@@ -491,7 +604,8 @@ public static class FPSArmsViewModelAssetBuilder
                 || materialLabel.Contains("hand")
                 || materialLabel.Contains("skin")
                 || materialLabel.Contains("bacon")
-                || materialLabel.Contains("glove"))
+                || materialLabel.Contains("glove")
+                || materialLabel.Contains("psx"))
             {
                 return true;
             }
@@ -504,7 +618,8 @@ public static class FPSArmsViewModelAssetBuilder
                     || textureLabel.Contains("hand")
                     || textureLabel.Contains("skin")
                     || textureLabel.Contains("bacon")
-                    || textureLabel.Contains("glove"))
+                    || textureLabel.Contains("glove")
+                    || textureLabel.Contains("psx"))
                 {
                     return true;
                 }
