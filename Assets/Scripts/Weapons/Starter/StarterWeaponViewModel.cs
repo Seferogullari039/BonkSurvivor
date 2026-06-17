@@ -55,8 +55,25 @@ public class StarterWeaponViewModel : MonoBehaviour
     private const string BowPrefabAssetPath = "Assets/Prefabs/Weapons/Bow_ViewModel.prefab";
     private const string FpsArmsPrefabAssetPath = "Assets/Prefabs/Characters/FPS_Arms_ViewModel.prefab";
     private static readonly Vector3 BowFpsArmsLocalPosition = new Vector3(0.015f, -0.165f, 0.34f);
-    private static readonly Vector3 StaffFpsArmsLocalPosition = new Vector3(0.02f, -0.17f, 0.34f);
-    private static readonly Vector3 SwordFpsArmsLocalPosition = new Vector3(0.02f, -0.18f, 0.33f);
+    private static readonly Vector3 StaffFpsArmsLocalPosition = new Vector3(0.03f, -0.18f, 0.33f);
+    private static readonly Vector3 SwordFpsArmsLocalPosition = new Vector3(0.035f, -0.19f, 0.32f);
+
+    private static readonly string[] OffhandRendererNameKeywords =
+    {
+        "left", "leftarm", "left_arm", "l_arm", "lhand", "left_hand", "l_forearm", "l_upperarm",
+        "offhand", "support_hand", "weak_hand", "secondary_hand"
+    };
+
+    private static readonly string[] WeaponRendererNameKeywords =
+    {
+        "smg", "gun", "weapon", "rifle", "pistol", "firearm", "magazine", "barrel", "trigger", "stock"
+    };
+
+    private enum FpsArmsVisibilityMode
+    {
+        TwoHandBow,
+        MainHandOnly
+    }
 
     private static readonly string[] PrimitiveArmPlaceholderNames =
     {
@@ -91,6 +108,7 @@ public class StarterWeaponViewModel : MonoBehaviour
     private GameObject fpsArmsContainer;
     private Renderer[] fpsArmsDisabledRenderers = System.Array.Empty<Renderer>();
     private bool usingFpsArmsVisual;
+    private bool fpsArmsUsesCombinedMesh;
     private readonly List<GameObject> primitiveArmPlaceholders = new List<GameObject>();
     private StarterWeaponType currentWeapon = StarterWeaponType.HunterBow;
     private StarterWeaponType pendingWeapon = StarterWeaponType.HunterBow;
@@ -1341,6 +1359,17 @@ public class StarterWeaponViewModel : MonoBehaviour
 
         fpsArmsDisabledRenderers = System.Array.Empty<Renderer>();
         usingFpsArmsVisual = false;
+        fpsArmsUsesCombinedMesh = false;
+    }
+
+    private static FpsArmsVisibilityMode GetFpsArmsVisibilityMode(StarterWeaponType weaponType)
+    {
+        return weaponType switch
+        {
+            StarterWeaponType.FireStaff => FpsArmsVisibilityMode.MainHandOnly,
+            StarterWeaponType.KnightSword => FpsArmsVisibilityMode.MainHandOnly,
+            _ => FpsArmsVisibilityMode.TwoHandBow
+        };
     }
 
     private bool TryCreateFpsArmsForCurrentWeapon(Transform root)
@@ -1402,11 +1431,176 @@ public class StarterWeaponViewModel : MonoBehaviour
         DisableBowPrefabPhysics(armsInstance);
         SetLayerRecursively(armsInstance, 0);
         RepairFpsArmsMissingMaterials(armsInstance.transform);
+
+        FpsArmsVisibilityMode visibilityMode = GetFpsArmsVisibilityMode(currentWeapon);
+
+        if (!ApplyFpsArmsVisibilityMode(armsInstance, visibilityMode))
+        {
+            Destroy(container);
+            fpsArmsContainer = null;
+            fpsArmsUsesCombinedMesh = visibilityMode == FpsArmsVisibilityMode.MainHandOnly;
+            SetPrimitiveArmPlaceholdersVisible(true);
+            return false;
+        }
+
         CacheFpsArmsDisabledRenderers(armsInstance);
 
         usingFpsArmsVisual = true;
+        fpsArmsUsesCombinedMesh = false;
         SetPrimitiveArmPlaceholdersVisible(false);
         return true;
+    }
+
+    private bool ApplyFpsArmsVisibilityMode(GameObject armsInstance, FpsArmsVisibilityMode mode)
+    {
+        if (armsInstance == null)
+        {
+            return false;
+        }
+
+        if (mode == FpsArmsVisibilityMode.TwoHandBow)
+        {
+            return HasVisibleFpsArmRenderers(armsInstance);
+        }
+
+        return TryHideOffhandFpsArms(armsInstance);
+    }
+
+    private bool TryHideOffhandFpsArms(GameObject armsInstance)
+    {
+        List<Renderer> armRenderers = CollectEnabledArmRenderers(armsInstance);
+
+        if (armRenderers.Count == 0)
+        {
+            return false;
+        }
+
+        if (armRenderers.Count == 1)
+        {
+            return false;
+        }
+
+        int disabledCount = 0;
+
+        for (int i = 0; i < armRenderers.Count; i++)
+        {
+            Renderer renderer = armRenderers[i];
+
+            if (renderer == null || !RendererNameMatchesOffhand(renderer.gameObject.name))
+            {
+                continue;
+            }
+
+            renderer.enabled = false;
+            disabledCount++;
+        }
+
+        if (disabledCount == 0 && armRenderers.Count == 2)
+        {
+            Renderer offhandRenderer = SelectLeftmostArmRenderer(armRenderers);
+
+            if (offhandRenderer != null)
+            {
+                offhandRenderer.enabled = false;
+                disabledCount = 1;
+            }
+        }
+
+        return disabledCount > 0 && HasVisibleFpsArmRenderers(armsInstance);
+    }
+
+    private static List<Renderer> CollectEnabledArmRenderers(GameObject armsInstance)
+    {
+        List<Renderer> armRenderers = new List<Renderer>();
+        Renderer[] renderers = armsInstance.GetComponentsInChildren<Renderer>(true);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer == null || !renderer.enabled || RendererNameMatchesWeapon(renderer.gameObject.name))
+            {
+                continue;
+            }
+
+            armRenderers.Add(renderer);
+        }
+
+        return armRenderers;
+    }
+
+    private static bool HasVisibleFpsArmRenderers(GameObject armsInstance)
+    {
+        return CollectEnabledArmRenderers(armsInstance).Count > 0;
+    }
+
+    private static bool RendererNameMatchesOffhand(string objectName)
+    {
+        if (string.IsNullOrEmpty(objectName))
+        {
+            return false;
+        }
+
+        string label = objectName.ToLowerInvariant();
+
+        for (int i = 0; i < OffhandRendererNameKeywords.Length; i++)
+        {
+            if (label.Contains(OffhandRendererNameKeywords[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool RendererNameMatchesWeapon(string objectName)
+    {
+        if (string.IsNullOrEmpty(objectName))
+        {
+            return false;
+        }
+
+        string label = objectName.ToLowerInvariant();
+
+        for (int i = 0; i < WeaponRendererNameKeywords.Length; i++)
+        {
+            if (label.Contains(WeaponRendererNameKeywords[i]))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static Renderer SelectLeftmostArmRenderer(List<Renderer> armRenderers)
+    {
+        if (armRenderers == null || armRenderers.Count == 0)
+        {
+            return null;
+        }
+
+        Renderer leftmost = armRenderers[0];
+        float leftmostX = leftmost != null ? leftmost.bounds.center.x : 0f;
+
+        for (int i = 1; i < armRenderers.Count; i++)
+        {
+            Renderer candidate = armRenderers[i];
+
+            if (candidate == null)
+            {
+                continue;
+            }
+
+            if (candidate.bounds.center.x < leftmostX)
+            {
+                leftmost = candidate;
+                leftmostX = candidate.bounds.center.x;
+            }
+        }
+
+        return leftmost;
     }
 
     private void RepairFpsArmsMissingMaterials(Transform armsRoot)
