@@ -9,14 +9,11 @@ public static class ChestOpenPresentation
 
         if (levelUpManager == null)
         {
-            ChestRevealPause.End();
+            ChestRevealPause.ForceEnd();
             yield break;
         }
 
-        yield return ChestOpeningPresentation.PlayPhysicalOpening(chestTransform);
-
-        UpgradeRarity rewardRarity = levelUpManager.PrepareChestSingleReward(chestRarity);
-        yield return ChestOpenVisualEffect.PlayRoutineForUpgradeReward(position, rewardRarity, chestTransform);
+        levelUpManager.PrepareChestSingleReward(chestRarity);
         levelUpManager.PresentChestSingleCardReveal();
     }
 }

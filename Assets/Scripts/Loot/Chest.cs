@@ -329,9 +329,18 @@ public class Chest : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (openRoutineStarted && ChestRevealPause.IsPaused)
+        if (!openRoutineStarted || !ChestRevealPause.IsPaused)
         {
-            ChestRevealPause.ForceEnd();
+            return;
         }
+
+        LevelUpManager levelUpManager = LevelUpManager.Instance;
+
+        if (levelUpManager != null && levelUpManager.IsAwaitingChestRewardCollect())
+        {
+            return;
+        }
+
+        ChestRevealPause.ForceEnd();
     }
 }

@@ -7,8 +7,35 @@ using UnityEngine.UI;
 public sealed class ChestSingleCardRevealUI : MonoBehaviour
 {
     private const float RevealDuration = 0.48f;
-    private const float CollectUnlockDelay = 0.58f;
+    private const float RouletteDuration = 0.82f;
+    private const float SettleDuration = 0.14f;
+    private const float PostLockPulseDuration = 0.22f;
     private const float GlowPulseSpeed = 2.8f;
+    private const int RouletteCycles = 3;
+
+    private static readonly Color[] RouletteAccents =
+    {
+        ChestLootRarityPalette.CommonAccent,
+        ChestLootRarityPalette.RareAccent,
+        ChestLootRarityPalette.EpicAccent,
+        ChestLootRarityPalette.LegendaryAccent,
+    };
+
+    private static readonly Color[] RouletteBackgrounds =
+    {
+        ChestLootRarityPalette.CommonBackground,
+        ChestLootRarityPalette.RareBackground,
+        ChestLootRarityPalette.EpicBackground,
+        ChestLootRarityPalette.LegendaryBackground,
+    };
+
+    private static readonly Color[] RouletteBorders =
+    {
+        ChestLootRarityPalette.CommonBorder,
+        ChestLootRarityPalette.RareBorder,
+        ChestLootRarityPalette.EpicBorder,
+        ChestLootRarityPalette.LegendaryBorder,
+    };
 
     private sealed class CardView
     {
@@ -38,6 +65,11 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
     private bool collectUnlocked;
     private bool collectInvoked;
     private Color currentAccent = ChestLootRarityPalette.CommonAccent;
+    private Color lockedAccent = ChestLootRarityPalette.CommonAccent;
+    private Color lockedBackground = ChestLootRarityPalette.CommonBackground;
+    private Color lockedBorder = ChestLootRarityPalette.CommonBorder;
+    private string lockedRarityLabel = "COMMON";
+    private bool rouletteLocked;
 
     public bool IsShowing => isShowing && rootPanel != null && rootPanel.activeSelf;
 
@@ -73,6 +105,7 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         collectCallback = onCollect;
         collectInvoked = false;
         collectUnlocked = false;
+        rouletteLocked = false;
         isShowing = true;
         rootPanel.SetActive(true);
 
@@ -103,6 +136,7 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         isShowing = false;
         collectUnlocked = false;
         collectInvoked = false;
+        rouletteLocked = false;
         collectCallback = null;
     }
 
@@ -142,6 +176,7 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         Vector2 startPosition = targetPosition + new Vector2(0f, -108f);
         cardRect.anchoredPosition = startPosition;
         cardRect.localScale = Vector3.one * 0.42f;
+        ApplyRoulettePaletteIndex(0);
 
         if (cardView.CollectHintText != null)
         {
@@ -151,32 +186,43 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         }
 
         float elapsed = 0f;
+        float totalRouletteDuration = RouletteDuration + SettleDuration;
 
-        while (elapsed < RevealDuration)
+        while (elapsed < RevealDuration || elapsed < totalRouletteDuration)
         {
             elapsed += Time.unscaledDeltaTime;
-            float progress = Mathf.Clamp01(elapsed / RevealDuration);
-            float eased = progress * progress * (3f - 2f * progress);
-            float popScale = progress < 0.78f
-                ? Mathf.Lerp(0.42f, 1.08f, eased / 0.78f)
-                : Mathf.Lerp(1.08f, 1f, (progress - 0.78f) / 0.22f);
 
-            cardRect.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, eased);
-            cardRect.localScale = Vector3.one * popScale;
-            UpdateGlowPulse(progress);
+            if (elapsed <= RevealDuration)
+            {
+                float progress = Mathf.Clamp01(elapsed / RevealDuration);
+                float eased = progress * progress * (3f - 2f * progress);
+                float popScale = progress < 0.78f
+                    ? Mathf.Lerp(0.42f, 1.08f, eased / 0.78f)
+                    : Mathf.Lerp(1.08f, 1f, (progress - 0.78f) / 0.22f);
 
+                cardRect.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, eased);
+                cardRect.localScale = Vector3.one * popScale;
+            }
+            else
+            {
+                cardRect.anchoredPosition = targetPosition;
+                cardRect.localScale = Vector3.one;
+            }
+
+            UpdateCardRouletteVisuals(elapsed);
             yield return null;
         }
 
         cardRect.anchoredPosition = targetPosition;
         cardRect.localScale = Vector3.one;
+        LockCardToFinalRarity();
 
-        float glowElapsed = 0f;
+        float pulseElapsed = 0f;
 
-        while (glowElapsed < CollectUnlockDelay)
+        while (pulseElapsed < PostLockPulseDuration)
         {
-            glowElapsed += Time.unscaledDeltaTime;
-            UpdateGlowPulse(glowElapsed);
+            pulseElapsed += Time.unscaledDeltaTime;
+            UpdateGlowPulse(pulseElapsed);
             yield return null;
         }
 
@@ -187,6 +233,128 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
             Color hintColor = cardView.CollectHintText.color;
             hintColor.a = 0.82f;
             cardView.CollectHintText.color = hintColor;
+        }
+    }
+
+    private void UpdateCardRouletteVisuals(float elapsed)
+    {
+        if (rouletteLocked)
+        {
+            UpdateGlowPulse(elapsed);
+            return;
+        }
+
+        if (elapsed >= RouletteDuration + SettleDuration)
+        {
+            LockCardToFinalRarity();
+            UpdateGlowPulse(elapsed);
+            return;
+        }
+
+        Color accent;
+        Color background;
+        Color border;
+
+        if (elapsed < RouletteDuration)
+        {
+            float rouletteProgress = Mathf.Clamp01(elapsed / RouletteDuration);
+            int paletteIndex = GetRoulettePaletteIndex(rouletteProgress);
+            accent = RouletteAccents[paletteIndex];
+            background = RouletteBackgrounds[paletteIndex];
+            border = RouletteBorders[paletteIndex];
+        }
+        else
+        {
+            float settleProgress = Mathf.Clamp01((elapsed - RouletteDuration) / SettleDuration);
+            float settleEase = settleProgress * settleProgress * (3f - 2f * settleProgress);
+            int lastIndex = GetRoulettePaletteIndex(1f);
+            accent = Color.Lerp(RouletteAccents[lastIndex], lockedAccent, settleEase);
+            background = Color.Lerp(RouletteBackgrounds[lastIndex], lockedBackground, settleEase);
+            border = Color.Lerp(RouletteBorders[lastIndex], lockedBorder, settleEase);
+        }
+
+        ApplyCardVisualColors(accent, background, border, animateRarityLabel: elapsed < RouletteDuration);
+        currentAccent = accent;
+    }
+
+    private void LockCardToFinalRarity()
+    {
+        if (rouletteLocked)
+        {
+            return;
+        }
+
+        rouletteLocked = true;
+        currentAccent = lockedAccent;
+        ApplyCardVisualColors(lockedAccent, lockedBackground, lockedBorder, animateRarityLabel: false);
+
+        if (cardView?.RarityText != null)
+        {
+            cardView.RarityText.text = lockedRarityLabel;
+            cardView.RarityText.color = lockedAccent;
+        }
+
+        if (cardView?.Button != null)
+        {
+            ColorBlock colors = cardView.Button.colors;
+            colors.normalColor = Color.white;
+            colors.highlightedColor = Color.Lerp(Color.white, lockedAccent, 0.2f);
+            colors.pressedColor = Color.Lerp(Color.white, lockedAccent, 0.34f);
+            colors.selectedColor = colors.highlightedColor;
+            cardView.Button.colors = colors;
+        }
+    }
+
+    private void ApplyRoulettePaletteIndex(int paletteIndex)
+    {
+        paletteIndex = Mathf.Clamp(paletteIndex, 0, RouletteAccents.Length - 1);
+        ApplyCardVisualColors(
+            RouletteAccents[paletteIndex],
+            RouletteBackgrounds[paletteIndex],
+            RouletteBorders[paletteIndex],
+            animateRarityLabel: true);
+        currentAccent = RouletteAccents[paletteIndex];
+    }
+
+    private static int GetRoulettePaletteIndex(float rouletteProgress)
+    {
+        float cycleProgress = rouletteProgress * RouletteCycles;
+        int step = Mathf.FloorToInt(cycleProgress * RouletteAccents.Length);
+        return step % RouletteAccents.Length;
+    }
+
+    private void ApplyCardVisualColors(Color accent, Color background, Color border, bool animateRarityLabel)
+    {
+        if (cardView == null)
+        {
+            return;
+        }
+
+        float pulse = 0.5f + Mathf.Sin(Time.unscaledTime * GlowPulseSpeed) * 0.18f;
+
+        if (cardView.BorderGlow != null)
+        {
+            cardView.BorderGlow.color = new Color(accent.r, accent.g, accent.b, 0.26f + pulse * 0.22f);
+        }
+
+        if (cardView.BackdropPulse != null)
+        {
+            cardView.BackdropPulse.color = new Color(accent.r, accent.g, accent.b, 0.05f + pulse * 0.07f);
+        }
+
+        if (cardView.Background != null)
+        {
+            cardView.Background.color = background;
+        }
+
+        if (cardView.IconFrame != null)
+        {
+            cardView.IconFrame.color = border;
+        }
+
+        if (animateRarityLabel && cardView.RarityText != null)
+        {
+            cardView.RarityText.color = accent;
         }
     }
 
@@ -228,12 +396,19 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
             return;
         }
 
-        currentAccent = data.RarityAccent.a > 0.01f ? data.RarityAccent : ChestLootRarityPalette.CommonAccent;
+        lockedAccent = data.RarityAccent.a > 0.01f ? data.RarityAccent : ChestLootRarityPalette.CommonAccent;
+        lockedBackground = data.RarityBackground.a > 0.01f
+            ? data.RarityBackground
+            : ChestLootRarityPalette.CommonBackground;
+        lockedBorder = data.RarityBorder.a > 0.01f
+            ? data.RarityBorder
+            : ChestLootRarityPalette.CommonBorder;
+        lockedRarityLabel = data.RarityLabel ?? "COMMON";
+        currentAccent = lockedAccent;
 
         if (cardView.RarityText != null)
         {
-            cardView.RarityText.text = data.RarityLabel ?? "COMMON";
-            cardView.RarityText.color = currentAccent;
+            cardView.RarityText.text = lockedRarityLabel;
         }
 
         if (cardView.TitleText != null)
@@ -246,31 +421,10 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
             cardView.DescriptionText.text = data.Description ?? string.Empty;
         }
 
-        if (cardView.Background != null)
-        {
-            cardView.Background.color = data.RarityBackground.a > 0.01f
-                ? data.RarityBackground
-                : ChestLootRarityPalette.CommonBackground;
-        }
-
-        if (cardView.IconFrame != null)
-        {
-            cardView.IconFrame.color = data.RarityBorder.a > 0.01f
-                ? data.RarityBorder
-                : ChestLootRarityPalette.CommonBorder;
-        }
-
         ApplyCardIcon(data.IconKey);
 
         if (cardView.Button != null)
         {
-            ColorBlock colors = cardView.Button.colors;
-            colors.normalColor = Color.white;
-            colors.highlightedColor = Color.Lerp(Color.white, currentAccent, 0.2f);
-            colors.pressedColor = Color.Lerp(Color.white, currentAccent, 0.34f);
-            colors.selectedColor = colors.highlightedColor;
-            colors.fadeDuration = 0.08f;
-            cardView.Button.colors = colors;
             cardView.Button.onClick.RemoveAllListeners();
             cardView.Button.onClick.AddListener(TryCollect);
         }

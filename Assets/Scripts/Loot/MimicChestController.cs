@@ -123,10 +123,19 @@ public class MimicChestController : MonoBehaviour
 
     private void OnDestroy()
     {
-        if (rewardPresentationStarted && ChestRevealPause.IsPaused)
+        if (!rewardPresentationStarted || !ChestRevealPause.IsPaused)
         {
-            ChestRevealPause.ForceEnd();
+            return;
         }
+
+        LevelUpManager levelUpManager = LevelUpManager.Instance;
+
+        if (levelUpManager != null && levelUpManager.IsAwaitingChestRewardCollect())
+        {
+            return;
+        }
+
+        ChestRevealPause.ForceEnd();
     }
 
     private void HidePriceText()

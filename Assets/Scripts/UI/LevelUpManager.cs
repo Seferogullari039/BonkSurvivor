@@ -439,6 +439,11 @@ public class LevelUpManager : MonoBehaviour
         chestSingleCardRevealUI.Show(header, headerColor, cardData, CollectChestSingleReward);
     }
 
+    public bool IsAwaitingChestRewardCollect()
+    {
+        return useChestSingleCardReveal && !chestRewardCollected;
+    }
+
     public void CollectChestSingleReward()
     {
         if (!useChestSingleCardReveal || chestRewardCollected)
