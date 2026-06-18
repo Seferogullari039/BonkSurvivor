@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 
@@ -179,18 +180,32 @@ public class Chest : MonoBehaviour
         if (!playerStats.SpendCoins(price)) return;
 
         isOpened = true;
+        DisableOpenInteraction();
+        StartCoroutine(CompleteChestOpen());
+    }
+
+    private void DisableOpenInteraction()
+    {
+        Collider chestCollider = GetComponent<Collider>();
+
+        if (chestCollider != null)
+        {
+            chestCollider.enabled = false;
+        }
+
+        if (priceText != null)
+        {
+            priceText.gameObject.SetActive(false);
+        }
+    }
+
+    private IEnumerator CompleteChestOpen()
+    {
+        Vector3 openPosition = transform.position;
+        ChestRarity rarity = chestRarity;
+
         AudioManager.Instance?.PlayChestOpen();
-
-        if (LevelUpManager.Instance != null)
-        {
-            LevelUpManager.Instance.OpenChestUpgradeMenu(chestRarity);
-        }
-
-        if (JuiceManager.Instance != null)
-        {
-            JuiceManager.Instance.PlayChestOpen(transform.position, chestRarity);
-        }
-
+        yield return ChestOpenPresentation.PlayRevealThenOpenUpgradeMenu(openPosition, rarity);
         Destroy(gameObject);
     }
 }

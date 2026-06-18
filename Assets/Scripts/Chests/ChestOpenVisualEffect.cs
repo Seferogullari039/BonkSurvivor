@@ -16,10 +16,16 @@ public static class ChestOpenVisualEffect
         LegendaryPulse,
     };
 
-    private const float TotalDuration = 0.75f;
-    private const float SettleDuration = 0.25f;
-    private const float RouletteDuration = TotalDuration - SettleDuration;
+    private const float RouletteDuration = 0.85f;
+    private const float SettleDuration = 0.15f;
+    private const float LockDuration = 0.25f;
+    private const float FadeDuration = 0.08f;
     private const int RouletteCycles = 3;
+
+    private const float InnerScaleMin = 0.14f;
+    private const float InnerScaleMax = 0.45f;
+    private const float RingRadiusMin = 0.22f;
+    private const float RingRadiusMax = 0.72f;
 
     public static IEnumerator PlayRoutine(Vector3 position, ChestRarity rarity = ChestRarity.Normal)
     {
@@ -29,9 +35,9 @@ public static class ChestOpenVisualEffect
         Color finalPulse = GetPulseColor(rarity);
         Color finalRing = GetRingColor(rarity);
 
-        GameObject innerGlow = CreatePulseSphere(innerPosition, 0.08f, CommonPulse);
-        GameObject spark = CreatePulseSphere(innerPosition + Vector3.up * 0.04f, 0.05f, CommonPulse);
-        GameObject ring = CreatePulseRing(ringPosition, 0.12f, GetRingColorForPalette(0));
+        GameObject innerGlow = CreatePulseSphere(innerPosition, InnerScaleMin, CommonPulse);
+        GameObject spark = CreatePulseSphere(innerPosition + Vector3.up * 0.04f, InnerScaleMin * 0.65f, CommonPulse);
+        GameObject ring = CreatePulseRing(ringPosition, RingRadiusMin, GetRingColorForPalette(0));
 
         Renderer innerRenderer = innerGlow != null ? innerGlow.GetComponent<Renderer>() : null;
         Material innerMaterial = innerRenderer != null ? innerRenderer.material : null;
@@ -54,9 +60,9 @@ public static class ChestOpenVisualEffect
             Color ringColor = GetRingColorForPalette(paletteIndex);
             lastRouletteColor = pulseColor;
 
-            float breathe = 0.08f + Mathf.Sin(rouletteProgress * RouletteCycles * Mathf.PI * 2f) * 0.015f;
-            float ringRadius = 0.12f + rouletteProgress * 0.06f;
-            float emission = 0.16f + rouletteProgress * 0.06f;
+            float breathe = InnerScaleMin + Mathf.Sin(rouletteProgress * RouletteCycles * Mathf.PI * 2f) * 0.04f;
+            float ringRadius = RingRadiusMin + rouletteProgress * (RingRadiusMax * 0.72f - RingRadiusMin);
+            float emission = 0.14f + rouletteProgress * 0.08f;
             float alpha = pulseColor.a;
 
             ApplyInnerGlow(innerGlow, breathe);
@@ -65,12 +71,12 @@ public static class ChestOpenVisualEffect
             UpdateEffectMaterial(innerMaterial, pulseColor, emission, alpha);
             UpdateEffectMaterial(sparkMaterial, pulseColor, emission * 0.85f, alpha * 0.75f);
             UpdateEffectMaterial(ringMaterial, ringColor, emission * 0.7f, ringColor.a);
-            UpdateRevealLight(revealLight, pulseColor, 0.12f + rouletteProgress * 0.08f);
+            UpdateRevealLight(revealLight, pulseColor, 0.08f + rouletteProgress * 0.06f);
 
             yield return null;
         }
 
-        while (elapsed < TotalDuration)
+        while (elapsed < RouletteDuration + SettleDuration)
         {
             elapsed += Time.unscaledDeltaTime;
             float settleProgress = Mathf.Clamp01((elapsed - RouletteDuration) / SettleDuration);
@@ -79,9 +85,9 @@ public static class ChestOpenVisualEffect
             Color pulseColor = Color.Lerp(lastRouletteColor, finalPulse, settleEase);
             Color ringColor = Color.Lerp(GetRingColorForPalette(GetRoulettePaletteIndex(1f)), finalRing, settleEase);
 
-            float innerScale = Mathf.Lerp(0.10f, 0.20f, settleEase);
-            float ringRadius = Mathf.Lerp(0.18f, 0.28f, settleEase);
-            float emission = Mathf.Lerp(0.22f, 0.30f, settleEase);
+            float innerScale = Mathf.Lerp(InnerScaleMin + 0.06f, InnerScaleMax, settleEase);
+            float ringRadius = Mathf.Lerp(RingRadiusMax * 0.72f, RingRadiusMax, settleEase);
+            float emission = Mathf.Lerp(0.22f, 0.28f, settleEase);
             float alpha = Mathf.Lerp(pulseColor.a, finalPulse.a, settleEase);
 
             ApplyInnerGlow(innerGlow, innerScale);
@@ -90,23 +96,39 @@ public static class ChestOpenVisualEffect
             UpdateEffectMaterial(innerMaterial, pulseColor, emission, alpha);
             UpdateEffectMaterial(sparkMaterial, pulseColor, emission * 0.9f, alpha * 0.8f);
             UpdateEffectMaterial(ringMaterial, ringColor, emission * 0.75f, ringColor.a);
-            UpdateRevealLight(revealLight, pulseColor, Mathf.Lerp(0.20f, 0.28f, settleEase));
+            UpdateRevealLight(revealLight, pulseColor, Mathf.Lerp(0.14f, 0.16f, settleEase));
+
+            yield return null;
+        }
+
+        float lockElapsed = 0f;
+
+        while (lockElapsed < LockDuration)
+        {
+            lockElapsed += Time.unscaledDeltaTime;
+
+            ApplyInnerGlow(innerGlow, InnerScaleMax);
+            ApplyInnerGlow(spark, InnerScaleMax * 0.55f);
+            SetRingScale(ring, RingRadiusMax);
+            UpdateEffectMaterial(innerMaterial, finalPulse, 0.28f, finalPulse.a);
+            UpdateEffectMaterial(sparkMaterial, finalPulse, 0.24f, finalPulse.a * 0.8f);
+            UpdateEffectMaterial(ringMaterial, finalRing, 0.22f, finalRing.a);
+            UpdateRevealLight(revealLight, finalPulse, 0.14f);
 
             yield return null;
         }
 
         float fadeElapsed = 0f;
-        const float fadeDuration = 0.12f;
 
-        while (fadeElapsed < fadeDuration)
+        while (fadeElapsed < FadeDuration)
         {
             fadeElapsed += Time.unscaledDeltaTime;
-            float fade = 1f - Mathf.Clamp01(fadeElapsed / fadeDuration);
+            float fade = 1f - Mathf.Clamp01(fadeElapsed / FadeDuration);
 
-            UpdateEffectMaterial(innerMaterial, finalPulse, 0.30f * fade, finalPulse.a * fade);
+            UpdateEffectMaterial(innerMaterial, finalPulse, 0.28f * fade, finalPulse.a * fade);
             UpdateEffectMaterial(sparkMaterial, finalPulse, 0.24f * fade, finalPulse.a * fade * 0.8f);
             UpdateEffectMaterial(ringMaterial, finalRing, 0.22f * fade, finalRing.a * fade);
-            UpdateRevealLight(revealLight, finalPulse, 0.28f * fade);
+            UpdateRevealLight(revealLight, finalPulse, 0.14f * fade);
 
             yield return null;
         }
@@ -167,8 +189,8 @@ public static class ChestOpenVisualEffect
 
         Light light = lightObject.AddComponent<Light>();
         light.type = LightType.Point;
-        light.range = 0.85f;
-        light.intensity = 0.12f;
+        light.range = 1.1f;
+        light.intensity = 0.1f;
         light.shadows = LightShadows.None;
         return light;
     }

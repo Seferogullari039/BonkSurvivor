@@ -64,7 +64,6 @@ public class MimicChestController : MonoBehaviour
         Vector3 deathPosition = transform.position;
         PlayDeathFeedback(deathPosition);
         GrantRewards();
-        Destroy(gameObject);
     }
 
     private void Update()
@@ -100,22 +99,25 @@ public class MimicChestController : MonoBehaviour
         lastContactDamageTime = Time.time;
     }
 
+    private bool rewardPresentationStarted;
+
     private void GrantRewards()
     {
-        if (ownerChest == null) return;
+        if (ownerChest == null || rewardPresentationStarted) return;
 
-        ChestRarity rarity = ownerChest.Rarity;
+        rewardPresentationStarted = true;
+        isActivated = false;
+        StartCoroutine(CompleteMimicRewardPresentation());
+    }
+
+    private IEnumerator CompleteMimicRewardPresentation()
+    {
+        Vector3 openPosition = transform.position;
+        ChestRarity rarity = ownerChest != null ? ownerChest.Rarity : ChestRarity.Normal;
+
         AudioManager.Instance?.PlayChestOpen();
-
-        if (LevelUpManager.Instance != null)
-        {
-            LevelUpManager.Instance.OpenChestUpgradeMenu(rarity);
-        }
-
-        if (JuiceManager.Instance != null)
-        {
-            JuiceManager.Instance.PlayChestOpen(transform.position, rarity);
-        }
+        yield return ChestOpenPresentation.PlayRevealThenOpenUpgradeMenu(openPosition, rarity);
+        Destroy(gameObject);
     }
 
     private void HidePriceText()
