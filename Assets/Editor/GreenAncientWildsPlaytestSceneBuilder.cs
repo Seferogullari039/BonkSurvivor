@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -16,6 +17,24 @@ public static class GreenAncientWildsPlaytestSceneBuilder
     private const string MaterialsFolder = "Assets/BonkSurvivor/Maps/GreenAncientWilds/Materials";
 
     private const string PolytopePrefabsRoot = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs";
+
+    private const string LegacyPolytopeWaterMatGuid = "3e36df56c6fa5f64085c14d9d4f6f8d9";
+    private const string LegacyPolytopeTerrainMatGuid = "48c26796e9175d14a9b2eccded92bb92";
+
+    private static readonly string[] SuspiciousMaterialTokens =
+    {
+        "PT_",
+        "Polytope",
+        "GrabPass",
+        "Water_mat",
+        "Terrain_mat",
+    };
+
+    private static readonly string[] LegacyVisualObjectNames =
+    {
+        "PT_GroundVisual",
+        "PT_WaterDecor",
+    };
 
     private static readonly string[] TreePrefabPaths =
     {
@@ -41,6 +60,13 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         public Material Water;
     }
 
+    private struct VisualValidationResult
+    {
+        public int RendererCount;
+        public int MaterialsReplaced;
+        public int SuspiciousRemaining;
+    }
+
     static GreenAncientWildsPlaytestSceneBuilder()
     {
         EditorApplication.delayCall += TryAutoBuildIfNeeded;
@@ -64,7 +90,13 @@ public static class GreenAncientWildsPlaytestSceneBuilder
             return;
         }
 
-        if (File.ReadAllText(PlaytestScenePath).Contains(VisualsRootName))
+        string sceneText = File.ReadAllText(PlaytestScenePath);
+        bool missingVisuals = !sceneText.Contains(VisualsRootName);
+        bool hasLegacyPolytopeMaterials = sceneText.Contains(LegacyPolytopeWaterMatGuid)
+            || sceneText.Contains(LegacyPolytopeTerrainMatGuid);
+        bool hasLegacyVisualNames = sceneText.Contains("PT_GroundVisual") || sceneText.Contains("PT_WaterDecor");
+
+        if (!missingVisuals && !hasLegacyPolytopeMaterials && !hasLegacyVisualNames)
         {
             return;
         }
@@ -107,8 +139,15 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
         Scene scene = EditorSceneManager.OpenScene(PlaytestScenePath, OpenSceneMode.Single);
         RemoveStagingRoots(scene);
+        RemoveLegacyVisualObjects(scene);
         BuildMarkers(scene);
-        BuildVisualDressing(scene, materials);
+
+        GameObject visualsRoot = BuildVisualDressing(scene, materials);
+        DisableCollidersRecursive(visualsRoot);
+
+        VisualValidationResult validation = ValidateAndSanitizeVisuals(visualsRoot, materials);
+        LogValidationResult(validation);
+
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
 
@@ -234,12 +273,52 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
     private static void RemoveStagingRoots(Scene scene)
     {
-        foreach (string rootName in new[] { VisualsRootName, MarkersRootName })
+        foreach (GameObject root in scene.GetRootGameObjects())
         {
-            GameObject existing = GameObject.Find(rootName);
-            if (existing != null)
+            if (root == null)
             {
-                Object.DestroyImmediate(existing);
+                continue;
+            }
+
+            if (root.name == VisualsRootName || root.name == MarkersRootName)
+            {
+                Object.DestroyImmediate(root);
+            }
+        }
+    }
+
+    private static void RemoveLegacyVisualObjects(Scene scene)
+    {
+        foreach (GameObject root in scene.GetRootGameObjects())
+        {
+            RemoveLegacyVisualObjectsRecursive(root);
+        }
+    }
+
+    private static void RemoveLegacyVisualObjectsRecursive(GameObject current)
+    {
+        if (current == null)
+        {
+            return;
+        }
+
+        Transform[] children = new Transform[current.transform.childCount];
+        for (int i = 0; i < children.Length; i++)
+        {
+            children[i] = current.transform.GetChild(i);
+        }
+
+        foreach (Transform child in children)
+        {
+            RemoveLegacyVisualObjectsRecursive(child.gameObject);
+        }
+
+        for (int i = 0; i < LegacyVisualObjectNames.Length; i++)
+        {
+            if (current.name == LegacyVisualObjectNames[i])
+            {
+                Object.DestroyImmediate(current);
+                return;
             }
         }
     }
@@ -265,7 +344,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         marker.transform.localScale = Vector3.one;
     }
 
-    private static void BuildVisualDressing(Scene scene, MapMaterials materials)
+    private static GameObject BuildVisualDressing(Scene scene, MapMaterials materials)
     {
         GameObject visualsRoot = new GameObject(VisualsRootName);
         SceneManager.MoveGameObjectToScene(visualsRoot, scene);
@@ -276,7 +355,8 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         PlacePerimeterRocks(visualsRoot.transform, materials.Rock);
         PlaceMenhirs(visualsRoot.transform, materials.Ruin);
         PlaceGrassClusters(visualsRoot.transform, materials.Grass);
-        DisableCollidersRecursive(visualsRoot);
+
+        return visualsRoot;
     }
 
     private static void CreateGroundVisual(Transform parent, Material groundMaterial)
@@ -444,8 +524,165 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
         instance.transform.localPosition = position;
         instance.transform.localRotation = rotation;
+
+        if (PrefabUtility.IsPartOfPrefabInstance(instance))
+        {
+            PrefabUtility.UnpackPrefabInstance(instance, PrefabUnpackMode.Completely, InteractionMode.AutomatedAction);
+        }
+
         ApplyMaterialToRenderers(instance, overrideMaterial);
         return instance;
+    }
+
+    private static VisualValidationResult ValidateAndSanitizeVisuals(GameObject visualsRoot, MapMaterials materials)
+    {
+        VisualValidationResult result = new VisualValidationResult();
+        if (visualsRoot == null)
+        {
+            return result;
+        }
+
+        Renderer[] renderers = visualsRoot.GetComponentsInChildren<Renderer>(true);
+        result.RendererCount = renderers.Length;
+
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            Material targetMaterial = ResolveGaMaterial(renderer.transform, materials);
+            Material[] slots = renderer.sharedMaterials;
+            bool replacedAny = false;
+
+            for (int i = 0; i < slots.Length; i++)
+            {
+                Material slot = slots[i];
+                if (slot == targetMaterial && !IsSuspiciousMaterial(slot))
+                {
+                    continue;
+                }
+
+                slots[i] = targetMaterial;
+                replacedAny = true;
+                result.MaterialsReplaced++;
+            }
+
+            if (replacedAny)
+            {
+                renderer.sharedMaterials = slots;
+                EditorUtility.SetDirty(renderer);
+            }
+
+            foreach (Material slot in renderer.sharedMaterials)
+            {
+                if (IsSuspiciousMaterial(slot))
+                {
+                    result.SuspiciousRemaining++;
+                    LogSuspiciousMaterialWarning(renderer, slot);
+                }
+            }
+        }
+
+        return result;
+    }
+
+    private static Material ResolveGaMaterial(Transform rendererTransform, MapMaterials materials)
+    {
+        Transform current = rendererTransform;
+        while (current != null)
+        {
+            string name = current.name;
+            if (name == "GA_GroundVisual")
+            {
+                return materials.Ground;
+            }
+
+            if (name == "GA_WaterDecor")
+            {
+                return materials.Water;
+            }
+
+            if (name == "Trees")
+            {
+                return materials.Tree;
+            }
+
+            if (name == "Rocks")
+            {
+                return materials.Rock;
+            }
+
+            if (name == "Ruins")
+            {
+                return materials.Ruin;
+            }
+
+            if (name == "Grass")
+            {
+                return materials.Grass;
+            }
+
+            current = current.parent;
+        }
+
+        return materials.Rock;
+    }
+
+    private static bool IsSuspiciousMaterial(Material material)
+    {
+        if (material == null)
+        {
+            return true;
+        }
+
+        if (material.name.StartsWith("GA_", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string shaderName = material.shader != null ? material.shader.name : string.Empty;
+        string assetPath = AssetDatabase.GetAssetPath(material);
+        string combined = material.name + " " + shaderName + " " + assetPath;
+
+        for (int i = 0; i < SuspiciousMaterialTokens.Length; i++)
+        {
+            if (combined.IndexOf(SuspiciousMaterialTokens[i], StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static void LogSuspiciousMaterialWarning(Renderer renderer, Material material)
+    {
+        string shaderName = material != null && material.shader != null ? material.shader.name : "<null>";
+        string materialName = material != null ? material.name : "<null>";
+        string path = material != null ? AssetDatabase.GetAssetPath(material) : "<null>";
+
+        Debug.LogWarning(
+            "[GreenAncientWildsPlaytestSceneBuilder] Suspicious material remains on '"
+            + renderer.gameObject.name
+            + "': material="
+            + materialName
+            + ", shader="
+            + shaderName
+            + ", path="
+            + path);
+    }
+
+    private static void LogValidationResult(VisualValidationResult result)
+    {
+        Debug.Log(
+            "[GreenAncientWildsPlaytestSceneBuilder] Validation: renderers="
+            + result.RendererCount
+            + ", materialsReplaced="
+            + result.MaterialsReplaced
+            + ", suspiciousRemaining="
+            + result.SuspiciousRemaining);
     }
 
     private static void ApplyMaterialToRenderers(GameObject root, Material material)
@@ -470,6 +707,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
             }
 
             renderer.sharedMaterials = slots;
+            EditorUtility.SetDirty(renderer);
         }
     }
 
