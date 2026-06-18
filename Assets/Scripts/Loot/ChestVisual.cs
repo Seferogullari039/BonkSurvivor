@@ -4,11 +4,16 @@ using UnityEngine;
 public class ChestVisual : MonoBehaviour
 {
     private const string VisualRootName = "ChestVisualRoot";
+    private const string BaseName = "ChestBase";
+    private const string LidName = "ChestLid";
+    private const string TrimName = "ChestTrim";
+    private const string GlowName = "ChestGlow";
 
     public ChestRarity rarity = ChestRarity.Normal;
     public bool buildOnAwake = true;
 
     private Transform visualRoot;
+    private Transform trimRoot;
     private Renderer glowRenderer;
     private Light glowLight;
     private bool bossPresentation;
@@ -53,29 +58,30 @@ public class ChestVisual : MonoBehaviour
         HideLegacyRootMesh();
 
         visualRoot = CreateVisualRoot();
+        trimRoot = CreateTrimRoot(visualRoot);
 
-        CreatePart(visualRoot, "Body", PrimitiveType.Cube, new Vector3(0f, 0.35f, 0f), new Vector3(1.2f, 0.7f, 0.9f));
-        CreatePart(visualRoot, "Lid", PrimitiveType.Cube, new Vector3(0f, 0.82f, 0f), new Vector3(1.28f, 0.32f, 0.95f));
-        CreatePart(visualRoot, "Lock", PrimitiveType.Cube, new Vector3(0f, 0.55f, -0.48f), new Vector3(0.22f, 0.26f, 0.08f));
-        CreatePart(visualRoot, "MetalBand_Left", PrimitiveType.Cube, new Vector3(-0.58f, 0.42f, 0f), new Vector3(0.08f, 0.62f, 0.92f));
-        CreatePart(visualRoot, "MetalBand_Right", PrimitiveType.Cube, new Vector3(0.58f, 0.42f, 0f), new Vector3(0.08f, 0.62f, 0.92f));
-        CreatePart(visualRoot, "MetalBand_Front", PrimitiveType.Cube, new Vector3(0f, 0.42f, -0.46f), new Vector3(1.18f, 0.12f, 0.08f));
-        CreatePart(visualRoot, "MetalBand_Top", PrimitiveType.Cube, new Vector3(0f, 0.78f, 0f), new Vector3(1.22f, 0.08f, 0.9f));
+        CreatePart(visualRoot, BaseName, PrimitiveType.Cube, new Vector3(0f, 0.32f, 0f), new Vector3(1.1f, 0.64f, 0.85f));
+        CreatePart(visualRoot, LidName, PrimitiveType.Cube, new Vector3(0f, 0.78f, 0f), new Vector3(1.16f, 0.28f, 0.88f));
+        CreatePart(trimRoot, "Lock", PrimitiveType.Cube, new Vector3(0f, 0.52f, -0.44f), new Vector3(0.18f, 0.22f, 0.08f));
+        CreatePart(trimRoot, "MetalBand_Left", PrimitiveType.Cube, new Vector3(-0.54f, 0.38f, 0f), new Vector3(0.07f, 0.58f, 0.88f));
+        CreatePart(trimRoot, "MetalBand_Right", PrimitiveType.Cube, new Vector3(0.54f, 0.38f, 0f), new Vector3(0.07f, 0.58f, 0.88f));
+        CreatePart(trimRoot, "MetalBand_Front", PrimitiveType.Cube, new Vector3(0f, 0.38f, -0.42f), new Vector3(1.08f, 0.10f, 0.07f));
+        CreatePart(trimRoot, "MetalBand_Top", PrimitiveType.Cube, new Vector3(0f, 0.72f, 0f), new Vector3(1.12f, 0.07f, 0.86f));
 
         GameObject glowObject = CreatePart(
             visualRoot,
-            "Glow",
+            GlowName,
             PrimitiveType.Sphere,
-            new Vector3(0f, 0.55f, 0f),
-            new Vector3(1.55f, 1.1f, 1.55f));
+            new Vector3(0f, 0.52f, 0f),
+            new Vector3(1.15f, 0.75f, 1.15f));
         glowRenderer = glowObject.GetComponent<Renderer>();
 
         GameObject lightObject = new GameObject("GlowLight");
         lightObject.transform.SetParent(visualRoot, false);
-        lightObject.transform.localPosition = new Vector3(0f, 0.75f, 0f);
+        lightObject.transform.localPosition = new Vector3(0f, 0.72f, 0f);
         glowLight = lightObject.AddComponent<Light>();
         glowLight.type = LightType.Point;
-        glowLight.range = 2.4f;
+        glowLight.range = 2.2f;
         glowLight.shadows = LightShadows.None;
 
         ApplyMaterials();
@@ -83,15 +89,45 @@ public class ChestVisual : MonoBehaviour
 
     private void ApplyMaterials()
     {
-        if (visualRoot == null) return;
+        if (visualRoot == null)
+        {
+            return;
+        }
 
-        ApplyWoodMaterial(visualRoot, "Body", rarity);
-        ApplyWoodMaterial(visualRoot, "Lid", rarity);
-        ApplyLockMaterial(visualRoot, "Lock", rarity);
-        ApplyMetalMaterial(visualRoot, "MetalBand_Left", rarity);
-        ApplyMetalMaterial(visualRoot, "MetalBand_Right", rarity);
-        ApplyMetalMaterial(visualRoot, "MetalBand_Front", rarity);
-        ApplyMetalMaterial(visualRoot, "MetalBand_Top", rarity);
+        ApplyBodyMaterial(visualRoot, BaseName, rarity);
+        ApplyBodyMaterial(visualRoot, LidName, rarity);
+        ApplyBodyMaterial(visualRoot, "Body", rarity);
+        ApplyBodyMaterial(visualRoot, "Lid", rarity);
+
+        Transform trim = trimRoot != null ? trimRoot : visualRoot.Find(TrimName);
+        if (trim != null)
+        {
+            ApplyTrimMaterial(trim, "Lock", rarity);
+            ApplyTrimMaterial(trim, "MetalBand_Left", rarity);
+            ApplyTrimMaterial(trim, "MetalBand_Right", rarity);
+            ApplyTrimMaterial(trim, "MetalBand_Front", rarity);
+            ApplyTrimMaterial(trim, "MetalBand_Top", rarity);
+        }
+
+        ApplyTrimMaterial(visualRoot, "Lock", rarity);
+        ApplyTrimMaterial(visualRoot, "MetalBand_Left", rarity);
+        ApplyTrimMaterial(visualRoot, "MetalBand_Right", rarity);
+        ApplyTrimMaterial(visualRoot, "MetalBand_Front", rarity);
+        ApplyTrimMaterial(visualRoot, "MetalBand_Top", rarity);
+
+        if (glowRenderer == null)
+        {
+            Transform glowTransform = visualRoot.Find(GlowName);
+            if (glowTransform == null)
+            {
+                glowTransform = visualRoot.Find("Glow");
+            }
+
+            if (glowTransform != null)
+            {
+                glowRenderer = glowTransform.GetComponent<Renderer>();
+            }
+        }
 
         if (glowRenderer != null)
         {
@@ -99,7 +135,7 @@ public class ChestVisual : MonoBehaviour
             {
                 ChestRarity.Epic => bossPresentation ? 0.85f : 0.72f,
                 ChestRarity.Rare => bossPresentation ? 0.68f : 0.55f,
-                _ => bossPresentation ? 0.52f : 0.42f
+                _ => bossPresentation ? 0.42f : 0.28f
             };
             ChestVisualMaterials.ApplyGlow(glowRenderer, rarity, glowIntensity);
         }
@@ -107,47 +143,57 @@ public class ChestVisual : MonoBehaviour
         if (glowLight != null)
         {
             glowLight.color = ChestVisualMaterials.GetGlowColor(rarity);
-            glowLight.intensity = bossPresentation ? 1.1f : 0.75f;
+            glowLight.intensity = bossPresentation ? 1.0f : 0.65f;
         }
     }
 
-    private static void ApplyWoodMaterial(Transform root, string partName, ChestRarity chestRarity)
+    private static void ApplyBodyMaterial(Transform root, string partName, ChestRarity chestRarity)
     {
         Transform part = root.Find(partName);
-        if (part == null) return;
+        if (part == null)
+        {
+            return;
+        }
 
         Renderer renderer = part.GetComponent<Renderer>();
-        if (renderer == null) return;
+        if (renderer == null)
+        {
+            return;
+        }
 
-        ChestVisualMaterials.ApplyWood(renderer, chestRarity);
+        ChestVisualMaterials.ApplyBody(renderer, chestRarity);
     }
 
-    private static void ApplyMetalMaterial(Transform root, string partName, ChestRarity chestRarity)
+    private static void ApplyTrimMaterial(Transform root, string partName, ChestRarity chestRarity)
     {
         Transform part = root.Find(partName);
-        if (part == null) return;
+        if (part == null)
+        {
+            return;
+        }
 
         Renderer renderer = part.GetComponent<Renderer>();
-        if (renderer == null) return;
+        if (renderer == null)
+        {
+            return;
+        }
 
-        ChestVisualMaterials.ApplyMetal(renderer, chestRarity);
-    }
+        if (partName == "Lock")
+        {
+            ChestVisualMaterials.ApplyLock(renderer, chestRarity);
+            return;
+        }
 
-    private static void ApplyLockMaterial(Transform root, string partName, ChestRarity chestRarity)
-    {
-        Transform part = root.Find(partName);
-        if (part == null) return;
-
-        Renderer renderer = part.GetComponent<Renderer>();
-        if (renderer == null) return;
-
-        ChestVisualMaterials.ApplyLock(renderer, chestRarity);
+        ChestVisualMaterials.ApplyTrim(renderer, chestRarity);
     }
 
     private void ClearVisualRoot()
     {
         Transform existing = transform.Find(VisualRootName);
-        if (existing == null) return;
+        if (existing == null)
+        {
+            return;
+        }
 
         if (Application.isPlaying)
         {
@@ -159,6 +205,7 @@ public class ChestVisual : MonoBehaviour
         }
 
         visualRoot = null;
+        trimRoot = null;
         glowRenderer = null;
         glowLight = null;
     }
@@ -180,6 +227,16 @@ public class ChestVisual : MonoBehaviour
         rootObject.transform.localRotation = Quaternion.identity;
         rootObject.transform.localScale = Vector3.one;
         return rootObject.transform;
+    }
+
+    private static Transform CreateTrimRoot(Transform parent)
+    {
+        GameObject trimObject = new GameObject(TrimName);
+        trimObject.transform.SetParent(parent, false);
+        trimObject.transform.localPosition = Vector3.zero;
+        trimObject.transform.localRotation = Quaternion.identity;
+        trimObject.transform.localScale = Vector3.one;
+        return trimObject.transform;
     }
 
     private static GameObject CreatePart(

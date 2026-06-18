@@ -18,7 +18,7 @@ public static class ChestPrefabBuilder
         $"{ChestsFolder}/Chest_Epic.prefab"
     };
 
-    private const string WoodMaterialPath = "Assets/Materials/Chest/M_Chest_Wood.mat";
+    private const string CommonMaterialPath = "Assets/Prefabs/Chests/Materials/Chest_Common_Mat.mat";
 
     static ChestPrefabBuilder()
     {
@@ -30,6 +30,7 @@ public static class ChestPrefabBuilder
     {
         EnsureFolder("Assets", "Prefabs");
         EnsureFolder("Assets/Prefabs", "Chests");
+        ChestMaterialFactory.EnsureChestMaterials();
 
         SaveChestPrefab("Assets/Chest.prefab", ChestRarity.Normal, "Chest");
         SaveChestPrefab($"{ChestsFolder}/Chest_Normal.prefab", ChestRarity.Normal, "Chest_Normal");
@@ -176,6 +177,7 @@ public static class ChestPrefabBuilder
         visual.rarity = rarity;
         visual.buildOnAwake = false;
         visual.BuildVisual();
+        BakePrefabMaterialReferences(root, rarity);
 
         PrefabUtility.SaveAsPrefabAsset(root, assetPath);
         Object.DestroyImmediate(root);
@@ -188,6 +190,45 @@ public static class ChestPrefabBuilder
         }
 
         Debug.Log("[ChestPrefabBuilder] Saved " + assetPath + " (" + rarity + ")");
+    }
+
+    public static void BuildFromCommandLine()
+    {
+        RebuildChestPrefabs();
+        EditorApplication.Exit(0);
+    }
+
+    private static void BakePrefabMaterialReferences(GameObject root, ChestRarity rarity)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            string partName = renderer.gameObject.name;
+
+            if (partName == "ChestGlow" || partName == "Glow")
+            {
+                ChestVisualMaterials.ApplyGlow(renderer, rarity, 0.42f);
+            }
+            else if (partName == "Lock")
+            {
+                ChestVisualMaterials.ApplyLock(renderer, rarity);
+            }
+            else if (partName.StartsWith("MetalBand"))
+            {
+                ChestVisualMaterials.ApplyTrim(renderer, rarity);
+            }
+            else if (partName == "ChestBase" || partName == "ChestLid" || partName == "Body" || partName == "Lid")
+            {
+                ChestVisualMaterials.ApplyBody(renderer, rarity);
+            }
+        }
     }
 
     private static void TryRebuildMissingPrefabs()
@@ -207,11 +248,38 @@ public static class ChestPrefabBuilder
             }
         }
 
-        if (!File.Exists(WoodMaterialPath) || PrefabsHaveMissingMaterials())
+        if (!File.Exists(CommonMaterialPath) || PrefabsHaveMissingMaterials() || PrefabsUseLegacyVisualHierarchy())
         {
-            Debug.LogWarning("[ChestPrefabBuilder] Chest prefabs use missing materials. Rebuilding chest prefabs.");
+            Debug.LogWarning("[ChestPrefabBuilder] Chest prefabs need visual refresh. Rebuilding chest prefabs.");
             RebuildChestPrefabs();
         }
+    }
+
+    private static bool PrefabsUseLegacyVisualHierarchy()
+    {
+        for (int i = 0; i < RequiredPrefabPaths.Length; i++)
+        {
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(RequiredPrefabPaths[i]);
+
+            if (prefab == null)
+            {
+                continue;
+            }
+
+            Transform visualRoot = prefab.transform.Find("ChestVisualRoot");
+
+            if (visualRoot == null)
+            {
+                return true;
+            }
+
+            if (visualRoot.Find("ChestBase") == null && visualRoot.Find("Body") != null)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool PrefabsHaveMissingMaterials()

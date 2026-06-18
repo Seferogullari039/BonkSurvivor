@@ -29,7 +29,12 @@ public class ChestVisualAnimator : MonoBehaviour
 
         if (glowRenderer == null)
         {
-            Transform glowTransform = animatedRoot.Find("Glow");
+            Transform glowTransform = animatedRoot.Find("ChestGlow");
+            if (glowTransform == null)
+            {
+                glowTransform = animatedRoot.Find("Glow");
+            }
+
             if (glowTransform != null)
             {
                 glowRenderer = glowTransform.GetComponent<Renderer>();
