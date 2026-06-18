@@ -6,9 +6,9 @@ using UnityEngine.UI;
 
 public sealed class ChestSingleCardRevealUI : MonoBehaviour
 {
-    private const float RevealDuration = 0.38f;
-    private const float CollectUnlockDelay = 0.52f;
-    private const float GlowPulseSpeed = 2.4f;
+    private const float RevealDuration = 0.48f;
+    private const float CollectUnlockDelay = 0.58f;
+    private const float GlowPulseSpeed = 2.8f;
 
     private sealed class CardView
     {
@@ -139,8 +139,9 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
 
         RectTransform cardRect = cardView.CardRect;
         Vector2 targetPosition = new Vector2(0f, 8f);
-        cardRect.anchoredPosition = targetPosition + new Vector2(0f, -72f);
-        cardRect.localScale = Vector3.one * 0.58f;
+        Vector2 startPosition = targetPosition + new Vector2(0f, -108f);
+        cardRect.anchoredPosition = startPosition;
+        cardRect.localScale = Vector3.one * 0.42f;
 
         if (cardView.CollectHintText != null)
         {
@@ -156,9 +157,12 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
             elapsed += Time.unscaledDeltaTime;
             float progress = Mathf.Clamp01(elapsed / RevealDuration);
             float eased = progress * progress * (3f - 2f * progress);
+            float popScale = progress < 0.78f
+                ? Mathf.Lerp(0.42f, 1.08f, eased / 0.78f)
+                : Mathf.Lerp(1.08f, 1f, (progress - 0.78f) / 0.22f);
 
-            cardRect.anchoredPosition = Vector2.Lerp(targetPosition + new Vector2(0f, -72f), targetPosition, eased);
-            cardRect.localScale = Vector3.one * Mathf.Lerp(0.58f, 1f, eased);
+            cardRect.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, eased);
+            cardRect.localScale = Vector3.one * popScale;
             UpdateGlowPulse(progress);
 
             yield return null;
@@ -193,16 +197,16 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
             return;
         }
 
-        float pulse = 0.5f + Mathf.Sin(timeSeed * GlowPulseSpeed) * 0.12f;
+        float pulse = 0.5f + Mathf.Sin(timeSeed * GlowPulseSpeed) * 0.18f;
 
         if (cardView.BorderGlow != null)
         {
-            cardView.BorderGlow.color = new Color(currentAccent.r, currentAccent.g, currentAccent.b, 0.22f + pulse * 0.18f);
+            cardView.BorderGlow.color = new Color(currentAccent.r, currentAccent.g, currentAccent.b, 0.26f + pulse * 0.22f);
         }
 
         if (cardView.BackdropPulse != null)
         {
-            cardView.BackdropPulse.color = new Color(currentAccent.r, currentAccent.g, currentAccent.b, 0.04f + pulse * 0.05f);
+            cardView.BackdropPulse.color = new Color(currentAccent.r, currentAccent.g, currentAccent.b, 0.05f + pulse * 0.07f);
         }
     }
 

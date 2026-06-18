@@ -205,7 +205,7 @@ public class Chest : MonoBehaviour
         ChestRarity rarity = chestRarity;
 
         AudioManager.Instance?.PlayChestOpen();
-        yield return ChestOpenPresentation.PlayRevealThenOpenUpgradeMenu(openPosition, rarity);
+        yield return ChestOpenPresentation.PlayRevealThenOpenUpgradeMenu(openPosition, rarity, transform);
         Destroy(gameObject);
     }
 }

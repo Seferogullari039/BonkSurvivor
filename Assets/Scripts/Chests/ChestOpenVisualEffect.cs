@@ -16,31 +16,39 @@ public static class ChestOpenVisualEffect
         LegendaryPulse,
     };
 
-    private const float RouletteDuration = 0.85f;
-    private const float SettleDuration = 0.15f;
-    private const float LockDuration = 0.25f;
-    private const float FadeDuration = 0.08f;
+    private const float RouletteDuration = 0.82f;
+    private const float SettleDuration = 0.14f;
+    private const float LockDuration = 0.30f;
+    private const float FadeDuration = 0.06f;
     private const int RouletteCycles = 3;
 
-    private const float InnerScaleMin = 0.14f;
-    private const float InnerScaleMax = 0.45f;
-    private const float RingRadiusMin = 0.22f;
-    private const float RingRadiusMax = 0.72f;
+    private const float InnerScaleMin = 0.16f;
+    private const float InnerScaleMax = 0.58f;
+    private const float RingRadiusMin = 0.24f;
+    private const float RingRadiusMax = 0.88f;
 
     public static IEnumerator PlayRoutine(Vector3 position, ChestRarity rarity = ChestRarity.Normal)
     {
-        yield return PlayRoutineCore(position, GetPulseColor(rarity), GetRingColor(rarity));
+        yield return PlayRoutineCore(position, GetPulseColor(rarity), GetRingColor(rarity), false);
     }
 
-    public static IEnumerator PlayRoutineForUpgradeReward(Vector3 position, UpgradeRarity rewardRarity)
+    public static IEnumerator PlayRoutineForUpgradeReward(Vector3 position, UpgradeRarity rewardRarity, Transform chestTransform = null)
     {
-        yield return PlayRoutineCore(position, GetUpgradePulseColor(rewardRarity), GetUpgradeRingColor(rewardRarity));
+        Vector3 anchor = ChestOpeningPresentation.GetMouthWorldPosition(chestTransform, position);
+        bool mouthAnchored = ChestOpeningPresentation.UsesMouthAnchor(chestTransform);
+        yield return PlayRoutineCore(
+            anchor,
+            GetUpgradePulseColor(rewardRarity),
+            GetUpgradeRingColor(rewardRarity),
+            mouthAnchored);
     }
 
-    private static IEnumerator PlayRoutineCore(Vector3 position, Color finalPulse, Color finalRing)
+    private static IEnumerator PlayRoutineCore(Vector3 position, Color finalPulse, Color finalRing, bool mouthAnchored = false)
     {
-        Vector3 innerPosition = position + Vector3.up * 0.42f;
-        Vector3 ringPosition = position + Vector3.up * 0.48f;
+        float innerLift = mouthAnchored ? 0.04f : 0.42f;
+        float ringLift = mouthAnchored ? 0.10f : 0.48f;
+        Vector3 innerPosition = position + Vector3.up * innerLift;
+        Vector3 ringPosition = position + Vector3.up * ringLift;
 
         GameObject innerGlow = CreatePulseSphere(innerPosition, InnerScaleMin, CommonPulse);
         GameObject spark = CreatePulseSphere(innerPosition + Vector3.up * 0.04f, InnerScaleMin * 0.65f, CommonPulse);
@@ -53,7 +61,7 @@ public static class ChestOpenVisualEffect
         Renderer ringRenderer = ring != null ? ring.GetComponent<Renderer>() : null;
         Material ringMaterial = ringRenderer != null ? ringRenderer.material : null;
 
-        Light revealLight = CreateRevealLight(innerPosition);
+        Light revealLight = CreateRevealLight(innerPosition, mouthAnchored ? 1.35f : 1.1f);
         Color lastRouletteColor = CommonPulse;
 
         float elapsed = 0f;
@@ -78,7 +86,7 @@ public static class ChestOpenVisualEffect
             UpdateEffectMaterial(innerMaterial, pulseColor, emission, alpha);
             UpdateEffectMaterial(sparkMaterial, pulseColor, emission * 0.85f, alpha * 0.75f);
             UpdateEffectMaterial(ringMaterial, ringColor, emission * 0.7f, ringColor.a);
-            UpdateRevealLight(revealLight, pulseColor, 0.08f + rouletteProgress * 0.06f);
+            UpdateRevealLight(revealLight, pulseColor, 0.10f + rouletteProgress * 0.12f);
 
             yield return null;
         }
@@ -103,7 +111,7 @@ public static class ChestOpenVisualEffect
             UpdateEffectMaterial(innerMaterial, pulseColor, emission, alpha);
             UpdateEffectMaterial(sparkMaterial, pulseColor, emission * 0.9f, alpha * 0.8f);
             UpdateEffectMaterial(ringMaterial, ringColor, emission * 0.75f, ringColor.a);
-            UpdateRevealLight(revealLight, pulseColor, Mathf.Lerp(0.14f, 0.16f, settleEase));
+            UpdateRevealLight(revealLight, pulseColor, Mathf.Lerp(0.18f, 0.24f, settleEase));
 
             yield return null;
         }
@@ -120,7 +128,7 @@ public static class ChestOpenVisualEffect
             UpdateEffectMaterial(innerMaterial, finalPulse, 0.28f, finalPulse.a);
             UpdateEffectMaterial(sparkMaterial, finalPulse, 0.24f, finalPulse.a * 0.8f);
             UpdateEffectMaterial(ringMaterial, finalRing, 0.22f, finalRing.a);
-            UpdateRevealLight(revealLight, finalPulse, 0.14f);
+            UpdateRevealLight(revealLight, finalPulse, 0.22f);
 
             yield return null;
         }
@@ -209,14 +217,14 @@ public static class ChestOpenVisualEffect
         };
     }
 
-    private static Light CreateRevealLight(Vector3 position)
+    private static Light CreateRevealLight(Vector3 position, float range = 1.1f)
     {
         GameObject lightObject = new GameObject("ChestRevealLight");
         lightObject.transform.position = position + Vector3.up * 0.06f;
 
         Light light = lightObject.AddComponent<Light>();
         light.type = LightType.Point;
-        light.range = 1.1f;
+        light.range = range;
         light.intensity = 0.1f;
         light.shadows = LightShadows.None;
         return light;

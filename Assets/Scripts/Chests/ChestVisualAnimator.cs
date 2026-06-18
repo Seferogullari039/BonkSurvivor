@@ -81,6 +81,16 @@ public class ChestVisualAnimator : MonoBehaviour
         }
     }
 
+    public void SetIdleEnabled(bool enabled)
+    {
+        enableAnimation = enabled;
+
+        if (enabled && animatedRoot != null)
+        {
+            animatedRoot.localPosition = baseLocalPosition;
+        }
+    }
+
     private void Update()
     {
         if (!enableAnimation) return;
