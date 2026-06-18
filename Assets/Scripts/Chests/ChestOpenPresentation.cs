@@ -9,6 +9,7 @@ public static class ChestOpenPresentation
 
         if (levelUpManager == null)
         {
+            ChestRevealPause.End();
             yield break;
         }
 

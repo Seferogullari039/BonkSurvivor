@@ -300,6 +300,7 @@ public class Chest : MonoBehaviour
         isOpened = true;
         openRoutineStarted = true;
         playerInRange = false;
+        ChestRevealPause.Begin();
         DisableOpenInteraction();
         StartCoroutine(CompleteChestOpen());
     }
@@ -324,5 +325,13 @@ public class Chest : MonoBehaviour
         AudioManager.Instance?.PlayChestOpen();
         yield return ChestOpenPresentation.PlayRevealThenOpenUpgradeMenu(openPosition, rarity, transform);
         Destroy(gameObject);
+    }
+
+    private void OnDestroy()
+    {
+        if (openRoutineStarted && ChestRevealPause.IsPaused)
+        {
+            ChestRevealPause.ForceEnd();
+        }
     }
 }

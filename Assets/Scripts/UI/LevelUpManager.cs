@@ -405,7 +405,10 @@ public class LevelUpManager : MonoBehaviour
 
     public void PresentChestSingleCardReveal()
     {
-        Time.timeScale = 0f;
+        if (!ChestRevealPause.IsPaused)
+        {
+            ChestRevealPause.Begin();
+        }
 
         if (levelUpPanel != null)
         {
@@ -455,7 +458,7 @@ public class LevelUpManager : MonoBehaviour
         isChestUpgradeMenu = false;
         useChestSingleCardReveal = false;
         remainingUpgradeSelections = 0;
-        Time.timeScale = 1f;
+        ChestRevealPause.End();
     }
 
     private void AssignSingleChestReward()
