@@ -29,11 +29,18 @@ public static class ChestOpenVisualEffect
 
     public static IEnumerator PlayRoutine(Vector3 position, ChestRarity rarity = ChestRarity.Normal)
     {
+        yield return PlayRoutineCore(position, GetPulseColor(rarity), GetRingColor(rarity));
+    }
+
+    public static IEnumerator PlayRoutineForUpgradeReward(Vector3 position, UpgradeRarity rewardRarity)
+    {
+        yield return PlayRoutineCore(position, GetUpgradePulseColor(rewardRarity), GetUpgradeRingColor(rewardRarity));
+    }
+
+    private static IEnumerator PlayRoutineCore(Vector3 position, Color finalPulse, Color finalRing)
+    {
         Vector3 innerPosition = position + Vector3.up * 0.42f;
         Vector3 ringPosition = position + Vector3.up * 0.48f;
-
-        Color finalPulse = GetPulseColor(rarity);
-        Color finalRing = GetRingColor(rarity);
 
         GameObject innerGlow = CreatePulseSphere(innerPosition, InnerScaleMin, CommonPulse);
         GameObject spark = CreatePulseSphere(innerPosition + Vector3.up * 0.04f, InnerScaleMin * 0.65f, CommonPulse);
@@ -161,12 +168,32 @@ public static class ChestOpenVisualEffect
         };
     }
 
+    private static Color GetUpgradePulseColor(UpgradeRarity rarity)
+    {
+        return rarity switch
+        {
+            UpgradeRarity.Rare => RarePulse,
+            UpgradeRarity.Epic => EpicPulse,
+            _ => CommonPulse
+        };
+    }
+
     private static Color GetRingColor(ChestRarity rarity)
     {
         return rarity switch
         {
             ChestRarity.Rare => new Color(0.32f, 0.58f, 0.95f, 0.22f),
             ChestRarity.Epic => new Color(0.62f, 0.28f, 0.92f, 0.24f),
+            _ => new Color(0.82f, 0.84f, 0.88f, 0.18f)
+        };
+    }
+
+    private static Color GetUpgradeRingColor(UpgradeRarity rarity)
+    {
+        return rarity switch
+        {
+            UpgradeRarity.Rare => new Color(0.32f, 0.58f, 0.95f, 0.22f),
+            UpgradeRarity.Epic => new Color(0.62f, 0.28f, 0.92f, 0.24f),
             _ => new Color(0.82f, 0.84f, 0.88f, 0.18f)
         };
     }

@@ -3,13 +3,17 @@ using UnityEngine;
 
 public static class ChestOpenPresentation
 {
-    public static IEnumerator PlayRevealThenOpenUpgradeMenu(Vector3 position, ChestRarity rarity)
+    public static IEnumerator PlayRevealThenOpenUpgradeMenu(Vector3 position, ChestRarity chestRarity)
     {
-        yield return ChestOpenVisualEffect.PlayRoutine(position, rarity);
+        LevelUpManager levelUpManager = LevelUpManager.Instance;
 
-        if (LevelUpManager.Instance != null)
+        if (levelUpManager == null)
         {
-            LevelUpManager.Instance.OpenChestLootSelection(rarity);
+            yield break;
         }
+
+        UpgradeRarity rewardRarity = levelUpManager.PrepareChestSingleReward(chestRarity);
+        yield return ChestOpenVisualEffect.PlayRoutineForUpgradeReward(position, rewardRarity);
+        levelUpManager.PresentChestSingleCardReveal();
     }
 }
