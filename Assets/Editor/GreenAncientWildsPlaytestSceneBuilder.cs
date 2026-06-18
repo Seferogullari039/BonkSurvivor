@@ -1,8 +1,8 @@
-using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
 using UnityEngine.SceneManagement;
 
 public static class GreenAncientWildsPlaytestSceneBuilder
@@ -13,10 +13,9 @@ public static class GreenAncientWildsPlaytestSceneBuilder
     private const string PlaytestScenePath = "Assets/BonkSurvivor/Maps/GreenAncientWilds/GreenAncientWilds_Playtest.unity";
     private const string VisualsRootName = "GreenAncientWilds_Visuals";
     private const string MarkersRootName = "GreenAncientWilds_Markers";
+    private const string MaterialsFolder = "Assets/BonkSurvivor/Maps/GreenAncientWilds/Materials";
 
     private const string PolytopePrefabsRoot = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs";
-    private const string TerrainMaterialPath = "Assets/Polytope Studio/Lowpoly_Environments/Sources/Materials/PT_Terrain_mat.mat";
-    private const string WaterMaterialPath = "Assets/Polytope Studio/Lowpoly_Environments/Sources/Materials/PT_Water_mat.mat";
 
     private static readonly string[] TreePrefabPaths =
     {
@@ -31,6 +30,16 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         PolytopePrefabsRoot + "/Rocks/PT_Ore_Rock_01.prefab",
         PolytopePrefabsRoot + "/Rocks/PT_River_Rock_Pile_02.prefab",
     };
+
+    private struct MapMaterials
+    {
+        public Material Ground;
+        public Material Grass;
+        public Material Tree;
+        public Material Rock;
+        public Material Ruin;
+        public Material Water;
+    }
 
     static GreenAncientWildsPlaytestSceneBuilder()
     {
@@ -74,6 +83,13 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
         EnsureFolder("Assets/BonkSurvivor", "Maps");
         EnsureFolder("Assets/BonkSurvivor/Maps", "GreenAncientWilds");
+        EnsureFolder("Assets/BonkSurvivor/Maps/GreenAncientWilds", "Materials");
+
+        MapMaterials materials = LoadMapMaterials();
+        if (!ValidateMapMaterials(materials))
+        {
+            return;
+        }
 
         if (File.Exists(PlaytestScenePath))
         {
@@ -92,11 +108,128 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         Scene scene = EditorSceneManager.OpenScene(PlaytestScenePath, OpenSceneMode.Single);
         RemoveStagingRoots(scene);
         BuildMarkers(scene);
-        BuildVisualDressing(scene);
+        BuildVisualDressing(scene, materials);
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
 
         Debug.Log("[GreenAncientWildsPlaytestSceneBuilder] Playtest scene ready at " + PlaytestScenePath);
+    }
+
+    private static MapMaterials LoadMapMaterials()
+    {
+        return new MapMaterials
+        {
+            Ground = LoadOrCreateMapMaterial("GA_Ground_Mat", new Color(0.34f, 0.54f, 0.28f, 1f), false),
+            Grass = LoadOrCreateMapMaterial("GA_Grass_Mat", new Color(0.4f, 0.72f, 0.3f, 1f), false),
+            Tree = LoadOrCreateMapMaterial("GA_Tree_Mat", new Color(0.2f, 0.46f, 0.22f, 1f), false),
+            Rock = LoadOrCreateMapMaterial("GA_Rock_Mat", new Color(0.45f, 0.43f, 0.4f, 1f), false),
+            Ruin = LoadOrCreateMapMaterial("GA_Ruin_Mat", new Color(0.52f, 0.5f, 0.46f, 1f), false),
+            Water = LoadOrCreateMapMaterial("GA_Water_Mat", new Color(0.18f, 0.42f, 0.62f, 0.62f), true),
+        };
+    }
+
+    private static bool ValidateMapMaterials(MapMaterials materials)
+    {
+        if (materials.Ground == null || materials.Grass == null || materials.Tree == null
+            || materials.Rock == null || materials.Ruin == null || materials.Water == null)
+        {
+            Debug.LogError("[GreenAncientWildsPlaytestSceneBuilder] Failed to load GA map materials.");
+            return false;
+        }
+
+        return true;
+    }
+
+    private static Material LoadOrCreateMapMaterial(string materialName, Color baseColor, bool transparent)
+    {
+        string path = MaterialsFolder + "/" + materialName + ".mat";
+        Material material = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (material == null)
+        {
+            material = CreateLitMaterial(baseColor, transparent);
+            material.name = materialName;
+            AssetDatabase.CreateAsset(material, path);
+            AssetDatabase.SaveAssets();
+        }
+
+        ConfigureLitMaterial(material, baseColor, transparent);
+        EditorUtility.SetDirty(material);
+        return material;
+    }
+
+    private static Material CreateLitMaterial(Color baseColor, bool transparent)
+    {
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit");
+        if (shader == null)
+        {
+            shader = Shader.Find("Standard");
+        }
+
+        if (shader == null)
+        {
+            Debug.LogError("[GreenAncientWildsPlaytestSceneBuilder] No URP Lit or Standard shader found.");
+            return null;
+        }
+
+        Material material = new Material(shader);
+        ConfigureLitMaterial(material, baseColor, transparent);
+        return material;
+    }
+
+    private static void ConfigureLitMaterial(Material material, Color baseColor, bool transparent)
+    {
+        if (material == null)
+        {
+            return;
+        }
+
+        if (material.HasProperty("_BaseColor"))
+        {
+            material.SetColor("_BaseColor", baseColor);
+        }
+
+        if (material.HasProperty("_Color"))
+        {
+            material.SetColor("_Color", baseColor);
+        }
+
+        if (!transparent)
+        {
+            if (material.HasProperty("_Surface"))
+            {
+                material.SetFloat("_Surface", 0f);
+            }
+
+            material.renderQueue = -1;
+            return;
+        }
+
+        if (material.HasProperty("_Surface"))
+        {
+            material.SetFloat("_Surface", 1f);
+        }
+
+        if (material.HasProperty("_Blend"))
+        {
+            material.SetFloat("_Blend", 0f);
+        }
+
+        if (material.HasProperty("_SrcBlend"))
+        {
+            material.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+        }
+
+        if (material.HasProperty("_DstBlend"))
+        {
+            material.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+        }
+
+        if (material.HasProperty("_ZWrite"))
+        {
+            material.SetFloat("_ZWrite", 0f);
+        }
+
+        material.renderQueue = (int)RenderQueue.Transparent;
     }
 
     private static void RemoveStagingRoots(Scene scene)
@@ -132,65 +265,45 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         marker.transform.localScale = Vector3.one;
     }
 
-    private static void BuildVisualDressing(Scene scene)
+    private static void BuildVisualDressing(Scene scene, MapMaterials materials)
     {
         GameObject visualsRoot = new GameObject(VisualsRootName);
         SceneManager.MoveGameObjectToScene(visualsRoot, scene);
 
-        CreateGroundVisual(visualsRoot.transform);
-        CreateWaterDecor(visualsRoot.transform);
-        PlacePerimeterTrees(visualsRoot.transform);
-        PlacePerimeterRocks(visualsRoot.transform);
-        PlaceMenhirs(visualsRoot.transform);
-        PlaceGrassClusters(visualsRoot.transform);
+        CreateGroundVisual(visualsRoot.transform, materials.Ground);
+        CreateWaterDecor(visualsRoot.transform, materials.Water);
+        PlacePerimeterTrees(visualsRoot.transform, materials.Tree);
+        PlacePerimeterRocks(visualsRoot.transform, materials.Rock);
+        PlaceMenhirs(visualsRoot.transform, materials.Ruin);
+        PlaceGrassClusters(visualsRoot.transform, materials.Grass);
         DisableCollidersRecursive(visualsRoot);
     }
 
-    private static void CreateGroundVisual(Transform parent)
+    private static void CreateGroundVisual(Transform parent, Material groundMaterial)
     {
-        Material terrainMaterial = AssetDatabase.LoadAssetAtPath<Material>(TerrainMaterialPath);
         GameObject ground = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        ground.name = "PT_GroundVisual";
+        ground.name = "GA_GroundVisual";
         ground.transform.SetParent(parent, false);
         ground.transform.localPosition = new Vector3(0f, -0.05f, 0f);
         ground.transform.localRotation = Quaternion.identity;
         ground.transform.localScale = new Vector3(18f, 1f, 18f);
-
-        if (terrainMaterial != null)
-        {
-            Renderer renderer = ground.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                renderer.sharedMaterial = terrainMaterial;
-            }
-        }
-
+        ApplyMaterialToRenderers(ground, groundMaterial);
         Object.DestroyImmediate(ground.GetComponent<Collider>());
     }
 
-    private static void CreateWaterDecor(Transform parent)
+    private static void CreateWaterDecor(Transform parent, Material waterMaterial)
     {
-        Material waterMaterial = AssetDatabase.LoadAssetAtPath<Material>(WaterMaterialPath);
         GameObject water = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        water.name = "PT_WaterDecor";
+        water.name = "GA_WaterDecor";
         water.transform.SetParent(parent, false);
         water.transform.localPosition = new Vector3(0f, -0.15f, 82f);
         water.transform.localRotation = Quaternion.identity;
         water.transform.localScale = new Vector3(5f, 1f, 3f);
-
-        if (waterMaterial != null)
-        {
-            Renderer renderer = water.GetComponent<Renderer>();
-            if (renderer != null)
-            {
-                renderer.sharedMaterial = waterMaterial;
-            }
-        }
-
+        ApplyMaterialToRenderers(water, waterMaterial);
         Object.DestroyImmediate(water.GetComponent<Collider>());
     }
 
-    private static void PlacePerimeterTrees(Transform parent)
+    private static void PlacePerimeterTrees(Transform parent, Material treeMaterial)
     {
         Transform treesRoot = new GameObject("Trees").transform;
         treesRoot.SetParent(parent, false);
@@ -207,7 +320,13 @@ public static class GreenAncientWildsPlaytestSceneBuilder
             float yaw = -angle * Mathf.Rad2Deg + 90f;
 
             string prefabPath = TreePrefabPaths[i % TreePrefabPaths.Length];
-            GameObject instance = InstantiatePolytopePrefab(prefabPath, treesRoot, position, Quaternion.Euler(0f, yaw, 0f));
+            GameObject instance = InstantiatePolytopePrefab(
+                prefabPath,
+                treesRoot,
+                position,
+                Quaternion.Euler(0f, yaw, 0f),
+                treeMaterial);
+
             if (instance != null)
             {
                 float scale = 0.9f + (PlacementHash(i, 11) % 26) * 0.01f;
@@ -216,7 +335,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         }
     }
 
-    private static void PlacePerimeterRocks(Transform parent)
+    private static void PlacePerimeterRocks(Transform parent, Material rockMaterial)
     {
         Transform rocksRoot = new GameObject("Rocks").transform;
         rocksRoot.SetParent(parent, false);
@@ -233,7 +352,8 @@ public static class GreenAncientWildsPlaytestSceneBuilder
                 prefabPath,
                 rocksRoot,
                 position,
-                Quaternion.Euler(0f, angles[i], 0f));
+                Quaternion.Euler(0f, angles[i], 0f),
+                rockMaterial);
 
             if (instance != null)
             {
@@ -243,7 +363,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         }
     }
 
-    private static void PlaceMenhirs(Transform parent)
+    private static void PlaceMenhirs(Transform parent, Material ruinMaterial)
     {
         Transform ruinsRoot = new GameObject("Ruins").transform;
         ruinsRoot.SetParent(parent, false);
@@ -259,11 +379,16 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
         for (int i = 0; i < positions.Length; i++)
         {
-            InstantiatePolytopePrefab(menhirPath, ruinsRoot, positions[i], Quaternion.Euler(0f, i * 27f, 0f));
+            InstantiatePolytopePrefab(
+                menhirPath,
+                ruinsRoot,
+                positions[i],
+                Quaternion.Euler(0f, i * 27f, 0f),
+                ruinMaterial);
         }
     }
 
-    private static void PlaceGrassClusters(Transform parent)
+    private static void PlaceGrassClusters(Transform parent, Material grassMaterial)
     {
         Transform grassRoot = new GameObject("Grass").transform;
         grassRoot.SetParent(parent, false);
@@ -281,7 +406,13 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
         foreach (Vector3 position in positions)
         {
-            GameObject instance = InstantiatePolytopePrefab(grassPath, grassRoot, position, Quaternion.identity);
+            GameObject instance = InstantiatePolytopePrefab(
+                grassPath,
+                grassRoot,
+                position,
+                Quaternion.identity,
+                grassMaterial);
+
             if (instance != null)
             {
                 int hash = PlacementHash((int)position.x, (int)position.z);
@@ -295,7 +426,8 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         string prefabPath,
         Transform parent,
         Vector3 position,
-        Quaternion rotation)
+        Quaternion rotation,
+        Material overrideMaterial)
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
         if (prefab == null)
@@ -312,7 +444,33 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
         instance.transform.localPosition = position;
         instance.transform.localRotation = rotation;
+        ApplyMaterialToRenderers(instance, overrideMaterial);
         return instance;
+    }
+
+    private static void ApplyMaterialToRenderers(GameObject root, Material material)
+    {
+        if (root == null || material == null)
+        {
+            return;
+        }
+
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        foreach (Renderer renderer in renderers)
+        {
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            Material[] slots = renderer.sharedMaterials;
+            for (int i = 0; i < slots.Length; i++)
+            {
+                slots[i] = material;
+            }
+
+            renderer.sharedMaterials = slots;
+        }
     }
 
     private static void DisableCollidersRecursive(GameObject root)
