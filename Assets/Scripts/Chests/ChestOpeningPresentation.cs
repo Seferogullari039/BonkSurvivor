@@ -5,30 +5,68 @@ public static class ChestOpeningPresentation
 {
     private const float OpeningDuration = 0.30f;
     private const float LidOpenAngle = -42f;
+    private const float MouthLocalY = 0.56f;
+    private const float FallbackMouthHeight = 0.75f;
 
-    public static Vector3 GetMouthWorldPosition(Transform chestTransform, Vector3 fallbackPosition)
+    public static Transform GetMouthAnchorTransform(Transform chestTransform)
     {
         if (chestTransform == null)
         {
-            return fallbackPosition;
+            return null;
         }
 
-        Transform visualRoot = chestTransform.Find("ChestVisualRoot");
-        Transform root = visualRoot != null ? visualRoot : chestTransform;
+        Transform visualRoot = ResolveAnimatedRoot(chestTransform);
 
-        Transform lid = root.Find("ChestLid");
-
-        if (lid == null)
+        if (visualRoot != null)
         {
-            lid = root.Find("Lid");
+            return visualRoot;
         }
 
-        if (lid != null)
+        Transform glow = chestTransform.Find("ChestGlow");
+
+        if (glow != null)
         {
-            return lid.position + Vector3.up * 0.05f;
+            return glow;
         }
 
-        return chestTransform.position + Vector3.up * 0.68f;
+        return chestTransform;
+    }
+
+    public static Vector3 GetMouthLocalOffset(Transform anchorTransform)
+    {
+        if (anchorTransform == null)
+        {
+            return Vector3.zero;
+        }
+
+        if (anchorTransform.name == "ChestVisualRoot" || anchorTransform.Find("ChestBase") != null)
+        {
+            return new Vector3(0f, MouthLocalY, 0f);
+        }
+
+        if (anchorTransform.name == "ChestLid" || anchorTransform.name == "Lid")
+        {
+            return new Vector3(0f, -0.06f, 0.02f);
+        }
+
+        return Vector3.zero;
+    }
+
+    public static Vector3 GetMouthWorldPosition(Transform chestTransform, Vector3 fallbackPosition)
+    {
+        Transform anchorTransform = GetMouthAnchorTransform(chestTransform);
+
+        if (anchorTransform != null)
+        {
+            return anchorTransform.TransformPoint(GetMouthLocalOffset(anchorTransform));
+        }
+
+        if (chestTransform != null)
+        {
+            return chestTransform.position + Vector3.up * FallbackMouthHeight;
+        }
+
+        return fallbackPosition + Vector3.up * FallbackMouthHeight;
     }
 
     public static bool UsesMouthAnchor(Transform chestTransform)
@@ -139,7 +177,7 @@ public static class ChestOpeningPresentation
 
         Transform visualRoot = chestTransform.Find("ChestVisualRoot");
 
-        return visualRoot != null ? visualRoot : chestTransform;
+        return visualRoot != null ? visualRoot : null;
     }
 
     private static Transform FindLid(Transform animatedRoot, Transform chestTransform)
