@@ -7,9 +7,9 @@ public sealed class EnemyVisualController : MonoBehaviour
     public const string VisualRootName = "EnemyVisualRoot";
 
     private const float HitFlashDuration = 0.12f;
-    private const float DeathPuffDuration = 0.38f;
+    private const float DeathPuffDuration = 0.24f;
+    private const float DeathPuffScale = 0.1f;
 
-    private static readonly Color EyeGlowColor = new Color(1f, 0.96f, 0.42f);
     private static readonly Color HitFlashColor = new Color(1f, 0.58f, 0.48f);
     private static readonly Color DeathPuffColor = new Color(0.95f, 0.25f, 0.2f);
     private static readonly Color EliteRingColor = new Color(1f, 0.86f, 0.12f);
@@ -20,8 +20,6 @@ public sealed class EnemyVisualController : MonoBehaviour
     private Transform visualRoot;
     private Renderer[] flashRenderers;
     private Color[] baseRendererColors;
-    private GameObject eyeGlowLeft;
-    private GameObject eyeGlowRight;
     private GameObject eliteRing;
     private Enemy.EnemyType currentType = Enemy.EnemyType.Normal;
     private Color baseColor = Color.white;
@@ -53,7 +51,6 @@ public sealed class EnemyVisualController : MonoBehaviour
     private void LateUpdate()
     {
         UpdateHitFlash();
-        UpdateEyeGlowPulse();
     }
 
     public void Initialize(Enemy.EnemyType enemyType, Color enemyColor, float smoothness, bool glow)
@@ -96,18 +93,19 @@ public sealed class EnemyVisualController : MonoBehaviour
             position = transform.position;
         }
 
-        StartCoroutine(DeathPuffRoutine(position));
+        GameObject puffHost = new GameObject("EnemyDeathPuffFx");
+        EnemyDeathPuffRunner runner = puffHost.AddComponent<EnemyDeathPuffRunner>();
+        runner.Run(position, DeathPuffColor, DeathPuffDuration, DeathPuffScale);
     }
 
     private void RebuildVisuals()
     {
         hitFlashTimer = 0f;
-        ClearVisualRoot();
-
         GameObject viewPrefab = EnemyViewPrefabUtility.ResolveViewPrefab(currentType);
 
         if (viewPrefab != null)
         {
+            ClearControllerVisualRoot();
             usingPrefabView = true;
 
             if (visualEnhancer != null)
@@ -126,17 +124,39 @@ public sealed class EnemyVisualController : MonoBehaviour
             SanitizeVisualInstance(viewInstance);
             ApplySilhouetteScale(visualRoot, currentType);
             ApplyBaseColorsToRenderers(GetVisualRenderers(visualRoot));
-            EnsureEyeGlow(visualRoot);
             EnsureEliteRing(visualRoot);
             CacheFlashRenderers(GetVisualRenderers(visualRoot));
             return;
         }
 
-        usingPrefabView = false;
+        if (usingPrefabView)
+        {
+            ClearControllerVisualRoot();
+        }
 
+        usingPrefabView = false;
+        ApplyFallbackVisuals();
+    }
+
+    private void ApplyFallbackVisuals()
+    {
         if (visualEnhancer != null)
         {
             visualEnhancer.enabled = true;
+        }
+
+        Transform enhancerRoot = transform.Find(VisualRootName);
+
+        if (enhancerRoot != null)
+        {
+            if (rootRenderer != null)
+            {
+                rootRenderer.enabled = false;
+            }
+
+            ApplyBaseColorsToRenderers(GetVisualRenderers(enhancerRoot));
+            CacheFlashRenderers(GetVisualRenderers(enhancerRoot));
+            return;
         }
 
         if (rootRenderer != null)
@@ -144,8 +164,6 @@ public sealed class EnemyVisualController : MonoBehaviour
             rootRenderer.enabled = true;
             GameVisualStyle.ApplyColor(rootRenderer, baseColor, baseSmoothness, baseGlow);
         }
-
-        CacheFallbackRenderers();
     }
 
     private void CacheFallbackRenderers()
@@ -263,86 +281,6 @@ public sealed class EnemyVisualController : MonoBehaviour
         renderer.SetPropertyBlock(sharedFlashBlock);
     }
 
-    private void UpdateEyeGlowPulse()
-    {
-        if (eyeGlowLeft == null && eyeGlowRight == null)
-        {
-            return;
-        }
-
-        float pulse = 0.65f + Mathf.Sin(Time.time * 4.2f) * 0.2f;
-        ApplyEyeGlowColor(eyeGlowLeft, pulse);
-        ApplyEyeGlowColor(eyeGlowRight, pulse);
-    }
-
-    private static void ApplyEyeGlowColor(GameObject eyeObject, float pulse)
-    {
-        if (eyeObject == null)
-        {
-            return;
-        }
-
-        Renderer renderer = eyeObject.GetComponent<Renderer>();
-
-        if (renderer == null)
-        {
-            return;
-        }
-
-        GameVisualStyle.ApplyColor(renderer, EyeGlowColor, 0.72f, true, 0.2f + pulse * 0.35f);
-    }
-
-    private void EnsureEyeGlow(Transform parent)
-    {
-        if (parent == null || HasExistingEyeGlow(parent))
-        {
-            return;
-        }
-
-        eyeGlowLeft = CreateEyeGlow(parent, "EyeGlow_L", new Vector3(-0.12f, 0.12f, 0.34f), 0.06f);
-        eyeGlowRight = CreateEyeGlow(parent, "EyeGlow_R", new Vector3(0.12f, 0.12f, 0.34f), 0.06f);
-    }
-
-    private static bool HasExistingEyeGlow(Transform parent)
-    {
-        if (parent.Find("EyeGlow_L") != null || parent.Find("EyeGlow_R") != null)
-        {
-            return true;
-        }
-
-        if (parent.Find("Eye_L") != null || parent.Find("Eye_R") != null)
-        {
-            return true;
-        }
-
-        return false;
-    }
-
-    private static GameObject CreateEyeGlow(Transform parent, string objectName, Vector3 localPosition, float size)
-    {
-        GameObject eyeObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        eyeObject.name = objectName;
-        eyeObject.transform.SetParent(parent, false);
-        eyeObject.transform.localPosition = localPosition;
-        eyeObject.transform.localScale = Vector3.one * size;
-
-        Collider collider = eyeObject.GetComponent<Collider>();
-
-        if (collider != null)
-        {
-            Destroy(collider);
-        }
-
-        Renderer renderer = eyeObject.GetComponent<Renderer>();
-
-        if (renderer != null)
-        {
-            GameVisualStyle.ApplyColor(renderer, EyeGlowColor, 0.72f, true, 0.35f);
-        }
-
-        return eyeObject;
-    }
-
     private void EnsureEliteRing(Transform parent)
     {
         if (parent == null || currentType != Enemy.EnemyType.Elite)
@@ -360,7 +298,7 @@ public sealed class EnemyVisualController : MonoBehaviour
         eliteRing.transform.SetParent(parent, false);
         eliteRing.transform.localPosition = new Vector3(0f, 0.02f, 0f);
         eliteRing.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        eliteRing.transform.localScale = new Vector3(1.18f, 0.018f, 1.18f);
+        eliteRing.transform.localScale = new Vector3(0.92f, 0.012f, 0.92f);
 
         Collider collider = eliteRing.GetComponent<Collider>();
 
@@ -433,13 +371,9 @@ public sealed class EnemyVisualController : MonoBehaviour
         return rootObject.transform;
     }
 
-    private void ClearVisualRoot()
+    private void ClearControllerVisualRoot()
     {
-        eyeGlowLeft = null;
-        eyeGlowRight = null;
         eliteRing = null;
-        flashRenderers = null;
-        baseRendererColors = null;
 
         Transform existingRoot = transform.Find(VisualRootName);
 
@@ -500,45 +434,89 @@ public sealed class EnemyVisualController : MonoBehaviour
         }
     }
 
-    private IEnumerator DeathPuffRoutine(Vector3 position)
+    private sealed class EnemyDeathPuffRunner : MonoBehaviour
     {
-        GameObject puffHost = new GameObject("EnemyDeathPuffFx");
-        puffHost.transform.position = position + Vector3.up * 0.35f;
-
-        GameObject flashObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-        flashObject.name = "EnemyDeathPuff";
-        flashObject.transform.SetParent(puffHost.transform, false);
-        flashObject.transform.localScale = Vector3.one * 0.16f;
-
-        Collider flashCollider = flashObject.GetComponent<Collider>();
-
-        if (flashCollider != null)
+        public void Run(Vector3 position, Color color, float duration, float scale)
         {
-            Destroy(flashCollider);
+            Destroy(gameObject, duration + 0.1f);
+            StartCoroutine(DeathPuffRoutine(position, color, duration, scale));
         }
 
-        Renderer flashRenderer = flashObject.GetComponent<Renderer>();
-
-        if (flashRenderer != null)
+        private IEnumerator DeathPuffRoutine(Vector3 position, Color color, float duration, float scale)
         {
-            GameVisualStyle.ApplyColor(flashRenderer, DeathPuffColor, 0.55f, true, 0.62f);
-        }
+            transform.position = position + Vector3.up * 0.2f;
 
-        float elapsed = 0f;
+            GameObject flashObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            flashObject.name = "EnemyDeathPuff";
+            flashObject.transform.SetParent(transform, false);
+            flashObject.transform.localScale = Vector3.one * scale;
 
-        while (elapsed < DeathPuffDuration)
-        {
-            elapsed += Time.deltaTime;
-            float fade = 1f - elapsed / DeathPuffDuration;
+            Collider flashCollider = flashObject.GetComponent<Collider>();
 
-            if (flashObject != null)
+            if (flashCollider != null)
             {
-                flashObject.transform.localScale = Vector3.one * (0.16f + fade * 0.18f);
+                Destroy(flashCollider);
             }
 
-            yield return null;
+            Renderer flashRenderer = flashObject.GetComponent<Renderer>();
+
+            if (flashRenderer != null)
+            {
+                GameVisualStyle.ApplyColor(flashRenderer, color, 0.55f, true, 0.45f);
+            }
+
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float fade = 1f - elapsed / duration;
+
+                if (flashObject != null)
+                {
+                    flashObject.transform.localScale = Vector3.one * (scale * (0.85f + fade * 0.35f));
+                    SetRendererAlpha(flashRenderer, fade);
+                }
+
+                yield return null;
+            }
+
+            Destroy(gameObject);
         }
 
-        Destroy(puffHost);
+        private static void SetRendererAlpha(Renderer renderer, float alpha)
+        {
+            if (renderer == null)
+            {
+                return;
+            }
+
+            Material material = renderer.material;
+
+            if (material == null)
+            {
+                return;
+            }
+
+            if (material.HasProperty("_BaseColor"))
+            {
+                Color baseColor = material.GetColor("_BaseColor");
+                baseColor.a = alpha;
+                material.SetColor("_BaseColor", baseColor);
+            }
+
+            if (material.HasProperty("_Color"))
+            {
+                Color color = material.GetColor("_Color");
+                color.a = alpha;
+                material.SetColor("_Color", color);
+            }
+
+            if (material.HasProperty("_EmissionColor"))
+            {
+                Color emission = material.GetColor("_EmissionColor");
+                material.SetColor("_EmissionColor", emission * alpha);
+            }
+        }
     }
 }
