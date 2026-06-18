@@ -38,6 +38,7 @@ public class Enemy : MonoBehaviour
     private Coroutine contactTelegraphRoutine;
     private MimicChestController mimicChestOwner;
     private GoldenDragonController goldenDragonOwner;
+    private EnemyVisualController visualController;
 
     public EnemyType Type => enemyType;
     public bool IsElite { get; private set; }
@@ -53,6 +54,23 @@ public class Enemy : MonoBehaviour
         if (enemyRenderer == null)
         {
             enemyRenderer = GetComponent<Renderer>();
+        }
+
+        EnsureVisualController();
+    }
+
+    private void EnsureVisualController()
+    {
+        if (visualController != null)
+        {
+            return;
+        }
+
+        visualController = GetComponent<EnemyVisualController>();
+
+        if (visualController == null)
+        {
+            visualController = gameObject.AddComponent<EnemyVisualController>();
         }
     }
 
@@ -93,6 +111,9 @@ public class Enemy : MonoBehaviour
             baseVisualSmoothness = smoothness;
             baseVisualGlow = glow;
         }
+
+        EnsureVisualController();
+        visualController?.Initialize(type, enemyColor, baseVisualSmoothness, baseVisualGlow);
     }
 
     public void SetBossAbility(BossAbilityType ability)
@@ -131,6 +152,9 @@ public class Enemy : MonoBehaviour
             baseVisualSmoothness = 0.88f;
             baseVisualGlow = true;
         }
+
+        EnsureVisualController();
+        visualController?.RefreshVisual(enemyType, eliteColor, baseVisualSmoothness, baseVisualGlow);
     }
 
     private void Update()
@@ -354,6 +378,7 @@ public class Enemy : MonoBehaviour
 
         EnemyHitFeedback hitFeedback = GetComponent<EnemyHitFeedback>();
         hitFeedback?.PlayHit(ResolveHitSource());
+        visualController?.PlayHitFlash();
 
         currentHealth -= damage;
 
@@ -362,6 +387,7 @@ public class Enemy : MonoBehaviour
             CancelContactTelegraph();
             Vector3 dropPosition = transform.position;
 
+            visualController?.PlayDeathPuff(dropPosition);
             hitFeedback?.PlayDeath(dropPosition);
 
             if (FPSPlayerController.IsFpsModeActive)
