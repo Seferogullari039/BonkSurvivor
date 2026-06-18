@@ -282,7 +282,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
             if (root.name == VisualsRootName || root.name == MarkersRootName)
             {
-                Object.DestroyImmediate(root);
+                UnityEngine.Object.DestroyImmediate(root);
             }
         }
     }
@@ -317,7 +317,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         {
             if (current.name == LegacyVisualObjectNames[i])
             {
-                Object.DestroyImmediate(current);
+                UnityEngine.Object.DestroyImmediate(current);
                 return;
             }
         }
@@ -368,7 +368,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         ground.transform.localRotation = Quaternion.identity;
         ground.transform.localScale = new Vector3(18f, 1f, 18f);
         ApplyMaterialToRenderers(ground, groundMaterial);
-        Object.DestroyImmediate(ground.GetComponent<Collider>());
+        UnityEngine.Object.DestroyImmediate(ground.GetComponent<Collider>());
     }
 
     private static void CreateWaterDecor(Transform parent, Material waterMaterial)
@@ -380,7 +380,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         water.transform.localRotation = Quaternion.identity;
         water.transform.localScale = new Vector3(5f, 1f, 3f);
         ApplyMaterialToRenderers(water, waterMaterial);
-        Object.DestroyImmediate(water.GetComponent<Collider>());
+        UnityEngine.Object.DestroyImmediate(water.GetComponent<Collider>());
     }
 
     private static void PlacePerimeterTrees(Transform parent, Material treeMaterial)
