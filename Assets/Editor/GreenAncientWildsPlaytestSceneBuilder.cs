@@ -9,12 +9,16 @@ using UnityEngine.SceneManagement;
 public static class GreenAncientWildsPlaytestSceneBuilder
 {
     private static bool autoBuildAttempted;
+    private static int autoBuildRetryCount;
+    private const int MaxAutoBuildRetries = 5;
 
     private const string SampleScenePath = "Assets/Scenes/SampleScene.unity";
     private const string PlaytestScenePath = "Assets/BonkSurvivor/Maps/GreenAncientWilds/GreenAncientWilds_Playtest.unity";
     private const string VisualsRootName = "GreenAncientWilds_Visuals";
     private const string MarkersRootName = "GreenAncientWilds_Markers";
     private const string MaterialsFolder = "Assets/BonkSurvivor/Maps/GreenAncientWilds/Materials";
+    private const string PlaytestBootstrapName = "GreenAncientWilds_PlaytestBootstrap";
+    private const string VisualDressingVersionMarker = "BossBoundary";
 
     private const string PolytopePrefabsRoot = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs";
 
@@ -72,16 +76,51 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         EditorApplication.delayCall += TryAutoBuildIfNeeded;
     }
 
+    private class GreenAncientWildsPlaytestAutoRebuild : AssetPostprocessor
+    {
+        private static void OnPostprocessAllAssets(
+            string[] importedAssets,
+            string[] deletedAssets,
+            string[] movedAssets,
+            string[] movedFromAssetPaths)
+        {
+            for (int i = 0; i < importedAssets.Length; i++)
+            {
+                string asset = importedAssets[i];
+                if (asset.Contains("GreenAncientWildsPlaytestSceneBuilder.cs")
+                    || asset.Contains("GreenAncientWildsPlaytestVisualSuppressor.cs"))
+                {
+                    autoBuildAttempted = false;
+                    EditorApplication.delayCall += TryAutoBuildIfNeeded;
+                    return;
+                }
+            }
+        }
+    }
+
     [MenuItem("Tools/BonkSurvivor/Build Green Ancient Wilds Playtest Scene", false, 30)]
     public static void BuildGreenAncientWildsPlaytestSceneMenu()
     {
         BuildGreenAncientWildsPlaytestScene();
     }
 
+    public static void BuildFromCommandLine()
+    {
+        BuildGreenAncientWildsPlaytestScene();
+        EditorApplication.Exit(0);
+    }
+
     private static void TryAutoBuildIfNeeded()
     {
-        if (autoBuildAttempted || EditorApplication.isPlaying || EditorApplication.isCompiling)
+        if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isPlaying)
         {
+            EditorApplication.delayCall += TryAutoBuildIfNeeded;
+            return;
+        }
+
+        if (EditorApplication.isCompiling)
+        {
+            EditorApplication.delayCall += TryAutoBuildIfNeeded;
             return;
         }
 
@@ -96,13 +135,50 @@ public static class GreenAncientWildsPlaytestSceneBuilder
             || sceneText.Contains(LegacyPolytopeTerrainMatGuid);
         bool hasLegacyVisualNames = sceneText.Contains("PT_GroundVisual") || sceneText.Contains("PT_WaterDecor");
 
-        if (!missingVisuals && !hasLegacyPolytopeMaterials && !hasLegacyVisualNames)
+        bool missingVisualDressing = !sceneText.Contains(VisualDressingVersionMarker);
+        bool missingPlaytestSuppressor = !sceneText.Contains("GreenAncientWildsPlaytestVisualSuppressor");
+
+        if (!missingVisuals && !hasLegacyPolytopeMaterials && !hasLegacyVisualNames
+            && !missingVisualDressing && !missingPlaytestSuppressor)
         {
+            autoBuildAttempted = true;
             return;
         }
 
-        autoBuildAttempted = true;
+        if (autoBuildAttempted)
+        {
+            autoBuildAttempted = false;
+        }
+
         BuildGreenAncientWildsPlaytestScene();
+
+        if (!File.Exists(PlaytestScenePath))
+        {
+            EditorApplication.delayCall += TryAutoBuildIfNeeded;
+            return;
+        }
+
+        sceneText = File.ReadAllText(PlaytestScenePath);
+        if (!sceneText.Contains(VisualDressingVersionMarker)
+            || !sceneText.Contains("GreenAncientWildsPlaytestVisualSuppressor"))
+        {
+            autoBuildRetryCount++;
+            if (autoBuildRetryCount <= MaxAutoBuildRetries)
+            {
+                EditorApplication.delayCall += TryAutoBuildIfNeeded;
+            }
+            else
+            {
+                Debug.LogWarning(
+                    "[GreenAncientWildsPlaytestSceneBuilder] Auto rebuild did not complete. "
+                    + "Run Tools/BonkSurvivor/Build Green Ancient Wilds Playtest Scene manually.");
+            }
+
+            return;
+        }
+
+        autoBuildRetryCount = 0;
+        autoBuildAttempted = true;
     }
 
     public static void BuildGreenAncientWildsPlaytestScene()
@@ -125,6 +201,12 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
         if (File.Exists(PlaytestScenePath))
         {
+            Scene activeScene = EditorSceneManager.GetActiveScene();
+            if (activeScene.path == PlaytestScenePath)
+            {
+                EditorSceneManager.OpenScene(SampleScenePath, OpenSceneMode.Single);
+            }
+
             AssetDatabase.DeleteAsset(PlaytestScenePath);
         }
 
@@ -140,7 +222,9 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         Scene scene = EditorSceneManager.OpenScene(PlaytestScenePath, OpenSceneMode.Single);
         RemoveStagingRoots(scene);
         RemoveLegacyVisualObjects(scene);
+        SuppressLegacySceneVisuals(scene);
         BuildMarkers(scene);
+        AttachPlaytestVisualSuppressor(scene);
 
         GameObject visualsRoot = BuildVisualDressing(scene, materials);
         DisableCollidersRecursive(visualsRoot);
@@ -353,10 +437,62 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         CreateWaterDecor(visualsRoot.transform, materials.Water);
         PlacePerimeterTrees(visualsRoot.transform, materials.Tree);
         PlacePerimeterRocks(visualsRoot.transform, materials.Rock);
+        PlaceRockClusters(visualsRoot.transform, materials.Rock);
         PlaceMenhirs(visualsRoot.transform, materials.Ruin);
+        PlaceBossArenaBoundary(visualsRoot.transform, materials.Rock, materials.Ruin);
+        PlaceChestZoneDecor(visualsRoot.transform, materials, new Vector3(-48f, 0f, -42f), "ChestZoneDecor_A");
+        PlaceChestZoneDecor(visualsRoot.transform, materials, new Vector3(48f, 0f, -42f), "ChestZoneDecor_B");
+        PlacePortalAreaDecor(visualsRoot.transform, materials);
         PlaceGrassClusters(visualsRoot.transform, materials.Grass);
 
         return visualsRoot;
+    }
+
+    private static void SuppressLegacySceneVisuals(Scene scene)
+    {
+        foreach (GameObject rootObject in scene.GetRootGameObjects())
+        {
+            if (rootObject == null)
+            {
+                continue;
+            }
+
+            if (rootObject.name == "Plane")
+            {
+                DisableRenderersRecursive(rootObject);
+            }
+        }
+
+        GameObject skylands = GameObject.Find("SkylandsVisualKit");
+        if (skylands != null)
+        {
+            skylands.SetActive(false);
+        }
+    }
+
+    private static void AttachPlaytestVisualSuppressor(Scene scene)
+    {
+        GameObject existing = GameObject.Find(PlaytestBootstrapName);
+        if (existing != null)
+        {
+            UnityEngine.Object.DestroyImmediate(existing);
+        }
+
+        GameObject bootstrap = new GameObject(PlaytestBootstrapName);
+        SceneManager.MoveGameObjectToScene(bootstrap, scene);
+        bootstrap.AddComponent<GreenAncientWildsPlaytestVisualSuppressor>();
+    }
+
+    private static void DisableRenderersRecursive(GameObject root)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (renderers[i] != null)
+            {
+                renderers[i].enabled = false;
+            }
+        }
     }
 
     private static void CreateGroundVisual(Transform parent, Material groundMaterial)
@@ -376,9 +512,9 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         GameObject water = GameObject.CreatePrimitive(PrimitiveType.Plane);
         water.name = "GA_WaterDecor";
         water.transform.SetParent(parent, false);
-        water.transform.localPosition = new Vector3(0f, -0.15f, 82f);
+        water.transform.localPosition = new Vector3(74f, -0.22f, 78f);
         water.transform.localRotation = Quaternion.identity;
-        water.transform.localScale = new Vector3(5f, 1f, 3f);
+        water.transform.localScale = new Vector3(2.2f, 1f, 1.6f);
         ApplyMaterialToRenderers(water, waterMaterial);
         UnityEngine.Object.DestroyImmediate(water.GetComponent<Collider>());
     }
@@ -388,14 +524,20 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         Transform treesRoot = new GameObject("Trees").transform;
         treesRoot.SetParent(parent, false);
 
-        const float innerRadius = 58f;
-        const float outerRadius = 72f;
-        const int treeCount = 24;
+        const float innerRadius = 52f;
+        const float midRadius = 64f;
+        const float outerRadius = 76f;
+        const int treeCount = 36;
 
         for (int i = 0; i < treeCount; i++)
         {
             float angle = i * Mathf.PI * 2f / treeCount;
-            float radius = (i % 2 == 0) ? innerRadius : outerRadius;
+            float radius = (i % 3) switch
+            {
+                0 => innerRadius,
+                1 => midRadius,
+                _ => outerRadius,
+            };
             Vector3 position = new Vector3(Mathf.Cos(angle) * radius, 0f, Mathf.Sin(angle) * radius);
             float yaw = -angle * Mathf.Rad2Deg + 90f;
 
@@ -420,8 +562,12 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         Transform rocksRoot = new GameObject("Rocks").transform;
         rocksRoot.SetParent(parent, false);
 
-        float[] angles = { 12f, 38f, 64f, 98f, 132f, 168f, 204f, 238f, 272f, 306f, 332f, 358f };
-        const float radius = 50f;
+        float[] angles =
+        {
+            8f, 22f, 36f, 52f, 68f, 84f, 98f, 114f, 128f, 142f, 158f, 172f,
+            188f, 202f, 218f, 232f, 248f, 262f, 276f, 292f,
+        };
+        const float radius = 48f;
 
         for (int i = 0; i < angles.Length; i++)
         {
@@ -468,6 +614,171 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         }
     }
 
+    private static void PlaceRockClusters(Transform parent, Material rockMaterial)
+    {
+        Transform clustersRoot = new GameObject("RockClusters").transform;
+        clustersRoot.SetParent(parent, false);
+
+        float[] angles = { 18f, 45f, 72f, 108f, 135f, 162f, 198f, 225f, 252f, 288f, 315f, 342f };
+        const float radius = 44f;
+        string[] clusterPaths =
+        {
+            PolytopePrefabsRoot + "/Rocks/PT_River_Rock_Pile_02.prefab",
+            PolytopePrefabsRoot + "/Rocks/PT_Ore_Rock_01_split.prefab",
+        };
+
+        for (int i = 0; i < angles.Length; i++)
+        {
+            float radians = angles[i] * Mathf.Deg2Rad;
+            Vector3 position = new Vector3(Mathf.Cos(radians) * radius, 0f, Mathf.Sin(radians) * radius);
+            string prefabPath = clusterPaths[i % clusterPaths.Length];
+            GameObject instance = InstantiatePolytopePrefab(
+                prefabPath,
+                clustersRoot,
+                position,
+                Quaternion.Euler(0f, angles[i] + 11f, 0f),
+                rockMaterial);
+
+            if (instance != null)
+            {
+                float scale = 1.05f + (PlacementHash(i, 37) % 31) * 0.01f;
+                instance.transform.localScale = Vector3.one * scale;
+            }
+        }
+    }
+
+    private static void PlaceBossArenaBoundary(Transform parent, Material rockMaterial, Material ruinMaterial)
+    {
+        Transform boundaryRoot = new GameObject("BossBoundary").transform;
+        boundaryRoot.SetParent(parent, false);
+
+        Transform rockGroup = new GameObject("BossBoundaryRocks").transform;
+        rockGroup.SetParent(boundaryRoot, false);
+        Transform ruinGroup = new GameObject("BossBoundaryRuins").transform;
+        ruinGroup.SetParent(boundaryRoot, false);
+
+        Vector3 bossCenter = new Vector3(0f, 0f, 58f);
+        const float arcRadius = 34f;
+        string rockPath = PolytopePrefabsRoot + "/Rocks/PT_Generic_Rock_01.prefab";
+        string menhirPath = PolytopePrefabsRoot + "/Rocks/PT_Menhir_Rock_02.prefab";
+
+        for (int i = -5; i <= 5; i++)
+        {
+            float t = i / 5f;
+            float angle = Mathf.Lerp(35f, 145f, (t + 1f) * 0.5f) * Mathf.Deg2Rad;
+            Vector3 offset = new Vector3(Mathf.Cos(angle) * arcRadius, 0f, Mathf.Sin(angle) * arcRadius);
+            Vector3 position = bossCenter + offset;
+            bool useMenhir = i == -5 || i == 5 || i == 0;
+            string prefabPath = useMenhir ? menhirPath : rockPath;
+            Material material = useMenhir ? ruinMaterial : rockMaterial;
+            float yaw = angle * Mathf.Rad2Deg + 90f;
+
+            GameObject instance = InstantiatePolytopePrefab(
+                prefabPath,
+                useMenhir ? ruinGroup : rockGroup,
+                position,
+                Quaternion.Euler(0f, yaw, 0f),
+                material);
+
+            if (instance != null && !useMenhir)
+            {
+                float scale = 0.95f + (PlacementHash(i, 59) % 21) * 0.01f;
+                instance.transform.localScale = Vector3.one * scale;
+            }
+        }
+
+        Vector3[] flankRocks =
+        {
+            new Vector3(-30f, 0f, 52f),
+            new Vector3(30f, 0f, 52f),
+            new Vector3(-26f, 0f, 64f),
+            new Vector3(26f, 0f, 64f),
+        };
+
+        for (int i = 0; i < flankRocks.Length; i++)
+        {
+            InstantiatePolytopePrefab(
+                PolytopePrefabsRoot + "/Rocks/PT_River_Rock_Pile_02.prefab",
+                rockGroup,
+                flankRocks[i],
+                Quaternion.Euler(0f, i * 41f, 0f),
+                rockMaterial);
+        }
+    }
+
+    private static void PlaceChestZoneDecor(Transform parent, MapMaterials materials, Vector3 zoneCenter, string rootName)
+    {
+        Transform decorRoot = new GameObject(rootName).transform;
+        decorRoot.SetParent(parent, false);
+
+        Transform grassGroup = new GameObject("GrassProps").transform;
+        grassGroup.SetParent(decorRoot, false);
+        Transform rockGroup = new GameObject("RockProps").transform;
+        rockGroup.SetParent(decorRoot, false);
+        Transform shrubGroup = new GameObject("ShrubProps").transform;
+        shrubGroup.SetParent(decorRoot, false);
+
+        string grassPath = PolytopePrefabsRoot + "/Plants/PT_Grass_02.prefab";
+        string rockPath = PolytopePrefabsRoot + "/Rocks/PT_Generic_Rock_01.prefab";
+        string shrubPath = PolytopePrefabsRoot + "/Shrubs/PT_Generic_Shrub_01_green.prefab";
+
+        float[] decorAngles = { 20f, 110f, 200f, 290f };
+        const float decorRadius = 7f;
+
+        for (int i = 0; i < decorAngles.Length; i++)
+        {
+            float radians = decorAngles[i] * Mathf.Deg2Rad;
+            Vector3 position = zoneCenter + new Vector3(Mathf.Cos(radians) * decorRadius, 0f, Mathf.Sin(radians) * decorRadius);
+            switch (i % 3)
+            {
+                case 0:
+                    InstantiatePolytopePrefab(grassPath, grassGroup, position, Quaternion.identity, materials.Grass);
+                    break;
+                case 1:
+                    InstantiatePolytopePrefab(rockPath, rockGroup, position, Quaternion.Euler(0f, decorAngles[i], 0f), materials.Rock);
+                    break;
+                default:
+                    InstantiatePolytopePrefab(shrubPath, shrubGroup, position, Quaternion.Euler(0f, decorAngles[i] + 15f, 0f), materials.Grass);
+                    break;
+            }
+        }
+    }
+
+    private static void PlacePortalAreaDecor(Transform parent, MapMaterials materials)
+    {
+        Transform portalRoot = new GameObject("PortalAreaDecor").transform;
+        portalRoot.SetParent(parent, false);
+
+        Transform deadTrees = new GameObject("PortalDeadTrees").transform;
+        deadTrees.SetParent(portalRoot, false);
+        Transform ruins = new GameObject("PortalRuins").transform;
+        ruins.SetParent(portalRoot, false);
+        Transform flowers = new GameObject("PortalFlowers").transform;
+        flowers.SetParent(portalRoot, false);
+        Transform rocks = new GameObject("PortalRocks").transform;
+        rocks.SetParent(portalRoot, false);
+
+        Vector3 portalCenter = new Vector3(0f, 0f, -62f);
+        string deadTreePath = PolytopePrefabsRoot + "/Trees/PT_Pine_Tree_03_dead.prefab";
+        string menhirPath = PolytopePrefabsRoot + "/Rocks/PT_Menhir_Rock_02.prefab";
+        string poppyPath = PolytopePrefabsRoot + "/Flowers/PT_Poppy_02.prefab";
+        string rockPilePath = PolytopePrefabsRoot + "/Rocks/PT_River_Rock_Pile_02.prefab";
+
+        InstantiatePolytopePrefab(deadTreePath, deadTrees, portalCenter + new Vector3(-11f, 0f, 0f), Quaternion.Euler(0f, 18f, 0f), materials.Tree);
+        InstantiatePolytopePrefab(deadTreePath, deadTrees, portalCenter + new Vector3(11f, 0f, 0f), Quaternion.Euler(0f, -18f, 0f), materials.Tree);
+        InstantiatePolytopePrefab(menhirPath, ruins, portalCenter + new Vector3(-9f, 0f, 5f), Quaternion.Euler(0f, 12f, 0f), materials.Ruin);
+        InstantiatePolytopePrefab(menhirPath, ruins, portalCenter + new Vector3(9f, 0f, 5f), Quaternion.Euler(0f, -12f, 0f), materials.Ruin);
+        InstantiatePolytopePrefab(poppyPath, flowers, portalCenter + new Vector3(-4f, 0f, -3f), Quaternion.identity, materials.Grass);
+        InstantiatePolytopePrefab(poppyPath, flowers, portalCenter + new Vector3(4f, 0f, -3f), Quaternion.identity, materials.Grass);
+        InstantiatePolytopePrefab(rockPilePath, rocks, portalCenter + new Vector3(0f, 0f, -2f), Quaternion.Euler(0f, 33f, 0f), materials.Rock);
+        InstantiatePolytopePrefab(
+            PolytopePrefabsRoot + "/Shrubs/PT_Generic_Shrub_01_dead.prefab",
+            rocks,
+            portalCenter + new Vector3(0f, 0f, 6f),
+            Quaternion.identity,
+            materials.Grass);
+    }
+
     private static void PlaceGrassClusters(Transform parent, Material grassMaterial)
     {
         Transform grassRoot = new GameObject("Grass").transform;
@@ -482,6 +793,10 @@ public static class GreenAncientWildsPlaytestSceneBuilder
             new Vector3(-38f, 0f, -30f),
             new Vector3(28f, 0f, 44f),
             new Vector3(-30f, 0f, -44f),
+            new Vector3(22f, 0f, -18f),
+            new Vector3(-24f, 0f, 16f),
+            new Vector3(18f, 0f, 36f),
+            new Vector3(-20f, 0f, -36f),
         };
 
         foreach (Vector3 position in positions)
@@ -604,24 +919,26 @@ public static class GreenAncientWildsPlaytestSceneBuilder
                 return materials.Water;
             }
 
-            if (name == "Trees")
-            {
-                return materials.Tree;
-            }
-
-            if (name == "Rocks")
+            if (name == "Rocks" || name == "RockClusters" || name == "RockProps" || name == "PortalRocks"
+                || name == "BossBoundaryRocks")
             {
                 return materials.Rock;
             }
 
-            if (name == "Ruins")
+            if (name == "Ruins" || name == "PortalRuins" || name == "BossBoundaryRuins")
             {
                 return materials.Ruin;
             }
 
-            if (name == "Grass")
+            if (name == "Grass" || name == "GrassProps" || name == "ShrubProps" || name == "PortalFlowers"
+                || name == "ChestZoneDecor_A" || name == "ChestZoneDecor_B" || name == "PortalAreaDecor")
             {
                 return materials.Grass;
+            }
+
+            if (name == "PortalDeadTrees" || name == "Trees")
+            {
+                return materials.Tree;
             }
 
             current = current.parent;
