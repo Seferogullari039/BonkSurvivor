@@ -54,22 +54,22 @@ public class ChestVisualAnimator : MonoBehaviour
         switch (rarity)
         {
             case ChestRarity.Rare:
-                bobAmplitude = 0.07f;
-                bobSpeed = 1.8f;
-                glowBaseIntensity = 0.55f;
-                glowPulseAmount = 0.24f;
+                bobAmplitude = 0.05f;
+                bobSpeed = 1.7f;
+                glowBaseIntensity = 0.22f;
+                glowPulseAmount = 0.10f;
                 break;
             case ChestRarity.Epic:
-                bobAmplitude = 0.09f;
-                bobSpeed = 2.1f;
-                glowBaseIntensity = 0.72f;
-                glowPulseAmount = 0.32f;
+                bobAmplitude = 0.06f;
+                bobSpeed = 1.9f;
+                glowBaseIntensity = 0.28f;
+                glowPulseAmount = 0.12f;
                 break;
             default:
-                bobAmplitude = 0.05f;
-                bobSpeed = 1.6f;
-                glowBaseIntensity = 0.42f;
-                glowPulseAmount = 0.18f;
+                bobAmplitude = 0.04f;
+                bobSpeed = 1.5f;
+                glowBaseIntensity = 0.14f;
+                glowPulseAmount = 0.08f;
                 break;
         }
 

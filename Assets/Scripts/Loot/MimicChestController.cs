@@ -114,7 +114,7 @@ public class MimicChestController : MonoBehaviour
 
         if (JuiceManager.Instance != null)
         {
-            JuiceManager.Instance.PlayChestOpen(transform.position);
+            JuiceManager.Instance.PlayChestOpen(transform.position, rarity);
         }
     }
 

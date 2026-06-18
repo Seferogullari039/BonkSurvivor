@@ -17,7 +17,7 @@ public static class ChestVisualMaterials
     private static Material darkTrimMaterial;
     private static Material glowBaseMaterial;
 
-    private static readonly Color CommonGlow = new Color(0.62f, 0.60f, 0.58f);
+    private static readonly Color CommonGlow = new Color(0.82f, 0.84f, 0.88f);
     private static readonly Color RareGlow = new Color(0.35f, 0.65f, 1f);
     private static readonly Color EpicGlow = new Color(0.75f, 0.35f, 1f);
     private static readonly Color LegendaryGlow = new Color(1f, 0.82f, 0.28f);
@@ -120,7 +120,7 @@ public static class ChestVisualMaterials
             renderer.sharedMaterial = glowMaterial;
         }
 
-        GameVisualStyle.ApplyColor(renderer, GetGlowColor(rarity), 0.2f, true, intensity);
+        GameVisualStyle.ApplyColor(renderer, GetGlowColor(rarity), 0.16f, true, Mathf.Min(intensity, 0.35f));
     }
 
     public static void ApplyLock(Renderer renderer, ChestRarity rarity)

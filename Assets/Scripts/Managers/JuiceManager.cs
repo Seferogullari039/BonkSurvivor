@@ -32,10 +32,10 @@ public class JuiceManager : MonoBehaviour
         StartEffect(LevelUpRoutine(position));
     }
 
-    public void PlayChestOpen(Vector3 position)
+    public void PlayChestOpen(Vector3 position, ChestRarity rarity = ChestRarity.Normal)
     {
         // FPSScreenShake.Shake(0.04f, 0.16f);
-        StartEffect(ChestOpenRoutine(position));
+        StartEffect(ChestOpenVisualEffect.PlayRoutine(position, rarity));
     }
 
     public void PlayBossSpawn(Vector3 position)
@@ -260,57 +260,6 @@ public class JuiceManager : MonoBehaviour
         }
 
         DestroyEffect(flash);
-    }
-
-    private IEnumerator ChestOpenRoutine(Vector3 position)
-    {
-        Vector3 effectPosition = position + Vector3.up * 0.25f;
-        const float duration = 0.5f;
-
-        GameObject yellowBurst = CreateSphere(effectPosition, 0.25f, new Color(1f, 0.9f, 0.2f));
-        GameObject goldPulse = CreateRing(effectPosition, 0.35f, new Color(1f, 0.82f, 0.15f));
-        GameObject purpleBurst = CreateSphere(effectPosition, 0.18f, new Color(0.62f, 0.2f, 0.95f));
-
-        Renderer yellowRenderer = yellowBurst != null ? yellowBurst.GetComponent<Renderer>() : null;
-        Material yellowMaterial = yellowRenderer != null ? yellowRenderer.material : null;
-        Renderer goldRenderer = goldPulse != null ? goldPulse.GetComponent<Renderer>() : null;
-        Material goldMaterial = goldRenderer != null ? goldRenderer.material : null;
-        Renderer purpleRenderer = purpleBurst != null ? purpleBurst.GetComponent<Renderer>() : null;
-        Material purpleMaterial = purpleRenderer != null ? purpleRenderer.material : null;
-
-        float elapsed = 0f;
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.unscaledDeltaTime;
-            float progress = elapsed / duration;
-            float fade = 1f - progress;
-
-            if (yellowBurst != null)
-            {
-                yellowBurst.transform.localScale = Vector3.one * Mathf.Lerp(0.25f, 1.35f, progress);
-            }
-
-            SetRingScale(goldPulse, Mathf.Lerp(0.35f, 1.5f, progress));
-
-            if (purpleBurst != null)
-            {
-                purpleBurst.transform.localScale = Vector3.one * Mathf.Lerp(0.18f, 0.95f, progress);
-            }
-
-            FadeEmission(yellowMaterial, 0.6f * fade);
-            FadeEmission(goldMaterial, 0.55f * fade);
-            FadeEmission(purpleMaterial, 0.5f * fade);
-            SetBaseAlpha(yellowMaterial, fade);
-            SetBaseAlpha(goldMaterial, fade * 0.85f);
-            SetBaseAlpha(purpleMaterial, fade);
-
-            yield return null;
-        }
-
-        DestroyEffect(yellowBurst);
-        DestroyEffect(goldPulse);
-        DestroyEffect(purpleBurst);
     }
 
     private IEnumerator BossSpawnRoutine(Vector3 position)

@@ -188,7 +188,7 @@ public class Chest : MonoBehaviour
 
         if (JuiceManager.Instance != null)
         {
-            JuiceManager.Instance.PlayChestOpen(transform.position);
+            JuiceManager.Instance.PlayChestOpen(transform.position, chestRarity);
         }
 
         Destroy(gameObject);

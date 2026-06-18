@@ -72,8 +72,8 @@ public class ChestVisual : MonoBehaviour
             visualRoot,
             GlowName,
             PrimitiveType.Sphere,
-            new Vector3(0f, 0.52f, 0f),
-            new Vector3(1.15f, 0.75f, 1.15f));
+            new Vector3(0f, 0.58f, 0f),
+            new Vector3(0.52f, 0.34f, 0.52f));
         glowRenderer = glowObject.GetComponent<Renderer>();
 
         GameObject lightObject = new GameObject("GlowLight");
@@ -81,7 +81,7 @@ public class ChestVisual : MonoBehaviour
         lightObject.transform.localPosition = new Vector3(0f, 0.72f, 0f);
         glowLight = lightObject.AddComponent<Light>();
         glowLight.type = LightType.Point;
-        glowLight.range = 2.2f;
+        glowLight.range = 1.15f;
         glowLight.shadows = LightShadows.None;
 
         ApplyMaterials();
@@ -131,11 +131,13 @@ public class ChestVisual : MonoBehaviour
 
         if (glowRenderer != null)
         {
+            glowRenderer.transform.localScale = new Vector3(0.52f, 0.34f, 0.52f);
+
             float glowIntensity = rarity switch
             {
-                ChestRarity.Epic => bossPresentation ? 0.85f : 0.72f,
-                ChestRarity.Rare => bossPresentation ? 0.68f : 0.55f,
-                _ => bossPresentation ? 0.42f : 0.28f
+                ChestRarity.Epic => bossPresentation ? 0.38f : 0.30f,
+                ChestRarity.Rare => bossPresentation ? 0.32f : 0.24f,
+                _ => bossPresentation ? 0.18f : 0.12f
             };
             ChestVisualMaterials.ApplyGlow(glowRenderer, rarity, glowIntensity);
         }
@@ -143,7 +145,8 @@ public class ChestVisual : MonoBehaviour
         if (glowLight != null)
         {
             glowLight.color = ChestVisualMaterials.GetGlowColor(rarity);
-            glowLight.intensity = bossPresentation ? 1.0f : 0.65f;
+            glowLight.intensity = bossPresentation ? 0.42f : 0.22f;
+            glowLight.range = 1.15f;
         }
     }
 
