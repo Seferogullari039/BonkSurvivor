@@ -28,6 +28,8 @@ public class HUDManager : MonoBehaviour
     private int lastPolishedLevel = -1;
     private bool polishedHudBuilt;
     private static Sprite coinCircleSprite;
+    private static Texture2D uiKnobFallbackTexture;
+    private static Sprite uiKnobFallbackSprite;
 
     private static readonly Color LevelBadgeBackground = new Color(0.05f, 0.07f, 0.12f, 0.84f);
     private static readonly Color LevelBadgeBorder = new Color(0.72f, 0.58f, 0.18f, 0.9f);
@@ -1025,7 +1027,23 @@ public class HUDManager : MonoBehaviour
 
     private static Sprite GetUiKnobSprite()
     {
-        return Resources.GetBuiltinResource<Sprite>("UI/Skin/Knob.psd");
+        if (uiKnobFallbackSprite != null)
+        {
+            return uiKnobFallbackSprite;
+        }
+
+        uiKnobFallbackTexture = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+        uiKnobFallbackTexture.SetPixel(0, 0, Color.white);
+        uiKnobFallbackTexture.Apply(false, true);
+
+        uiKnobFallbackSprite = Sprite.Create(
+            uiKnobFallbackTexture,
+            new Rect(0f, 0f, 1f, 1f),
+            new Vector2(0.5f, 0.5f),
+            1f);
+        uiKnobFallbackSprite.name = "HUD_FallbackKnobSprite";
+
+        return uiKnobFallbackSprite;
     }
 
     private static Sprite GetCoinCircleSprite()

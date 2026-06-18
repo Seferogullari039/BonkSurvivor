@@ -296,11 +296,24 @@ public class LevelUpManager : MonoBehaviour
         titleText.fontSizeMin = 26f;
         titleText.fontSizeMax = 34f;
         titleText.characterSpacing = 2f;
+        TryApplyTextOutline(titleText, 0.1f, new Color(0f, 0f, 0f, 0.45f));
+    }
 
-        if (titleText.font != null)
+    private static void TryApplyTextOutline(TMP_Text text, float outlineWidth, Color outlineColor)
+    {
+        if (text == null || text.font == null)
         {
-            titleText.outlineWidth = 0.1f;
-            titleText.outlineColor = new Color(0f, 0f, 0f, 0.45f);
+            return;
+        }
+
+        try
+        {
+            text.outlineWidth = outlineWidth;
+            text.outlineColor = outlineColor;
+        }
+        catch
+        {
+            // Unity 6 TMP outline can throw if material is not ready; skip outline polish only.
         }
     }
 
@@ -315,12 +328,7 @@ public class LevelUpManager : MonoBehaviour
         rarityText.fontSizeMin = 16f;
         rarityText.fontSizeMax = 20f;
         rarityText.characterSpacing = 4f;
-
-        if (rarityText.font != null)
-        {
-            rarityText.outlineWidth = 0.08f;
-            rarityText.outlineColor = new Color(0f, 0f, 0f, 0.35f);
-        }
+        TryApplyTextOutline(rarityText, 0.08f, new Color(0f, 0f, 0f, 0.35f));
     }
 
     private static void ConfigureDescriptionText(TMP_Text descriptionText)
