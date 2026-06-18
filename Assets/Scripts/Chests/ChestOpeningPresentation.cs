@@ -36,6 +36,24 @@ public static class ChestOpeningPresentation
         return chestTransform != null;
     }
 
+    public static void ApplyIdleOpenLid(Transform chestTransform, float openAngle = -28f)
+    {
+        if (chestTransform == null)
+        {
+            return;
+        }
+
+        Transform animatedRoot = ResolveAnimatedRoot(chestTransform);
+        Transform lidTransform = FindLid(animatedRoot, chestTransform);
+
+        if (lidTransform == null)
+        {
+            return;
+        }
+
+        lidTransform.localRotation = Quaternion.Euler(openAngle, 0f, 0f);
+    }
+
     public static IEnumerator PlayPhysicalOpening(Transform chestTransform)
     {
         if (chestTransform == null)

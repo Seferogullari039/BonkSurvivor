@@ -564,12 +564,11 @@ public class Enemy : MonoBehaviour
 
         if (chest == null) return;
 
-        chest.Configure(rarity, isBossDrop);
+        chest.ConfigureDroppedReward(rarity, isBossDrop);
 
         if (isBossDrop)
         {
             Debug.LogWarning("BOSS CHEST DROPPED");
-            chest.ApplyBossDropTextColor();
         }
     }
 

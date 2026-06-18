@@ -17,6 +17,7 @@ public class ChestVisual : MonoBehaviour
     private Renderer glowRenderer;
     private Light glowLight;
     private bool bossPresentation;
+    private bool droppedRewardPresentation;
 
     private void Awake()
     {
@@ -50,6 +51,44 @@ public class ChestVisual : MonoBehaviour
         bossPresentation = true;
         transform.localScale = Vector3.one * 1.2f;
         ApplyMaterials();
+    }
+
+    public void ApplyDroppedRewardPresentation(bool bossPresentationOverride = false)
+    {
+        droppedRewardPresentation = true;
+
+        if (visualRoot == null)
+        {
+            BuildVisual();
+        }
+
+        if (bossPresentationOverride)
+        {
+            ApplyBossPresentation();
+        }
+
+        SetLidIdleOpen(-28f);
+        ApplyMaterials();
+    }
+
+    private void SetLidIdleOpen(float openAngle)
+    {
+        if (visualRoot == null)
+        {
+            return;
+        }
+
+        Transform lid = visualRoot.Find(LidName);
+
+        if (lid == null)
+        {
+            lid = visualRoot.Find("Lid");
+        }
+
+        if (lid != null)
+        {
+            lid.localRotation = Quaternion.Euler(openAngle, 0f, 0f);
+        }
     }
 
     public void BuildVisual()
@@ -131,7 +170,9 @@ public class ChestVisual : MonoBehaviour
 
         if (glowRenderer != null)
         {
-            glowRenderer.transform.localScale = new Vector3(0.52f, 0.34f, 0.52f);
+            glowRenderer.transform.localScale = droppedRewardPresentation
+                ? new Vector3(0.58f, 0.38f, 0.58f)
+                : new Vector3(0.52f, 0.34f, 0.52f);
 
             float glowIntensity = rarity switch
             {
@@ -139,14 +180,29 @@ public class ChestVisual : MonoBehaviour
                 ChestRarity.Rare => bossPresentation ? 0.32f : 0.24f,
                 _ => bossPresentation ? 0.18f : 0.12f
             };
+
+            if (droppedRewardPresentation)
+            {
+                glowIntensity *= 1.5f;
+            }
+
             ChestVisualMaterials.ApplyGlow(glowRenderer, rarity, glowIntensity);
         }
 
         if (glowLight != null)
         {
             glowLight.color = ChestVisualMaterials.GetGlowColor(rarity);
-            glowLight.intensity = bossPresentation ? 0.42f : 0.22f;
-            glowLight.range = 1.15f;
+
+            if (droppedRewardPresentation)
+            {
+                glowLight.intensity = bossPresentation ? 0.52f : 0.36f;
+                glowLight.range = 1.35f;
+            }
+            else
+            {
+                glowLight.intensity = bossPresentation ? 0.42f : 0.22f;
+                glowLight.range = 1.15f;
+            }
         }
     }
 

@@ -9,16 +9,28 @@ public class Chest : MonoBehaviour
 
     private int price;
     private bool isOpened;
+    private bool openRoutineStarted;
     private bool isMimic;
     private bool isBossDrop;
+    private bool isDroppedRewardChest;
+    private bool playerInRange;
     private ChestRarity chestRarity = ChestRarity.Normal;
     private MimicChestController mimicController;
+    private PlayerStats cachedPlayerStats;
 
     public ChestRarity Rarity => chestRarity;
     public bool IsMimic => isMimic;
+    public bool IsDroppedRewardChest => isDroppedRewardChest;
+    public bool RequiresManualOpen => !isDroppedRewardChest && !isMimic;
 
     private void Start()
     {
+        if (isDroppedRewardChest)
+        {
+            ApplyDroppedRewardState();
+            return;
+        }
+
         EnsurePriceText();
         ApplyVisuals();
         UpdatePrice();
@@ -26,16 +38,24 @@ public class Chest : MonoBehaviour
 
     public void Configure(ChestRarity rarity, bool bossDrop = false)
     {
+        ConfigureDroppedReward(rarity, bossDrop);
+    }
+
+    public void ConfigureDroppedReward(ChestRarity rarity, bool bossPresentation = false)
+    {
         chestRarity = rarity;
-        isBossDrop = bossDrop;
+        isDroppedRewardChest = true;
+        isBossDrop = bossPresentation;
         isMimic = false;
         ApplyVisuals();
+        ApplyDroppedRewardState();
     }
 
     public void ConfigureMapChest(ChestRarity rarity, bool mimic)
     {
         chestRarity = rarity;
         isBossDrop = false;
+        isDroppedRewardChest = false;
         isMimic = mimic;
 
         if (isMimic)
@@ -45,6 +65,29 @@ public class Chest : MonoBehaviour
         }
 
         ApplyVisuals();
+    }
+
+    public void ApplyBossDropTextColor()
+    {
+        ChestVisual chestVisual = GetComponent<ChestVisual>();
+
+        if (chestVisual != null)
+        {
+            chestVisual.ApplyBossPresentation();
+        }
+    }
+
+    private void Update()
+    {
+        if (isOpened || openRoutineStarted || isDroppedRewardChest || isMimic || !playerInRange)
+        {
+            return;
+        }
+
+        if (Input.GetKeyDown(KeyCode.E))
+        {
+            TryOpenNormalChest();
+        }
     }
 
     private void EnsureMimicController()
@@ -85,6 +128,29 @@ public class Chest : MonoBehaviour
         }
     }
 
+    private void ApplyDroppedRewardState()
+    {
+        HidePriceText();
+
+        ChestVisual chestVisual = GetComponent<ChestVisual>();
+
+        if (chestVisual != null)
+        {
+            chestVisual.ApplyDroppedRewardPresentation(isBossDrop);
+        }
+        else
+        {
+            ChestOpeningPresentation.ApplyIdleOpenLid(transform, -28f);
+        }
+
+        ChestVisualAnimator visualAnimator = GetComponent<ChestVisualAnimator>();
+
+        if (visualAnimator != null)
+        {
+            visualAnimator.Configure(chestRarity, isBossDrop);
+        }
+    }
+
     private void EnsurePriceText()
     {
         if (priceText != null) return;
@@ -111,25 +177,23 @@ public class Chest : MonoBehaviour
         priceText = textMeshPro;
     }
 
-    public void ApplyBossDropTextColor()
+    private void HidePriceText()
     {
         EnsurePriceText();
 
         if (priceText != null)
         {
-            priceText.color = new Color(1f, 0.95f, 0.65f);
-        }
-
-        ChestVisual chestVisual = GetComponent<ChestVisual>();
-
-        if (chestVisual != null)
-        {
-            chestVisual.ApplyBossPresentation();
+            priceText.gameObject.SetActive(false);
         }
     }
 
     private void UpdatePrice()
     {
+        if (isDroppedRewardChest)
+        {
+            return;
+        }
+
         float runTime = Time.timeSinceLevelLoad;
 
         if (runTime < 30f)
@@ -149,15 +213,24 @@ public class Chest : MonoBehaviour
             price = 25;
         }
 
-        if (priceText != null)
+        RefreshPriceLabel(false);
+    }
+
+    private void RefreshPriceLabel(bool showInteractHint)
+    {
+        if (priceText == null || isDroppedRewardChest)
         {
-            priceText.text = price + " Coin";
+            return;
         }
+
+        priceText.text = showInteractHint
+            ? price + " Coin  [E]"
+            : price + " Coin";
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        if (isOpened) return;
+        if (isOpened || openRoutineStarted) return;
         if (!other.CompareTag("Player")) return;
 
         if (isMimic)
@@ -177,9 +250,56 @@ public class Chest : MonoBehaviour
 
         if (playerStats == null) return;
 
-        if (!playerStats.SpendCoins(price)) return;
+        if (isDroppedRewardChest)
+        {
+            BeginChestOpen();
+            return;
+        }
+
+        cachedPlayerStats = playerStats;
+        playerInRange = true;
+        RefreshPriceLabel(true);
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (!other.CompareTag("Player")) return;
+
+        playerInRange = false;
+        cachedPlayerStats = null;
+        RefreshPriceLabel(false);
+    }
+
+    private void TryOpenNormalChest()
+    {
+        if (isOpened || openRoutineStarted || isDroppedRewardChest || isMimic) return;
+
+        if (cachedPlayerStats == null)
+        {
+            cachedPlayerStats = FindPlayerStatsInRange();
+        }
+
+        if (cachedPlayerStats == null) return;
+
+        if (!cachedPlayerStats.SpendCoins(price)) return;
+
+        BeginChestOpen();
+    }
+
+    private PlayerStats FindPlayerStatsInRange()
+    {
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+
+        return player != null ? player.GetComponent<PlayerStats>() : null;
+    }
+
+    private void BeginChestOpen()
+    {
+        if (isOpened || openRoutineStarted) return;
 
         isOpened = true;
+        openRoutineStarted = true;
+        playerInRange = false;
         DisableOpenInteraction();
         StartCoroutine(CompleteChestOpen());
     }
@@ -193,10 +313,7 @@ public class Chest : MonoBehaviour
             chestCollider.enabled = false;
         }
 
-        if (priceText != null)
-        {
-            priceText.gameObject.SetActive(false);
-        }
+        HidePriceText();
     }
 
     private IEnumerator CompleteChestOpen()
