@@ -21,8 +21,10 @@ public class LevelUpManager : MonoBehaviour
     private int menuPlayerLevel = 1;
     private int remainingUpgradeSelections = 1;
     private bool isChestUpgradeMenu;
+    private bool useChestLootPresentation;
     private ChestRarity currentChestRarity = ChestRarity.Normal;
     private TMP_Text chestHeaderText;
+    private ChestLootSelectionUI chestLootSelectionUI;
 
     private void Awake()
     {
@@ -351,6 +353,7 @@ public class LevelUpManager : MonoBehaviour
     {
         menuPlayerLevel = newLevel;
         isChestUpgradeMenu = false;
+        useChestLootPresentation = false;
         remainingUpgradeSelections = 1;
         OpenUpgradeMenuInternal();
     }
@@ -358,13 +361,20 @@ public class LevelUpManager : MonoBehaviour
     public void OpenUpgradeMenu()
     {
         isChestUpgradeMenu = false;
+        useChestLootPresentation = false;
         remainingUpgradeSelections = 1;
         OpenUpgradeMenuInternal();
     }
 
     public void OpenChestUpgradeMenu(ChestRarity chestRarity)
     {
+        OpenChestLootSelection(chestRarity);
+    }
+
+    public void OpenChestLootSelection(ChestRarity chestRarity)
+    {
         isChestUpgradeMenu = true;
+        useChestLootPresentation = true;
         currentChestRarity = chestRarity;
         remainingUpgradeSelections = ChestRarityUtility.GetUpgradePickCount(chestRarity);
         OpenUpgradeMenuInternal();
@@ -374,11 +384,6 @@ public class LevelUpManager : MonoBehaviour
     {
         Time.timeScale = 0f;
 
-        if (levelUpPanel != null)
-        {
-            levelUpPanel.SetActive(true);
-        }
-
         PlayerStats playerStats = FindPlayerStats();
 
         if (playerStats != null)
@@ -387,10 +392,116 @@ public class LevelUpManager : MonoBehaviour
         }
 
         AssignRandomUpgradeOptions();
+
+        if (useChestLootPresentation)
+        {
+            PresentChestLootSelection();
+            return;
+        }
+
+        PresentLevelUpCards();
+    }
+
+    private void PresentLevelUpCards()
+    {
+        if (chestLootSelectionUI != null)
+        {
+            chestLootSelectionUI.Hide();
+        }
+
+        if (levelUpPanel != null)
+        {
+            levelUpPanel.SetActive(true);
+        }
+
         EnsureUpgradeCards();
         RefreshUpgradeOptionTexts();
         UpdateChestHeaderText();
         RefreshButtonListeners();
+    }
+
+    private void PresentChestLootSelection()
+    {
+        if (levelUpPanel != null)
+        {
+            levelUpPanel.SetActive(false);
+        }
+
+        if (chestHeaderText != null)
+        {
+            chestHeaderText.gameObject.SetActive(false);
+        }
+
+        EnsureChestLootSelectionUi();
+        RefreshChestLootPresentation();
+    }
+
+    private void EnsureChestLootSelectionUi()
+    {
+        if (chestLootSelectionUI != null)
+        {
+            return;
+        }
+
+        chestLootSelectionUI = GetComponent<ChestLootSelectionUI>();
+
+        if (chestLootSelectionUI == null)
+        {
+            chestLootSelectionUI = gameObject.AddComponent<ChestLootSelectionUI>();
+        }
+
+        Canvas canvas = levelUpPanel != null ? levelUpPanel.GetComponentInParent<Canvas>() : null;
+
+        if (canvas == null)
+        {
+            canvas = UiLayoutUtility.GetGameplayCanvas();
+        }
+
+        TMP_Text fontSource = optionText1 != null ? optionText1 : chestHeaderText;
+        chestLootSelectionUI.EnsureBuilt(canvas, fontSource);
+    }
+
+    private void RefreshChestLootPresentation()
+    {
+        if (chestLootSelectionUI == null)
+        {
+            PresentLevelUpCards();
+            return;
+        }
+
+        ChestLootSelectionUI.SlotData[] slotData = BuildChestLootSlotData();
+        string header = ChestRarityUtility.GetHeaderText(currentChestRarity);
+        Color headerColor = ChestRarityUtility.GetHeaderColor(currentChestRarity);
+
+        if (chestLootSelectionUI.IsShowing)
+        {
+            chestLootSelectionUI.Refresh(slotData, SelectUpgrade);
+            return;
+        }
+
+        chestLootSelectionUI.Show(header, headerColor, slotData, SelectUpgrade);
+    }
+
+    private ChestLootSelectionUI.SlotData[] BuildChestLootSlotData()
+    {
+        ChestLootSelectionUI.SlotData[] slotData = new ChestLootSelectionUI.SlotData[shownUpgradeIndices.Length];
+        PlayerStats playerStats = FindPlayerStats();
+
+        for (int i = 0; i < shownUpgradeIndices.Length; i++)
+        {
+            int upgradeIndex = shownUpgradeIndices[i];
+            UpgradeRarity rarity = shownUpgradeRarities[i];
+            int multiplier = GetRarityMultiplier(rarity);
+            UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier, playerStats);
+
+            slotData[i] = ChestLootSelectionUI.SlotData.FromUpgrade(
+                rarity,
+                content.Title,
+                content.Description,
+                content.IconKey);
+        }
+
+        return slotData;
     }
 
     private void RefreshUpgradeOptionTexts()
@@ -1166,9 +1277,23 @@ public class LevelUpManager : MonoBehaviour
         if (remainingUpgradeSelections > 0)
         {
             AssignRandomUpgradeOptions();
-            RefreshUpgradeOptionTexts();
-            RefreshButtonListeners();
+
+            if (useChestLootPresentation)
+            {
+                RefreshChestLootPresentation();
+            }
+            else
+            {
+                RefreshUpgradeOptionTexts();
+                RefreshButtonListeners();
+            }
+
             return;
+        }
+
+        if (chestLootSelectionUI != null)
+        {
+            chestLootSelectionUI.Hide();
         }
 
         if (levelUpPanel != null)
@@ -1182,6 +1307,7 @@ public class LevelUpManager : MonoBehaviour
         }
 
         isChestUpgradeMenu = false;
+        useChestLootPresentation = false;
         Time.timeScale = 1f;
     }
 

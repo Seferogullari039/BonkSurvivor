@@ -9,7 +9,7 @@ public static class ChestOpenPresentation
 
         if (LevelUpManager.Instance != null)
         {
-            LevelUpManager.Instance.OpenChestUpgradeMenu(rarity);
+            LevelUpManager.Instance.OpenChestLootSelection(rarity);
         }
     }
 }
