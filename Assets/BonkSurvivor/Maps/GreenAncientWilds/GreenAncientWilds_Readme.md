@@ -105,8 +105,9 @@ For BonkSurvivor: prefer **TerrainCollider** or a single simplified ground colli
 
 ## Safe next steps (not done yet)
 
-1. Create `Assets/BonkSurvivor/Maps/GreenAncientWilds/GreenAncientWilds_Staging.unity` (empty or art-only).
-2. Place environment prefabs by reference; tune density for survivor camera (top-down / FPS).
+1. ~~Create `Assets/BonkSurvivor/Maps/GreenAncientWilds/GreenAncientWilds_Staging.unity` (empty or art-only).~~
+2. **Playtest scene:** `GreenAncientWilds_Playtest.unity` — gameplay clone of `SampleScene` + Polytope dressing via `Tools → BonkSurvivor → Build Green Ancient Wilds Playtest Scene` (auto-runs on Editor script reload if dressing is missing).
+3. Place environment prefabs by reference; tune density for survivor camera (top-down / FPS).
 3. Add one terrain or ground plane; assign `PT_Terrain_mat` / grass layers from demo helpers.
 4. Optional water plane with `PT_Water_mat` away from spawn until gameplay needs it.
 5. **Do not** wire into main game scene, spawners, player spawn, or Build Settings until art pass is approved.
