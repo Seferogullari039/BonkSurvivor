@@ -42,6 +42,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8455157211570471062}
   - component: {fileID: 1685297838893254359}
+  - component: {fileID: 5847291038475629103}
   m_Layer: 0
   m_Name: VisualRoot
   m_TagString: Untagged
@@ -80,13 +81,34 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SlimeVisualAnimator
   idleAmount: 0.04
   idleSpeed: 2.4
-  jumpHeight: 0.28
-  jumpInterval: 1.6
-  jumpDuration: 0.48
-  dashDistance: 0.35
-  dashInterval: 2.2
-  dashDuration: 0.18
+  jumpHeight: 0.38
+  jumpInterval: 1.45
+  jumpDuration: 0.52
+  dashDistance: 0.55
+  dashInterval: 1.9
+  dashDuration: 0.22
   animationSpeed: 1
+--- !u!114 &5847291038475629103
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6387015109154427072}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f708192a3b4c5d6e7f809ab012345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SlimeEyeLookController
+  lookTargetMode: 0
+  eyeFollowAmount: 0.035
+  eyeFollowSpeed: 8
+  maxEyeOffset: 0.045
+  enableProceduralPupilOverlay: 1
+  leftPupilLocalPosition: {x: -0.014, y: 0.016, z: 0.024}
+  rightPupilLocalPosition: {x: 0.014, y: 0.016, z: 0.024}
+  pupilScale: 0.045
+  pupilMaterial: {fileID: 2100000, guid: d4e5f678901234567890abcde1234567, type: 2}
 --- !u!1 &7196941878954492793
 GameObject:
   m_ObjectHideFlags: 0

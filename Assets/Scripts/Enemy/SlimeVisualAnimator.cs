@@ -11,12 +11,12 @@ public class SlimeVisualAnimator : MonoBehaviour
 
     [SerializeField] private float idleAmount = 0.04f;
     [SerializeField] private float idleSpeed = 2.4f;
-    [SerializeField] private float jumpHeight = 0.28f;
-    [SerializeField] private float jumpInterval = 1.6f;
-    [SerializeField] private float jumpDuration = 0.48f;
-    [SerializeField] private float dashDistance = 0.35f;
-    [SerializeField] private float dashInterval = 2.2f;
-    [SerializeField] private float dashDuration = 0.18f;
+    [SerializeField] private float jumpHeight = 0.38f;
+    [SerializeField] private float jumpInterval = 1.45f;
+    [SerializeField] private float jumpDuration = 0.52f;
+    [SerializeField] private float dashDistance = 0.55f;
+    [SerializeField] private float dashInterval = 1.9f;
+    [SerializeField] private float dashDuration = 0.22f;
     [SerializeField] private float animationSpeed = 1f;
 
     private Transform animatedModel;
