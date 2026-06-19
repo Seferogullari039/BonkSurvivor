@@ -14,6 +14,7 @@ public static class BasicEnemyViewPrefabBuilder
     private const string BodyMaterialPath = MaterialsFolder + "/BasicEnemy_Body_Mat.mat";
     private const string EyesMaterialPath = MaterialsFolder + "/BasicEnemy_Eyes_Mat.mat";
     private const float TargetHeight = 1.05f;
+    private const float VisualGroundLocalY = -0.32f;
 
     private static bool autoBuildAttempted;
 
@@ -362,14 +363,16 @@ public static class BasicEnemyViewPrefabBuilder
 
     private static void FitModelToCapsuleSize(Transform modelTransform, float targetHeight)
     {
+        modelTransform.localPosition = Vector3.zero;
+        modelTransform.localRotation = Quaternion.identity;
+
         Bounds bounds = CalculateRendererBounds(modelTransform);
         float sourceHeight = Mathf.Max(0.001f, bounds.size.y);
         float uniformScale = targetHeight / sourceHeight;
         modelTransform.localScale = Vector3.one * uniformScale;
 
         bounds = CalculateRendererBounds(modelTransform);
-        float bottomY = bounds.min.y - modelTransform.parent.position.y;
-        modelTransform.localPosition = new Vector3(0f, -bottomY, 0f);
+        modelTransform.localPosition = new Vector3(0f, VisualGroundLocalY - bounds.min.y, 0f);
     }
 
     private static Bounds CalculateRendererBounds(Transform root)
