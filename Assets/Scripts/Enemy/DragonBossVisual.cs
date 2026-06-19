@@ -1,9 +1,15 @@
 using UnityEngine;
 
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
+
 [DisallowMultipleComponent]
 public class DragonBossVisual : MonoBehaviour
 {
     private const string VisualRootName = "DragonVisualRoot";
+    private const string ViewPrefabPath = "Assets/Prefabs/Bosses/DragonBoss_View.prefab";
+    private const string ViewResourcePath = "Prefabs/Bosses/DragonBoss_View";
 
     [SerializeField] private bool buildOnAwake = true;
 
@@ -23,21 +29,43 @@ public class DragonBossVisual : MonoBehaviour
 
     public void BuildVisual()
     {
-        Transform existing = transform.Find(VisualRootName);
-        if (existing != null)
-        {
-            if (Application.isPlaying)
-            {
-                Destroy(existing.gameObject);
-            }
-            else
-            {
-                DestroyImmediate(existing.gameObject);
-            }
-        }
-
+        ClearExistingVisualRoot();
         HideRootRenderer();
 
+        if (TryBuildPrefabVisual())
+        {
+            return;
+        }
+
+        BuildProceduralVisual();
+    }
+
+    private bool TryBuildPrefabVisual()
+    {
+        GameObject viewPrefab = ResolveViewPrefab();
+
+        if (viewPrefab == null)
+        {
+            return false;
+        }
+
+        Transform visualRoot = CreateVisualRoot();
+        GameObject viewInstance = Instantiate(viewPrefab, visualRoot, false);
+
+        if (viewInstance == null)
+        {
+            ClearExistingVisualRoot();
+            return false;
+        }
+
+        viewInstance.name = viewPrefab.name + "_View";
+        SanitizeVisualInstance(viewInstance);
+        mouthFirePoint = ResolveMouthFirePoint(viewInstance.transform, visualRoot);
+        return true;
+    }
+
+    private void BuildProceduralVisual()
+    {
         Transform visualRoot = CreateVisualRoot();
         Color bodyColor = GameVisualPalette.DragonBoss;
         Color wingColor = new Color(0.22f, 0.05f, 0.1f);
@@ -60,15 +88,165 @@ public class DragonBossVisual : MonoBehaviour
         CreatePart(visualRoot, "Tail_2", PrimitiveType.Capsule, new Vector3(0f, 0.95f, -1.75f), new Vector3(0.45f, 0.28f, 0.45f), bodyColor, 0.38f, false);
         CreatePart(visualRoot, "Tail_3", PrimitiveType.Sphere, new Vector3(0f, 0.85f, -2.25f), new Vector3(0.38f, 0.38f, 0.38f), hornColor, 0.5f, true, 0.25f);
 
+        mouthFirePoint = CreateFallbackMouthFirePoint(visualRoot);
+    }
+
+    private static GameObject ResolveViewPrefab()
+    {
+#if UNITY_EDITOR
+        GameObject editorPrefab = LoadEditorPrefab(ViewPrefabPath);
+
+        if (editorPrefab != null)
+        {
+            return editorPrefab;
+        }
+#endif
+
+        if (string.IsNullOrEmpty(ViewResourcePath))
+        {
+            return null;
+        }
+
+        return Resources.Load<GameObject>(ViewResourcePath);
+    }
+
+#if UNITY_EDITOR
+    private static GameObject LoadEditorPrefab(string assetPath)
+    {
+        if (string.IsNullOrEmpty(assetPath))
+        {
+            return null;
+        }
+
+        return AssetDatabase.LoadAssetAtPath<GameObject>(assetPath);
+    }
+#endif
+
+    private static Transform ResolveMouthFirePoint(Transform viewRoot, Transform visualRoot)
+    {
+        if (viewRoot != null)
+        {
+            Transform firePoint = viewRoot.Find("VisualRoot/MouthFirePoint");
+
+            if (firePoint == null)
+            {
+                firePoint = FindDeepChild(viewRoot, "MouthFirePoint");
+            }
+
+            if (firePoint != null)
+            {
+                return firePoint;
+            }
+        }
+
+        return CreateFallbackMouthFirePoint(visualRoot);
+    }
+
+    private static Transform CreateFallbackMouthFirePoint(Transform visualRoot)
+    {
         GameObject firePointObject = new GameObject("MouthFirePoint");
         firePointObject.transform.SetParent(visualRoot, false);
         firePointObject.transform.localPosition = new Vector3(0f, 2.35f, 2.05f);
-        mouthFirePoint = firePointObject.transform;
+        return firePointObject.transform;
+    }
+
+    private static Transform FindDeepChild(Transform parent, string childName)
+    {
+        if (parent == null || string.IsNullOrEmpty(childName))
+        {
+            return null;
+        }
+
+        if (parent.name == childName)
+        {
+            return parent;
+        }
+
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            Transform match = FindDeepChild(parent.GetChild(i), childName);
+
+            if (match != null)
+            {
+                return match;
+            }
+        }
+
+        return null;
+    }
+
+    private static void SanitizeVisualInstance(GameObject instance)
+    {
+        if (instance == null)
+        {
+            return;
+        }
+
+        Collider[] colliders = instance.GetComponentsInChildren<Collider>(true);
+
+        for (int i = 0; i < colliders.Length; i++)
+        {
+            Collider collider = colliders[i];
+
+            if (collider != null)
+            {
+                collider.enabled = false;
+            }
+        }
+
+        Rigidbody[] rigidbodies = instance.GetComponentsInChildren<Rigidbody>(true);
+
+        for (int i = 0; i < rigidbodies.Length; i++)
+        {
+            Rigidbody rigidbody = rigidbodies[i];
+
+            if (rigidbody == null)
+            {
+                continue;
+            }
+
+            rigidbody.isKinematic = true;
+            rigidbody.useGravity = false;
+        }
+
+        Animator[] animators = instance.GetComponentsInChildren<Animator>(true);
+
+        for (int i = 0; i < animators.Length; i++)
+        {
+            Animator animator = animators[i];
+
+            if (animator == null)
+            {
+                continue;
+            }
+
+            animator.applyRootMotion = false;
+        }
+    }
+
+    private void ClearExistingVisualRoot()
+    {
+        Transform existing = transform.Find(VisualRootName);
+
+        if (existing != null)
+        {
+            if (Application.isPlaying)
+            {
+                Destroy(existing.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(existing.gameObject);
+            }
+        }
+
+        mouthFirePoint = null;
     }
 
     private void HideRootRenderer()
     {
         Renderer rootRenderer = GetComponent<Renderer>();
+
         if (rootRenderer != null)
         {
             rootRenderer.enabled = false;
@@ -104,6 +282,7 @@ public class DragonBossVisual : MonoBehaviour
         partObject.transform.localRotation = Quaternion.identity;
 
         Collider partCollider = partObject.GetComponent<Collider>();
+
         if (partCollider != null)
         {
             if (Application.isPlaying)
@@ -117,6 +296,7 @@ public class DragonBossVisual : MonoBehaviour
         }
 
         Renderer renderer = partObject.GetComponent<Renderer>();
+
         if (renderer != null)
         {
             GameVisualStyle.ApplyColor(renderer, color, smoothness, glow, emission);
