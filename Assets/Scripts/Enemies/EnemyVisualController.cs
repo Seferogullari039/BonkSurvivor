@@ -121,7 +121,9 @@ public sealed class EnemyVisualController : MonoBehaviour
             visualRoot = CreateVisualRoot();
             GameObject viewInstance = Instantiate(viewPrefab, visualRoot, false);
             viewInstance.name = viewPrefab.name + "_View";
+            viewInstance.SetActive(true);
             SanitizeVisualInstance(viewInstance);
+            EnsureActiveVisualRenderers(visualRoot);
             ApplySilhouetteScale(visualRoot, currentType);
             ApplyPrefabViewColors(viewInstance, visualRoot);
             EnsureEliteRing(visualRoot);
@@ -403,6 +405,53 @@ public sealed class EnemyVisualController : MonoBehaviour
         }
 
         visualRoot = null;
+    }
+
+    private static void EnsureActiveVisualRenderers(Transform viewRoot)
+    {
+        if (viewRoot == null)
+        {
+            return;
+        }
+
+        Renderer[] renderers = viewRoot.GetComponentsInChildren<Renderer>(true);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer == null || IsIntentionallyInactiveBackup(renderer.transform))
+            {
+                continue;
+            }
+
+            if (!renderer.gameObject.activeInHierarchy)
+            {
+                continue;
+            }
+
+            if (!renderer.enabled)
+            {
+                renderer.enabled = true;
+            }
+        }
+    }
+
+    private static bool IsIntentionallyInactiveBackup(Transform transform)
+    {
+        Transform current = transform;
+
+        while (current != null)
+        {
+            if (current.name == "Model_Old_Backup")
+            {
+                return true;
+            }
+
+            current = current.parent;
+        }
+
+        return false;
     }
 
     private static void SanitizeVisualInstance(GameObject instance)
