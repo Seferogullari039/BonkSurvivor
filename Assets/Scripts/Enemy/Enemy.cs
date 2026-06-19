@@ -114,6 +114,25 @@ public class Enemy : MonoBehaviour
 
         EnsureVisualController();
         visualController?.Initialize(type, enemyColor, baseVisualSmoothness, baseVisualGlow);
+        EnsureSeparationController();
+    }
+
+    private void EnsureSeparationController()
+    {
+        if (enemyType == EnemyType.MiniBoss || enemyType == EnemyType.DragonBoss)
+        {
+            return;
+        }
+
+        if (mimicChestOwner != null || goldenDragonOwner != null)
+        {
+            return;
+        }
+
+        if (GetComponent<EnemySeparationController>() == null)
+        {
+            gameObject.AddComponent<EnemySeparationController>();
+        }
     }
 
     public void SetBossAbility(BossAbilityType ability)
