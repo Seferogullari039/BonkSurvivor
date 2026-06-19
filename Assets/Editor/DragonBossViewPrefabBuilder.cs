@@ -14,8 +14,30 @@ public static class DragonBossViewPrefabBuilder
     private const string BodyMaterialPath = MaterialsFolder + "/DragonBoss_Body_Mat.mat";
     private const float TargetHeight = 2.45f;
     private const float VisualGroundLocalY = -0.456f;
-    private static readonly Vector3 ModelLocalEuler = new Vector3(-90f, 180f, 0f);
     private const float MouthFireHeightFactor = 0.72f;
+
+    private static readonly Vector3[] ModelRotationCandidates =
+    {
+        new Vector3(0f, 180f, 0f),
+        new Vector3(90f, 180f, 0f),
+        new Vector3(0f, 90f, 0f),
+        new Vector3(0f, -90f, 0f),
+        new Vector3(-90f, 0f, 0f),
+        new Vector3(-90f, 90f, 0f),
+        new Vector3(-90f, -90f, 0f),
+        new Vector3(90f, 90f, 0f),
+        new Vector3(90f, -90f, 0f)
+    };
+
+    private static readonly Vector3[] PitchedRotationCandidates =
+    {
+        new Vector3(90f, 180f, 0f),
+        new Vector3(-90f, 0f, 0f),
+        new Vector3(-90f, 90f, 0f),
+        new Vector3(-90f, -90f, 0f),
+        new Vector3(90f, 90f, 0f),
+        new Vector3(90f, -90f, 0f)
+    };
 
     private static bool autoBuildAttempted;
 
@@ -165,38 +187,36 @@ public static class DragonBossViewPrefabBuilder
     private static void PlaceMouthFirePoint(Transform visualRoot, Transform modelTransform)
     {
         Bounds bounds = CalculateRendererBounds(modelTransform);
-        Vector3 forward = modelTransform.up;
-        forward.y = 0f;
+        Vector3 size = bounds.size;
+        Vector3 mouthWorld;
 
-        if (forward.sqrMagnitude < 0.0001f)
+        if (size.x >= size.z)
         {
-            forward = Vector3.forward;
+            float forwardX = bounds.max.x - bounds.center.x;
+            float backwardX = bounds.center.x - bounds.min.x;
+            float snoutX = forwardX >= backwardX
+                ? bounds.max.x + bounds.extents.x * 0.04f
+                : bounds.min.x - bounds.extents.x * 0.04f;
+
+            mouthWorld = new Vector3(
+                snoutX,
+                bounds.min.y + bounds.size.y * MouthFireHeightFactor,
+                bounds.center.z);
         }
         else
         {
-            forward.Normalize();
+            float forwardZ = bounds.max.z - bounds.center.z;
+            float backwardZ = bounds.center.z - bounds.min.z;
+            float snoutZ = forwardZ >= backwardZ
+                ? bounds.max.z + bounds.extents.z * 0.04f
+                : bounds.min.z - bounds.extents.z * 0.04f;
+
+            mouthWorld = new Vector3(
+                bounds.center.x,
+                bounds.min.y + bounds.size.y * MouthFireHeightFactor,
+                snoutZ);
         }
 
-        Vector3[] corners = GetBoundsCorners(bounds);
-        float maxProjection = float.NegativeInfinity;
-
-        for (int i = 0; i < corners.Length; i++)
-        {
-            float projection = Vector3.Dot(corners[i] - bounds.center, forward);
-
-            if (projection > maxProjection)
-            {
-                maxProjection = projection;
-            }
-        }
-
-        if (maxProjection < 0.001f)
-        {
-            maxProjection = Mathf.Max(bounds.extents.x, bounds.extents.z);
-        }
-
-        Vector3 mouthWorld = bounds.center + forward * maxProjection * 0.95f;
-        mouthWorld.y = bounds.min.y + bounds.size.y * MouthFireHeightFactor;
         Vector3 mouthLocal = visualRoot.InverseTransformPoint(mouthWorld);
 
         GameObject firePointObject = new GameObject("MouthFirePoint");
@@ -204,24 +224,6 @@ public static class DragonBossViewPrefabBuilder
         firePointObject.transform.localPosition = mouthLocal;
         firePointObject.transform.localRotation = Quaternion.identity;
         firePointObject.transform.localScale = Vector3.one;
-    }
-
-    private static Vector3[] GetBoundsCorners(Bounds bounds)
-    {
-        Vector3 center = bounds.center;
-        Vector3 extents = bounds.extents;
-
-        return new[]
-        {
-            center + new Vector3(extents.x, extents.y, extents.z),
-            center + new Vector3(extents.x, extents.y, -extents.z),
-            center + new Vector3(extents.x, -extents.y, extents.z),
-            center + new Vector3(extents.x, -extents.y, -extents.z),
-            center + new Vector3(-extents.x, extents.y, extents.z),
-            center + new Vector3(-extents.x, extents.y, -extents.z),
-            center + new Vector3(-extents.x, -extents.y, extents.z),
-            center + new Vector3(-extents.x, -extents.y, -extents.z)
-        };
     }
 
     private static bool EnsureDragonImported(out string issue)
@@ -437,8 +439,10 @@ public static class DragonBossViewPrefabBuilder
 
     private static void FitModelToCapsuleSize(Transform modelTransform, float targetHeight)
     {
+        Vector3 selectedEuler = SelectBestModelRotation(modelTransform);
         modelTransform.localPosition = Vector3.zero;
-        modelTransform.localRotation = Quaternion.Euler(ModelLocalEuler);
+        modelTransform.localRotation = Quaternion.Euler(selectedEuler);
+        modelTransform.localScale = Vector3.one;
 
         Bounds bounds = CalculateRendererBounds(modelTransform);
         float sourceHeight = Mathf.Max(0.001f, bounds.size.y);
@@ -447,6 +451,153 @@ public static class DragonBossViewPrefabBuilder
 
         bounds = CalculateRendererBounds(modelTransform);
         modelTransform.localPosition = new Vector3(0f, VisualGroundLocalY - bounds.min.y, 0f);
+
+        Debug.Log("[DragonBossViewPrefabBuilder] Selected model rotation " + selectedEuler
+            + " scale " + uniformScale.ToString("F4")
+            + " position " + modelTransform.localPosition);
+    }
+
+    private static Vector3 SelectBestModelRotation(Transform modelTransform)
+    {
+        if (TrySelectBestRotation(modelTransform, PitchedRotationCandidates, out Vector3 pitchedEuler))
+        {
+            return pitchedEuler;
+        }
+
+        if (TrySelectBestRotation(modelTransform, ModelRotationCandidates, out Vector3 fallbackEuler))
+        {
+            return fallbackEuler;
+        }
+
+        return ModelRotationCandidates[0];
+    }
+
+    private static bool TrySelectBestRotation(
+        Transform modelTransform,
+        Vector3[] candidates,
+        out Vector3 selectedEuler)
+    {
+        selectedEuler = candidates[0];
+        float bestScore = float.NegativeInfinity;
+        float bestAxisAlign = float.NegativeInfinity;
+        bool found = false;
+
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            Vector3 candidateEuler = candidates[i];
+            modelTransform.localPosition = Vector3.zero;
+            modelTransform.localRotation = Quaternion.Euler(candidateEuler);
+            modelTransform.localScale = Vector3.one;
+
+            Bounds bounds = CalculateRendererBounds(modelTransform);
+            float score = ScoreOrientation(bounds, modelTransform, candidateEuler);
+            float axisAlign = ResolveForwardAlignmentScore(modelTransform);
+
+            Debug.Log("[DragonBossViewPrefabBuilder] Rotation candidate "
+                + candidateEuler + " score " + score.ToString("F3")
+                + " align " + axisAlign.ToString("F3")
+                + " bounds " + bounds.size);
+
+            if (score > bestScore || (Mathf.Approximately(score, bestScore) && axisAlign > bestAxisAlign))
+            {
+                bestScore = score;
+                bestAxisAlign = axisAlign;
+                selectedEuler = candidateEuler;
+                found = true;
+            }
+        }
+
+        return found;
+    }
+
+    private static float ScoreOrientation(Bounds bounds, Transform modelTransform, Vector3 euler)
+    {
+        Vector3 size = bounds.size;
+        float height = Mathf.Max(0.001f, size.y);
+        float minAxis = Mathf.Min(size.x, Mathf.Min(size.y, size.z));
+        float maxAxis = Mathf.Max(size.x, Mathf.Max(size.y, size.z));
+        float maxHorizontal = Mathf.Max(size.x, size.z);
+        float pitchAbs = Mathf.Abs(NormalizeAngle(euler.x));
+
+        float profileScore = maxHorizontal / height;
+
+        if (Mathf.Approximately(minAxis, size.y) && pitchAbs < 45f)
+        {
+            profileScore += 4f;
+        }
+
+        if (size.y >= maxAxis * 0.95f)
+        {
+            profileScore -= pitchAbs >= 45f ? 4f : 15f;
+        }
+
+        if (pitchAbs >= 45f)
+        {
+            profileScore += 10f;
+        }
+
+        if (size.z >= size.x && size.z >= size.y)
+        {
+            profileScore += 4f;
+        }
+
+        float forwardZ = bounds.max.z - bounds.center.z;
+        float backwardZ = bounds.center.z - bounds.min.z;
+        float forwardScore = forwardZ >= backwardZ
+            ? forwardZ / height
+            : -(backwardZ / height);
+
+        float wingScore = size.x / height;
+        float axisAlignScore = ResolveForwardAlignmentScore(modelTransform);
+        float yawBonus = Mathf.Abs(NormalizeAngle(euler.y)) >= 45f ? 1f : 0f;
+
+        return profileScore * 3f + forwardScore * 2f + wingScore + axisAlignScore * 5f + yawBonus;
+    }
+
+    private static float NormalizeAngle(float angle)
+    {
+        angle %= 360f;
+
+        if (angle > 180f)
+        {
+            angle -= 360f;
+        }
+        else if (angle < -180f)
+        {
+            angle += 360f;
+        }
+
+        return angle;
+    }
+
+    private static float ResolveForwardAlignmentScore(Transform modelTransform)
+    {
+        float bestDot = float.NegativeInfinity;
+        Vector3[] axes =
+        {
+            modelTransform.forward,
+            modelTransform.up,
+            modelTransform.right,
+            -modelTransform.forward,
+            -modelTransform.up,
+            -modelTransform.right
+        };
+
+        for (int i = 0; i < axes.Length; i++)
+        {
+            Vector3 axis = axes[i];
+            axis.y = 0f;
+
+            if (axis.sqrMagnitude < 0.0001f)
+            {
+                continue;
+            }
+
+            axis.Normalize();
+            bestDot = Mathf.Max(bestDot, Vector3.Dot(axis, Vector3.forward));
+        }
+
+        return bestDot;
     }
 
     private static Bounds CalculateRendererBounds(Transform root)
