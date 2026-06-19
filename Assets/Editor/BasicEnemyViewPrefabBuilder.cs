@@ -14,7 +14,7 @@ public static class BasicEnemyViewPrefabBuilder
     private const string BodyMaterialPath = MaterialsFolder + "/BasicEnemy_Body_Mat.mat";
     private const string EyesMaterialPath = MaterialsFolder + "/BasicEnemy_Eyes_Mat.mat";
     private const float TargetHeight = 1.05f;
-    private const float VisualGroundLocalY = -0.32f;
+    private const float VisualGroundLocalY = -0.456f;
 
     private static bool autoBuildAttempted;
 
