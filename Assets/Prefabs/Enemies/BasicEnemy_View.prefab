@@ -1,5 +1,37 @@
 %YAML 1.1
 %TAG !u! tag:unity3d.com,2011:
+--- !u!1 &258133337423534920
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 4288363515509208830}
+  m_Layer: 0
+  m_Name: SlimeOrientationRoot
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &4288363515509208830
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 258133337423534920}
+  serializedVersion: 2
+  m_LocalRotation: {x: -0.7071068, y: 0, z: 0, w: 0.7071068}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 3555340975493003397}
+  m_Father: {fileID: 5321071313609037880}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &4475510804409261880
 GameObject:
   m_ObjectHideFlags: 0
@@ -10,7 +42,7 @@ GameObject:
   m_Component:
   - component: {fileID: 5321071313609037880}
   m_Layer: 0
-  m_Name: Model
+  m_Name: SlimeMotionRoot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -25,11 +57,11 @@ Transform:
   m_GameObject: {fileID: 4475510804409261880}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: -0.768252, z: 0}
+  m_LocalPosition: {x: 0, y: 0.06729297, z: 0}
   m_LocalScale: {x: 37.488148, y: 37.488148, z: 37.488148}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 3555340975493003397}
+  - {fileID: 4288363515509208830}
   m_Father: {fileID: 8455157211570471062}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &6387015109154427072
@@ -81,13 +113,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SlimeVisualAnimator
   idleAmount: 0.035
   idleSpeed: 2.4
-  jumpHeight: 0.48
-  jumpInterval: 0.78
-  jumpDuration: 0.58
-  jumpForwardArc: 0.16
-  dashDistance: 0.9
-  dashInterval: 1.65
-  dashDuration: 0.3
+  jumpHeight: 0.42
+  jumpInterval: 0.62
+  jumpDuration: 0.5
+  jumpForwardArc: 0.1
+  dashDistance: 0.75
+  dashInterval: 1.45
+  dashDuration: 0.28
   animationSpeed: 1
 --- !u!114 &5847291038475629103
 MonoBehaviour:
@@ -102,10 +134,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SlimeEyeLookController
   lookTargetMode: 0
-  eyeFollowAmount: 0.045
-  eyeFollowSpeed: 12
-  maxEyeOffset: 0.055
-  enableProceduralPupilOverlay: 1
+  eyeFollowAmount: 0.035
+  eyeFollowSpeed: 10
+  maxEyeOffset: 0.045
+  enableProceduralPupilOverlay: 0
   leftPupilLocalPosition: {x: -0.014, y: 0.016, z: 0.024}
   rightPupilLocalPosition: {x: 0.014, y: 0.016, z: 0.024}
   pupilScale: 0.05
@@ -148,7 +180,7 @@ PrefabInstance:
   serializedVersion: 2
   m_Modification:
     serializedVersion: 3
-    m_TransformParent: {fileID: 5321071313609037880}
+    m_TransformParent: {fileID: 4288363515509208830}
     m_Modifications:
     - target: {fileID: -8679921383154817045, guid: 4b636758dc391344cb90fba8884ca3c0, type: 3}
       propertyPath: m_LocalScale.x
@@ -176,11 +208,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4b636758dc391344cb90fba8884ca3c0, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 0.7071068
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4b636758dc391344cb90fba8884ca3c0, type: 3}
       propertyPath: m_LocalRotation.x
-      value: -0.7071068
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4b636758dc391344cb90fba8884ca3c0, type: 3}
       propertyPath: m_LocalRotation.y

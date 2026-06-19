@@ -3,10 +3,12 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class SlimeVisualAnimator : MonoBehaviour
 {
-    private const float MinScaleMultiplier = 0.75f;
-    private const float MaxScaleMultiplier = 1.28f;
-    private const float MaxVerticalOffset = 0.75f;
-    private const float MaxHorizontalOffset = 0.9f;
+    private const float MinScaleMultiplier = 0.82f;
+    private const float MaxScaleMultiplier = 1.18f;
+    private const float MaxVerticalOffset = 0.55f;
+    private const float MaxHorizontalOffset = 0.75f;
+    private const float MaxJumpForwardArc = 0.10f;
+    private const float MaxDashDistance = 0.75f;
 
     private static readonly Color SlimeBodyColor = new Color(0.22f, 0.72f, 0.16f);
     private static readonly Color SlimeEyeWhiteColor = new Color(0.95f, 0.94f, 0.88f);
@@ -14,16 +16,16 @@ public class SlimeVisualAnimator : MonoBehaviour
 
     [SerializeField] private float idleAmount = 0.035f;
     [SerializeField] private float idleSpeed = 2.4f;
-    [SerializeField] private float jumpHeight = 0.48f;
-    [SerializeField] private float jumpInterval = 0.78f;
-    [SerializeField] private float jumpDuration = 0.58f;
-    [SerializeField] private float jumpForwardArc = 0.16f;
-    [SerializeField] private float dashDistance = 0.9f;
-    [SerializeField] private float dashInterval = 1.65f;
-    [SerializeField] private float dashDuration = 0.3f;
+    [SerializeField] private float jumpHeight = 0.42f;
+    [SerializeField] private float jumpInterval = 0.62f;
+    [SerializeField] private float jumpDuration = 0.50f;
+    [SerializeField] private float jumpForwardArc = 0.10f;
+    [SerializeField] private float dashDistance = 0.75f;
+    [SerializeField] private float dashInterval = 1.45f;
+    [SerializeField] private float dashDuration = 0.28f;
     [SerializeField] private float animationSpeed = 1f;
 
-    private Transform animatedModel;
+    private Transform motionRoot;
     private Transform movementRoot;
     private Vector3 baseLocalPosition;
     private Vector3 baseLocalScale;
@@ -47,7 +49,7 @@ public class SlimeVisualAnimator : MonoBehaviour
             return;
         }
 
-        if (animatedModel == null)
+        if (motionRoot == null)
         {
             enabled = false;
             return;
@@ -67,7 +69,9 @@ public class SlimeVisualAnimator : MonoBehaviour
         float hop = EvaluateContinuousHop(time);
         Vector3 animatedPosition = baseLocalPosition;
         animatedPosition.y += hop * jumpHeight;
-        animatedPosition += localMoveDirection * (hop * jumpForwardArc);
+
+        float forwardArc = Mathf.Min(jumpForwardArc, MaxJumpForwardArc);
+        animatedPosition += localMoveDirection * (hop * forwardArc);
 
         float edgeSquash = (1f - hop) * 0.08f;
         scaleMultiplier.x += edgeSquash;
@@ -80,17 +84,18 @@ public class SlimeVisualAnimator : MonoBehaviour
         if (dashPhase >= 0f)
         {
             float dashCurve = EvaluateEaseInOut(dashPhase);
-            animatedPosition += localMoveDirection * (dashCurve * dashDistance);
-            scaleMultiplier.z += dashCurve * 0.06f;
-            scaleMultiplier.x -= dashCurve * 0.025f;
-            scaleMultiplier.y -= dashCurve * 0.015f;
+            float clampedDashDistance = Mathf.Min(dashDistance, MaxDashDistance);
+            animatedPosition += localMoveDirection * (dashCurve * clampedDashDistance);
+            scaleMultiplier.z += dashCurve * 0.05f;
+            scaleMultiplier.x -= dashCurve * 0.02f;
+            scaleMultiplier.y -= dashCurve * 0.012f;
         }
 
         animatedPosition = ClampAnimatedPosition(animatedPosition);
         Vector3 animatedScale = ClampAnimatedScale(Vector3.Scale(baseLocalScale, scaleMultiplier));
 
-        animatedModel.localPosition = animatedPosition;
-        animatedModel.localScale = animatedScale;
+        motionRoot.localPosition = animatedPosition;
+        motionRoot.localScale = animatedScale;
         ApplySlimeMaterialColors();
     }
 
@@ -108,7 +113,7 @@ public class SlimeVisualAnimator : MonoBehaviour
     {
         if (initialized)
         {
-            return animatedModel != null;
+            return motionRoot != null;
         }
 
         Transform visualRoot = ResolveVisualRoot();
@@ -119,17 +124,17 @@ public class SlimeVisualAnimator : MonoBehaviour
             return false;
         }
 
-        animatedModel = visualRoot.Find("Model");
+        motionRoot = ResolveMotionRoot(visualRoot);
 
-        if (animatedModel == null || !animatedModel.gameObject.activeInHierarchy)
+        if (motionRoot == null || !motionRoot.gameObject.activeInHierarchy)
         {
             enabled = false;
             return false;
         }
 
         movementRoot = ResolveMovementRoot(visualRoot);
-        baseLocalPosition = animatedModel.localPosition;
-        baseLocalScale = animatedModel.localScale;
+        baseLocalPosition = motionRoot.localPosition;
+        baseLocalScale = motionRoot.localScale;
         CacheSlimeRenderers();
         phaseOffset = Random.Range(0f, Mathf.PI * 2f);
 
@@ -143,9 +148,21 @@ public class SlimeVisualAnimator : MonoBehaviour
         return true;
     }
 
+    private static Transform ResolveMotionRoot(Transform visualRoot)
+    {
+        Transform motion = visualRoot.Find("SlimeMotionRoot");
+
+        if (motion != null)
+        {
+            return motion;
+        }
+
+        return visualRoot.Find("Model");
+    }
+
     private void CacheSlimeRenderers()
     {
-        Renderer[] allRenderers = animatedModel.GetComponentsInChildren<Renderer>(true);
+        Renderer[] allRenderers = motionRoot.GetComponentsInChildren<Renderer>(true);
         int count = 0;
 
         for (int i = 0; i < allRenderers.Length; i++)
@@ -180,13 +197,13 @@ public class SlimeVisualAnimator : MonoBehaviour
 
     private void RestoreBaseTransform()
     {
-        if (animatedModel == null)
+        if (motionRoot == null)
         {
             return;
         }
 
-        animatedModel.localPosition = baseLocalPosition;
-        animatedModel.localScale = baseLocalScale;
+        motionRoot.localPosition = baseLocalPosition;
+        motionRoot.localScale = baseLocalScale;
     }
 
     private Vector3 ClampAnimatedPosition(Vector3 animatedPosition)
@@ -238,7 +255,7 @@ public class SlimeVisualAnimator : MonoBehaviour
         if (cycleTime > activeDuration)
         {
             float tail = (cycleTime - activeDuration) / Mathf.Max(jumpInterval - activeDuration, 0.001f);
-            return Mathf.Max(0f, Mathf.Sin(tail * Mathf.PI * 0.5f) * 0.12f);
+            return Mathf.Max(0f, Mathf.Sin(tail * Mathf.PI * 0.5f) * 0.15f);
         }
 
         float phase = cycleTime / activeDuration;
@@ -283,9 +300,9 @@ public class SlimeVisualAnimator : MonoBehaviour
             }
         }
 
-        Vector3 fallbackForward = animatedModel.parent != null
-            ? animatedModel.parent.forward
-            : animatedModel.forward;
+        Vector3 fallbackForward = motionRoot.parent != null
+            ? motionRoot.parent.forward
+            : motionRoot.forward;
         fallbackForward.y = 0f;
 
         if (fallbackForward.sqrMagnitude < 0.0001f)
@@ -299,7 +316,7 @@ public class SlimeVisualAnimator : MonoBehaviour
     private Vector3 GetLocalMoveDirection()
     {
         Vector3 worldDirection = GetWorldMoveDirection();
-        Transform space = animatedModel.parent != null ? animatedModel.parent : animatedModel;
+        Transform space = motionRoot.parent != null ? motionRoot.parent : motionRoot;
         Vector3 localDirection = space.InverseTransformDirection(worldDirection);
         localDirection.y = 0f;
 

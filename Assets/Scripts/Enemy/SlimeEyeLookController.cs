@@ -9,23 +9,20 @@ public enum SlimeEyeLookTargetMode
 public class SlimeEyeLookController : MonoBehaviour
 {
     [SerializeField] private SlimeEyeLookTargetMode lookTargetMode = SlimeEyeLookTargetMode.CameraThenPlayer;
-    [SerializeField] private float eyeFollowAmount = 0.045f;
-    [SerializeField] private float eyeFollowSpeed = 12f;
-    [SerializeField] private float maxEyeOffset = 0.055f;
-    [SerializeField] private bool enableProceduralPupilOverlay = true;
+    [SerializeField] private float eyeFollowAmount = 0.035f;
+    [SerializeField] private float eyeFollowSpeed = 10f;
+    [SerializeField] private float maxEyeOffset = 0.045f;
+    [SerializeField] private bool enableProceduralPupilOverlay = false;
     [SerializeField] private Vector3 leftPupilLocalPosition = new Vector3(-0.014f, 0.016f, 0.024f);
     [SerializeField] private Vector3 rightPupilLocalPosition = new Vector3(0.014f, 0.016f, 0.024f);
     [SerializeField] private float pupilScale = 0.05f;
     [SerializeField] private Material pupilMaterial;
 
-    private Transform modelTransform;
+    private Transform motionRoot;
     private Transform leftPupilTransform;
     private Transform rightPupilTransform;
-    private Transform leftEyeTransform;
-    private Transform rightEyeTransform;
     private Vector3 leftBaseLocalPosition;
     private Vector3 rightBaseLocalPosition;
-    private bool usesProceduralOverlay;
     private bool initialized;
 
     private void Awake()
@@ -40,6 +37,13 @@ public class SlimeEyeLookController : MonoBehaviour
             return;
         }
 
+        if (!enableProceduralPupilOverlay
+            || leftPupilTransform == null
+            || rightPupilTransform == null)
+        {
+            return;
+        }
+
         MaintainOverlayWorldScale(leftPupilTransform);
         MaintainOverlayWorldScale(rightPupilTransform);
 
@@ -48,24 +52,15 @@ public class SlimeEyeLookController : MonoBehaviour
             return;
         }
 
-        if (usesProceduralOverlay)
-        {
-            UpdateProceduralPupilLook(leftPupilTransform, leftBaseLocalPosition, lookTargetWorldPosition);
-            UpdateProceduralPupilLook(rightPupilTransform, rightBaseLocalPosition, lookTargetWorldPosition);
-            return;
-        }
-
-        UpdateTransformLook(leftEyeTransform, lookTargetWorldPosition);
-        UpdateTransformLook(rightEyeTransform, lookTargetWorldPosition);
-        UpdateTransformLook(leftPupilTransform, lookTargetWorldPosition);
-        UpdateTransformLook(rightPupilTransform, lookTargetWorldPosition);
+        UpdateProceduralPupilLook(leftPupilTransform, leftBaseLocalPosition, lookTargetWorldPosition);
+        UpdateProceduralPupilLook(rightPupilTransform, rightBaseLocalPosition, lookTargetWorldPosition);
     }
 
     private bool TryInitialize()
     {
         if (initialized)
         {
-            return modelTransform != null;
+            return motionRoot != null;
         }
 
         Transform visualRoot = ResolveVisualRoot();
@@ -76,91 +71,55 @@ public class SlimeEyeLookController : MonoBehaviour
             return false;
         }
 
-        modelTransform = visualRoot.Find("Model");
+        motionRoot = ResolveMotionRoot(visualRoot);
 
-        if (modelTransform == null || !modelTransform.gameObject.activeInHierarchy)
+        if (motionRoot == null || !motionRoot.gameObject.activeInHierarchy)
         {
             enabled = false;
             return false;
         }
 
-        CacheNamedEyeTransforms(modelTransform);
-
-        if (leftPupilTransform == null && rightPupilTransform == null && enableProceduralPupilOverlay)
+        if (enableProceduralPupilOverlay)
         {
-            CreateProceduralPupilOverlays();
-        }
+            leftPupilTransform = motionRoot.Find("LeftPupilOverlay");
+            rightPupilTransform = motionRoot.Find("RightPupilOverlay");
 
-        usesProceduralOverlay = leftPupilTransform != null
-            && rightPupilTransform != null
-            && leftPupilTransform.name.Contains("Overlay");
+            if (leftPupilTransform == null || rightPupilTransform == null)
+            {
+                CreateProceduralPupilOverlays();
+            }
 
-        if (leftPupilTransform == null && rightPupilTransform == null
-            && leftEyeTransform == null && rightEyeTransform == null)
-        {
-            enabled = false;
-            return false;
+            leftBaseLocalPosition = leftPupilLocalPosition;
+            rightBaseLocalPosition = rightPupilLocalPosition;
         }
 
         initialized = true;
         return true;
     }
 
-    private void CacheNamedEyeTransforms(Transform root)
+    private static Transform ResolveMotionRoot(Transform visualRoot)
     {
-        Transform[] children = root.GetComponentsInChildren<Transform>(true);
+        Transform motion = visualRoot.Find("SlimeMotionRoot");
 
-        for (int i = 0; i < children.Length; i++)
+        if (motion != null)
         {
-            Transform child = children[i];
-
-            if (child == null || child == root)
-            {
-                continue;
-            }
-
-            string lowerName = child.name.ToLowerInvariant();
-
-            if (lowerName.Contains("pupil"))
-            {
-                if (lowerName.Contains("left") || lowerName.Contains("_l") || lowerName.EndsWith("l"))
-                {
-                    leftPupilTransform = child;
-                    leftBaseLocalPosition = child.localPosition;
-                }
-                else if (lowerName.Contains("right") || lowerName.Contains("_r") || lowerName.EndsWith("r"))
-                {
-                    rightPupilTransform = child;
-                    rightBaseLocalPosition = child.localPosition;
-                }
-            }
-            else if (lowerName.Contains("eye"))
-            {
-                if (lowerName.Contains("left") || lowerName.Contains("_l") || lowerName.EndsWith("l"))
-                {
-                    leftEyeTransform = child;
-                }
-                else if (lowerName.Contains("right") || lowerName.Contains("_r") || lowerName.EndsWith("r"))
-                {
-                    rightEyeTransform = child;
-                }
-            }
+            return motion;
         }
+
+        return visualRoot.Find("Model");
     }
 
     private void CreateProceduralPupilOverlays()
     {
         leftPupilTransform = CreatePupilOverlay("LeftPupilOverlay", leftPupilLocalPosition);
         rightPupilTransform = CreatePupilOverlay("RightPupilOverlay", rightPupilLocalPosition);
-        leftBaseLocalPosition = leftPupilLocalPosition;
-        rightBaseLocalPosition = rightPupilLocalPosition;
     }
 
     private Transform CreatePupilOverlay(string overlayName, Vector3 localPosition)
     {
         GameObject pupilObject = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         pupilObject.name = overlayName;
-        pupilObject.transform.SetParent(modelTransform, false);
+        pupilObject.transform.SetParent(motionRoot, false);
         pupilObject.transform.localPosition = localPosition;
         pupilObject.transform.localRotation = Quaternion.identity;
 
@@ -201,7 +160,7 @@ public class SlimeEyeLookController : MonoBehaviour
 
     private void UpdateProceduralPupilLook(Transform pupilTransform, Vector3 baseLocalPosition, Vector3 lookTargetWorldPosition)
     {
-        if (pupilTransform == null || modelTransform == null)
+        if (pupilTransform == null || motionRoot == null)
         {
             return;
         }
@@ -211,31 +170,6 @@ public class SlimeEyeLookController : MonoBehaviour
         pupilTransform.localPosition = Vector3.Lerp(
             pupilTransform.localPosition,
             targetLocalPosition,
-            Time.deltaTime * eyeFollowSpeed);
-    }
-
-    private void UpdateTransformLook(Transform eyeTransform, Vector3 lookTargetWorldPosition)
-    {
-        if (eyeTransform == null)
-        {
-            return;
-        }
-
-        Vector3 lookDirection = lookTargetWorldPosition - eyeTransform.position;
-        lookDirection.y *= 0.75f;
-
-        if (lookDirection.sqrMagnitude < 0.0001f)
-        {
-            return;
-        }
-
-        Quaternion targetRotation = Quaternion.LookRotation(lookDirection.normalized, eyeTransform.parent != null
-            ? eyeTransform.parent.up
-            : Vector3.up);
-
-        eyeTransform.rotation = Quaternion.Slerp(
-            eyeTransform.rotation,
-            targetRotation,
             Time.deltaTime * eyeFollowSpeed);
     }
 
@@ -249,7 +183,7 @@ public class SlimeEyeLookController : MonoBehaviour
             return Vector3.zero;
         }
 
-        Vector3 localDirection = modelTransform.InverseTransformDirection(worldOffset.normalized);
+        Vector3 localDirection = motionRoot.InverseTransformDirection(worldOffset.normalized);
         localDirection.z = 0f;
 
         if (localDirection.sqrMagnitude < 0.0001f)
