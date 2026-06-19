@@ -12,8 +12,10 @@ public static class DragonBossViewPrefabBuilder
     private const string MaterialsFolder = PrefabsFolder + "/Materials";
     private const string PrefabPath = PrefabsFolder + "/DragonBoss_View.prefab";
     private const string BodyMaterialPath = MaterialsFolder + "/DragonBoss_Body_Mat.mat";
-    private const float TargetHeight = 2.55f;
+    private const float TargetHeight = 2.45f;
     private const float VisualGroundLocalY = -0.456f;
+    private static readonly Vector3 ModelLocalEuler = new Vector3(-90f, 180f, 0f);
+    private const float MouthFireHeightFactor = 0.72f;
 
     private static bool autoBuildAttempted;
 
@@ -141,7 +143,6 @@ public static class DragonBossViewPrefabBuilder
         modelObject.name = "Model";
         Transform modelTransform = modelObject.transform;
         modelTransform.SetParent(visualRoot.transform, false);
-        modelTransform.localRotation = Quaternion.identity;
         modelTransform.localScale = Vector3.one;
 
         SanitizeVisualComponents(modelObject);
@@ -164,10 +165,38 @@ public static class DragonBossViewPrefabBuilder
     private static void PlaceMouthFirePoint(Transform visualRoot, Transform modelTransform)
     {
         Bounds bounds = CalculateRendererBounds(modelTransform);
-        Vector3 mouthWorld = new Vector3(
-            bounds.center.x,
-            bounds.min.y + bounds.size.y * 0.78f,
-            bounds.max.z + bounds.extents.z * 0.08f);
+        Vector3 forward = modelTransform.up;
+        forward.y = 0f;
+
+        if (forward.sqrMagnitude < 0.0001f)
+        {
+            forward = Vector3.forward;
+        }
+        else
+        {
+            forward.Normalize();
+        }
+
+        Vector3[] corners = GetBoundsCorners(bounds);
+        float maxProjection = float.NegativeInfinity;
+
+        for (int i = 0; i < corners.Length; i++)
+        {
+            float projection = Vector3.Dot(corners[i] - bounds.center, forward);
+
+            if (projection > maxProjection)
+            {
+                maxProjection = projection;
+            }
+        }
+
+        if (maxProjection < 0.001f)
+        {
+            maxProjection = Mathf.Max(bounds.extents.x, bounds.extents.z);
+        }
+
+        Vector3 mouthWorld = bounds.center + forward * maxProjection * 0.95f;
+        mouthWorld.y = bounds.min.y + bounds.size.y * MouthFireHeightFactor;
         Vector3 mouthLocal = visualRoot.InverseTransformPoint(mouthWorld);
 
         GameObject firePointObject = new GameObject("MouthFirePoint");
@@ -175,6 +204,24 @@ public static class DragonBossViewPrefabBuilder
         firePointObject.transform.localPosition = mouthLocal;
         firePointObject.transform.localRotation = Quaternion.identity;
         firePointObject.transform.localScale = Vector3.one;
+    }
+
+    private static Vector3[] GetBoundsCorners(Bounds bounds)
+    {
+        Vector3 center = bounds.center;
+        Vector3 extents = bounds.extents;
+
+        return new[]
+        {
+            center + new Vector3(extents.x, extents.y, extents.z),
+            center + new Vector3(extents.x, extents.y, -extents.z),
+            center + new Vector3(extents.x, -extents.y, extents.z),
+            center + new Vector3(extents.x, -extents.y, -extents.z),
+            center + new Vector3(-extents.x, extents.y, extents.z),
+            center + new Vector3(-extents.x, extents.y, -extents.z),
+            center + new Vector3(-extents.x, -extents.y, extents.z),
+            center + new Vector3(-extents.x, -extents.y, -extents.z)
+        };
     }
 
     private static bool EnsureDragonImported(out string issue)
@@ -391,7 +438,7 @@ public static class DragonBossViewPrefabBuilder
     private static void FitModelToCapsuleSize(Transform modelTransform, float targetHeight)
     {
         modelTransform.localPosition = Vector3.zero;
-        modelTransform.localRotation = Quaternion.identity;
+        modelTransform.localRotation = Quaternion.Euler(ModelLocalEuler);
 
         Bounds bounds = CalculateRendererBounds(modelTransform);
         float sourceHeight = Mathf.Max(0.001f, bounds.size.y);
