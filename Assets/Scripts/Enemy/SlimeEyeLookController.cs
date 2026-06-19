@@ -27,11 +27,21 @@ public class SlimeEyeLookController : MonoBehaviour
 
     private void Awake()
     {
+        if (!isActiveAndEnabled)
+        {
+            return;
+        }
+
         TryInitialize();
     }
 
     private void LateUpdate()
     {
+        if (!isActiveAndEnabled)
+        {
+            return;
+        }
+
         if (!initialized && !TryInitialize())
         {
             return;
@@ -58,6 +68,11 @@ public class SlimeEyeLookController : MonoBehaviour
 
     private bool TryInitialize()
     {
+        if (!isActiveAndEnabled)
+        {
+            return false;
+        }
+
         if (initialized)
         {
             return motionRoot != null;

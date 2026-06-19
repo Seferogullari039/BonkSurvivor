@@ -111,15 +111,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5170842a7c378834dbafeb139fff5c5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SlimeVisualAnimator
-  idleAmount: 0.035
-  idleSpeed: 2.4
-  jumpHeight: 0.42
-  jumpInterval: 0.62
-  jumpDuration: 0.5
-  jumpForwardArc: 0.1
-  dashDistance: 0.75
-  dashInterval: 1.45
-  dashDuration: 0.28
+  enableDash: 0
+  idleAmount: 0.025
+  idleSpeed: 2
+  jumpHeight: 0.22
+  jumpInterval: 0.55
+  jumpDuration: 0.38
+  jumpForwardArc: 0
+  dashDistance: 0
+  dashInterval: 999
+  dashDuration: 0
   animationSpeed: 1
 --- !u!114 &5847291038475629103
 MonoBehaviour:
@@ -128,7 +129,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 6387015109154427072}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f708192a3b4c5d6e7f809ab012345678, type: 3}
   m_Name: 
