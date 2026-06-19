@@ -3,43 +3,39 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class SlimeVisualAnimator : MonoBehaviour
 {
-    [SerializeField] private float idleAmount = 0.04f;
-    [SerializeField] private float jumpHeight = 0.08f;
+    private static readonly Color SlimeBodyColor = new Color(0.22f, 0.72f, 0.16f);
+
+    [SerializeField] private float idleAmount = 0.035f;
+    [SerializeField] private float idleSpeed = 2.2f;
+    [SerializeField] private float jumpHeight = 0.18f;
     [SerializeField] private float jumpInterval = 2.2f;
-    [SerializeField] private float dashDistance = 0.06f;
-    [SerializeField] private float dashInterval = 3.5f;
+    [SerializeField] private float jumpDuration = 0.42f;
+    [SerializeField] private float dashDistance = 0.12f;
+    [SerializeField] private float dashInterval = 3.8f;
+    [SerializeField] private float dashDuration = 0.2f;
     [SerializeField] private float animationSpeed = 1f;
 
     private Transform animatedModel;
     private Vector3 baseLocalPosition;
     private Vector3 baseLocalScale;
+    private Quaternion baseLocalRotation;
+    private Renderer[] slimeRenderers;
+    private MaterialPropertyBlock slimeColorBlock;
     private float phaseOffset;
+    private bool initialized;
 
     private void Awake()
     {
-        Transform visualRoot = ResolveVisualRoot();
-
-        if (visualRoot == null)
-        {
-            enabled = false;
-            return;
-        }
-
-        animatedModel = visualRoot.Find("Model");
-
-        if (animatedModel == null || !animatedModel.gameObject.activeInHierarchy)
-        {
-            enabled = false;
-            return;
-        }
-
-        baseLocalPosition = animatedModel.localPosition;
-        baseLocalScale = animatedModel.localScale;
-        phaseOffset = Random.Range(0f, Mathf.PI * 2f);
+        TryInitialize();
     }
 
     private void Update()
     {
+        if (!initialized && !TryInitialize())
+        {
+            return;
+        }
+
         if (animatedModel == null)
         {
             enabled = false;
@@ -48,17 +44,121 @@ public class SlimeVisualAnimator : MonoBehaviour
 
         float time = Time.time * animationSpeed + phaseOffset;
 
-        float breath = Mathf.Sin(time * 2.5f) * idleAmount;
-        Vector3 breathScale = new Vector3(
-            baseLocalScale.x + breath,
-            baseLocalScale.y - breath * 0.5f,
-            baseLocalScale.z + breath);
+        float breath = Mathf.Sin(time * idleSpeed) * idleAmount;
+        Vector3 animatedScale = baseLocalScale;
+        animatedScale.x += breath;
+        animatedScale.z += breath;
+        animatedScale.y -= breath * 0.5f;
 
-        float jumpY = EvaluateHop(time, jumpInterval, jumpHeight);
-        float dashZ = EvaluateHop(time + jumpInterval * 0.35f, dashInterval, dashDistance);
+        float jumpPhase = GetCyclePhase(time, jumpInterval, jumpDuration);
+        float dashPhase = GetCyclePhase(time + jumpInterval * 0.35f, dashInterval, dashDuration);
 
-        animatedModel.localScale = breathScale;
-        animatedModel.localPosition = baseLocalPosition + new Vector3(0f, jumpY, dashZ);
+        Vector3 animatedPosition = baseLocalPosition;
+
+        if (jumpPhase >= 0f)
+        {
+            float hop = Mathf.Sin(jumpPhase * Mathf.PI);
+            animatedPosition.y += hop * jumpHeight;
+
+            float edgeSquash = (1f - hop) * 0.08f;
+            animatedScale.x += edgeSquash;
+            animatedScale.z += edgeSquash;
+            animatedScale.y -= edgeSquash * 1.2f;
+            animatedScale.y += hop * 0.06f;
+        }
+
+        if (dashPhase >= 0f)
+        {
+            animatedPosition.z += Mathf.Sin(dashPhase * Mathf.PI) * dashDistance;
+        }
+
+        animatedModel.localPosition = animatedPosition;
+        animatedModel.localScale = animatedScale;
+        ApplySlimeMaterialColor();
+    }
+
+    private void OnDisable()
+    {
+        RestoreBaseTransform();
+    }
+
+    private void OnDestroy()
+    {
+        RestoreBaseTransform();
+    }
+
+    private bool TryInitialize()
+    {
+        if (initialized)
+        {
+            return animatedModel != null;
+        }
+
+        Transform visualRoot = ResolveVisualRoot();
+
+        if (visualRoot == null)
+        {
+            enabled = false;
+            return false;
+        }
+
+        animatedModel = visualRoot.Find("Model");
+
+        if (animatedModel == null || !animatedModel.gameObject.activeInHierarchy)
+        {
+            enabled = false;
+            return false;
+        }
+
+        baseLocalPosition = animatedModel.localPosition;
+        baseLocalScale = animatedModel.localScale;
+        baseLocalRotation = animatedModel.localRotation;
+        slimeRenderers = animatedModel.GetComponentsInChildren<Renderer>(true);
+        phaseOffset = Random.Range(0f, Mathf.PI * 2f);
+        initialized = true;
+        return true;
+    }
+
+    private void RestoreBaseTransform()
+    {
+        if (animatedModel == null)
+        {
+            return;
+        }
+
+        animatedModel.localPosition = baseLocalPosition;
+        animatedModel.localScale = baseLocalScale;
+        animatedModel.localRotation = baseLocalRotation;
+    }
+
+    private void ApplySlimeMaterialColor()
+    {
+        if (slimeRenderers == null || slimeRenderers.Length == 0)
+        {
+            return;
+        }
+
+        if (slimeColorBlock == null)
+        {
+            slimeColorBlock = new MaterialPropertyBlock();
+        }
+
+        for (int i = 0; i < slimeRenderers.Length; i++)
+        {
+            Renderer renderer = slimeRenderers[i];
+
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            renderer.GetPropertyBlock(slimeColorBlock);
+            slimeColorBlock.SetColor("_BaseColor", SlimeBodyColor);
+            slimeColorBlock.SetColor("_Color", SlimeBodyColor);
+            slimeColorBlock.SetFloat("_Smoothness", 0.55f);
+            slimeColorBlock.SetColor("_EmissionColor", Color.black);
+            renderer.SetPropertyBlock(slimeColorBlock);
+        }
     }
 
     private Transform ResolveVisualRoot()
@@ -90,21 +190,20 @@ public class SlimeVisualAnimator : MonoBehaviour
         return null;
     }
 
-    private static float EvaluateHop(float time, float interval, float height)
+    private static float GetCyclePhase(float time, float interval, float duration)
     {
-        if (interval <= 0.001f || height <= 0f)
+        if (interval <= 0.001f || duration <= 0.001f)
         {
-            return 0f;
+            return -1f;
         }
 
-        float phase = (time % interval) / interval;
+        float cycleTime = time % interval;
 
-        if (phase >= 0.15f)
+        if (cycleTime > duration)
         {
-            return 0f;
+            return -1f;
         }
 
-        float normalized = phase / 0.15f;
-        return Mathf.Sin(normalized * Mathf.PI) * height;
+        return cycleTime / duration;
     }
 }

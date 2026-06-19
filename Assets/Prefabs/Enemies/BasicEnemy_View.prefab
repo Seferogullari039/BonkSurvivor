@@ -25,8 +25,8 @@ Transform:
   m_GameObject: {fileID: 4475510804409261880}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.06729297, z: 0}
-  m_LocalScale: {x: 26.189121, y: 26.189121, z: 26.189121}
+  m_LocalPosition: {x: 0, y: -0.768252, z: 0}
+  m_LocalScale: {x: 37.488148, y: 37.488148, z: 37.488148}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 3555340975493003397}
@@ -78,11 +78,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5170842a7c378834dbafeb139fff5c5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SlimeVisualAnimator
-  idleAmount: 0.04
-  jumpHeight: 0.08
+  idleAmount: 0.035
+  idleSpeed: 2.2
+  jumpHeight: 0.18
   jumpInterval: 2.2
-  dashDistance: 0.06
-  dashInterval: 3.5
+  jumpDuration: 0.42
+  dashDistance: 0.12
+  dashInterval: 3.8
+  dashDuration: 0.2
   animationSpeed: 1
 --- !u!1 &7196941878954492793
 GameObject:
@@ -150,11 +153,11 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4b636758dc391344cb90fba8884ca3c0, type: 3}
       propertyPath: m_LocalRotation.w
-      value: 1
+      value: 0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4b636758dc391344cb90fba8884ca3c0, type: 3}
       propertyPath: m_LocalRotation.x
-      value: 0
+      value: -0.7071068
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 4b636758dc391344cb90fba8884ca3c0, type: 3}
       propertyPath: m_LocalRotation.y
@@ -176,6 +179,18 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 4b636758dc391344cb90fba8884ca3c0, type: 3}
+      propertyPath: 'm_Materials.Array.data[0]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 7570210de07f7b649a0da3b8f2bf0f72, type: 2}
+    - target: {fileID: -7511558181221131132, guid: 4b636758dc391344cb90fba8884ca3c0, type: 3}
+      propertyPath: 'm_Materials.Array.data[1]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 7570210de07f7b649a0da3b8f2bf0f72, type: 2}
+    - target: {fileID: -7511558181221131132, guid: 4b636758dc391344cb90fba8884ca3c0, type: 3}
+      propertyPath: 'm_Materials.Array.data[2]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 7570210de07f7b649a0da3b8f2bf0f72, type: 2}
     - target: {fileID: 919132149155446097, guid: 4b636758dc391344cb90fba8884ca3c0, type: 3}
       propertyPath: m_Name
       value: slime
