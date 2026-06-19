@@ -9,13 +9,13 @@ public enum SlimeEyeLookTargetMode
 public class SlimeEyeLookController : MonoBehaviour
 {
     [SerializeField] private SlimeEyeLookTargetMode lookTargetMode = SlimeEyeLookTargetMode.CameraThenPlayer;
-    [SerializeField] private float eyeFollowAmount = 0.035f;
-    [SerializeField] private float eyeFollowSpeed = 8f;
-    [SerializeField] private float maxEyeOffset = 0.045f;
+    [SerializeField] private float eyeFollowAmount = 0.045f;
+    [SerializeField] private float eyeFollowSpeed = 12f;
+    [SerializeField] private float maxEyeOffset = 0.055f;
     [SerializeField] private bool enableProceduralPupilOverlay = true;
     [SerializeField] private Vector3 leftPupilLocalPosition = new Vector3(-0.014f, 0.016f, 0.024f);
     [SerializeField] private Vector3 rightPupilLocalPosition = new Vector3(0.014f, 0.016f, 0.024f);
-    [SerializeField] private float pupilScale = 0.045f;
+    [SerializeField] private float pupilScale = 0.05f;
     [SerializeField] private Material pupilMaterial;
 
     private Transform modelTransform;
@@ -39,6 +39,9 @@ public class SlimeEyeLookController : MonoBehaviour
         {
             return;
         }
+
+        MaintainOverlayWorldScale(leftPupilTransform);
+        MaintainOverlayWorldScale(rightPupilTransform);
 
         if (!TryResolveLookTarget(out Vector3 lookTargetWorldPosition))
         {
@@ -159,10 +162,7 @@ public class SlimeEyeLookController : MonoBehaviour
         pupilObject.name = overlayName;
         pupilObject.transform.SetParent(modelTransform, false);
         pupilObject.transform.localPosition = localPosition;
-
-        float parentScale = Mathf.Max(modelTransform.lossyScale.x, 0.001f);
-        float localScale = pupilScale / parentScale;
-        pupilObject.transform.localScale = Vector3.one * localScale;
+        pupilObject.transform.localRotation = Quaternion.identity;
 
         Collider collider = pupilObject.GetComponent<Collider>();
 
@@ -173,12 +173,30 @@ public class SlimeEyeLookController : MonoBehaviour
 
         Renderer renderer = pupilObject.GetComponent<Renderer>();
 
-        if (renderer != null && pupilMaterial != null)
+        if (renderer != null)
         {
-            renderer.sharedMaterial = pupilMaterial;
+            renderer.enabled = true;
+
+            if (pupilMaterial != null)
+            {
+                renderer.sharedMaterial = pupilMaterial;
+            }
         }
 
+        MaintainOverlayWorldScale(pupilObject.transform);
         return pupilObject.transform;
+    }
+
+    private void MaintainOverlayWorldScale(Transform pupilTransform)
+    {
+        if (pupilTransform == null || pupilTransform.parent == null)
+        {
+            return;
+        }
+
+        float parentScale = Mathf.Max(pupilTransform.parent.lossyScale.x, 0.001f);
+        float localScale = pupilScale / parentScale;
+        pupilTransform.localScale = Vector3.one * localScale;
     }
 
     private void UpdateProceduralPupilLook(Transform pupilTransform, Vector3 baseLocalPosition, Vector3 lookTargetWorldPosition)
@@ -248,23 +266,25 @@ public class SlimeEyeLookController : MonoBehaviour
     {
         lookTargetWorldPosition = Vector3.zero;
 
-        if (lookTargetMode == SlimeEyeLookTargetMode.CameraThenPlayer)
+        if (lookTargetMode != SlimeEyeLookTargetMode.CameraThenPlayer)
         {
-            Camera mainCamera = Camera.main;
+            return false;
+        }
 
-            if (mainCamera != null)
-            {
-                lookTargetWorldPosition = mainCamera.transform.position;
-                return true;
-            }
+        Camera mainCamera = Camera.main;
 
-            GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+        if (mainCamera != null)
+        {
+            lookTargetWorldPosition = mainCamera.transform.position;
+            return true;
+        }
 
-            if (playerObject != null)
-            {
-                lookTargetWorldPosition = playerObject.transform.position + Vector3.up * 1.2f;
-                return true;
-            }
+        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+
+        if (playerObject != null)
+        {
+            lookTargetWorldPosition = playerObject.transform.position + Vector3.up * 1.2f;
+            return true;
         }
 
         return false;

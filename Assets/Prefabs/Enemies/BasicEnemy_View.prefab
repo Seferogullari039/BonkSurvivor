@@ -79,14 +79,15 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5170842a7c378834dbafeb139fff5c5f, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SlimeVisualAnimator
-  idleAmount: 0.04
+  idleAmount: 0.035
   idleSpeed: 2.4
-  jumpHeight: 0.38
-  jumpInterval: 1.45
-  jumpDuration: 0.52
-  dashDistance: 0.55
-  dashInterval: 1.9
-  dashDuration: 0.22
+  jumpHeight: 0.48
+  jumpInterval: 0.78
+  jumpDuration: 0.58
+  jumpForwardArc: 0.16
+  dashDistance: 0.9
+  dashInterval: 1.65
+  dashDuration: 0.3
   animationSpeed: 1
 --- !u!114 &5847291038475629103
 MonoBehaviour:
@@ -101,13 +102,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SlimeEyeLookController
   lookTargetMode: 0
-  eyeFollowAmount: 0.035
-  eyeFollowSpeed: 8
-  maxEyeOffset: 0.045
+  eyeFollowAmount: 0.045
+  eyeFollowSpeed: 12
+  maxEyeOffset: 0.055
   enableProceduralPupilOverlay: 1
   leftPupilLocalPosition: {x: -0.014, y: 0.016, z: 0.024}
   rightPupilLocalPosition: {x: 0.014, y: 0.016, z: 0.024}
-  pupilScale: 0.045
+  pupilScale: 0.05
   pupilMaterial: {fileID: 2100000, guid: d4e5f678901234567890abcde1234567, type: 2}
 --- !u!1 &7196941878954492793
 GameObject:

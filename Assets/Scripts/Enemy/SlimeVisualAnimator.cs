@@ -3,27 +3,30 @@ using UnityEngine;
 [DisallowMultipleComponent]
 public class SlimeVisualAnimator : MonoBehaviour
 {
-    private const float JumpForwardFactor = 0.22f;
+    private const float MinScaleMultiplier = 0.75f;
+    private const float MaxScaleMultiplier = 1.28f;
+    private const float MaxVerticalOffset = 0.75f;
+    private const float MaxHorizontalOffset = 0.9f;
 
     private static readonly Color SlimeBodyColor = new Color(0.22f, 0.72f, 0.16f);
     private static readonly Color SlimeEyeWhiteColor = new Color(0.95f, 0.94f, 0.88f);
     private static readonly Color SlimePupilColor = new Color(0.06f, 0.06f, 0.06f);
 
-    [SerializeField] private float idleAmount = 0.04f;
+    [SerializeField] private float idleAmount = 0.035f;
     [SerializeField] private float idleSpeed = 2.4f;
-    [SerializeField] private float jumpHeight = 0.38f;
-    [SerializeField] private float jumpInterval = 1.45f;
-    [SerializeField] private float jumpDuration = 0.52f;
-    [SerializeField] private float dashDistance = 0.55f;
-    [SerializeField] private float dashInterval = 1.9f;
-    [SerializeField] private float dashDuration = 0.22f;
+    [SerializeField] private float jumpHeight = 0.48f;
+    [SerializeField] private float jumpInterval = 0.78f;
+    [SerializeField] private float jumpDuration = 0.58f;
+    [SerializeField] private float jumpForwardArc = 0.16f;
+    [SerializeField] private float dashDistance = 0.9f;
+    [SerializeField] private float dashInterval = 1.65f;
+    [SerializeField] private float dashDuration = 0.3f;
     [SerializeField] private float animationSpeed = 1f;
 
     private Transform animatedModel;
     private Transform movementRoot;
     private Vector3 baseLocalPosition;
     private Vector3 baseLocalScale;
-    private Quaternion baseLocalRotation;
     private Renderer[] slimeRenderers;
     private MaterialPropertyBlock slimeColorBlock;
     private Vector3 cachedMoveDirection = Vector3.forward;
@@ -53,39 +56,38 @@ public class SlimeVisualAnimator : MonoBehaviour
         UpdateMovementDirection();
 
         float time = Time.time * animationSpeed + phaseOffset;
-
-        float breath = Mathf.Sin(time * idleSpeed) * idleAmount;
-        Vector3 animatedScale = baseLocalScale;
-        animatedScale.x += breath;
-        animatedScale.z += breath;
-        animatedScale.y -= breath * 0.5f;
-
-        Vector3 animatedPosition = baseLocalPosition;
         Vector3 localMoveDirection = GetLocalMoveDirection();
 
+        float breath = Mathf.Sin(time * idleSpeed) * idleAmount;
+        Vector3 scaleMultiplier = new Vector3(
+            1f + breath,
+            1f - breath * 0.5f,
+            1f + breath);
+
+        float hop = EvaluateContinuousHop(time);
+        Vector3 animatedPosition = baseLocalPosition;
+        animatedPosition.y += hop * jumpHeight;
+        animatedPosition += localMoveDirection * (hop * jumpForwardArc);
+
+        float edgeSquash = (1f - hop) * 0.08f;
+        scaleMultiplier.x += edgeSquash;
+        scaleMultiplier.z += edgeSquash;
+        scaleMultiplier.y -= edgeSquash * 1.1f;
+        scaleMultiplier.y += hop * 0.07f;
+
         float dashPhase = GetCyclePhase(time + jumpInterval * 0.35f, dashInterval, dashDuration);
-        float jumpPhase = GetCyclePhase(time, jumpInterval, jumpDuration);
 
         if (dashPhase >= 0f)
         {
             float dashCurve = EvaluateEaseInOut(dashPhase);
             animatedPosition += localMoveDirection * (dashCurve * dashDistance);
-            animatedScale.z += dashCurve * 0.08f;
-            animatedScale.x -= dashCurve * 0.03f;
-            animatedScale.y -= dashCurve * 0.02f;
+            scaleMultiplier.z += dashCurve * 0.06f;
+            scaleMultiplier.x -= dashCurve * 0.025f;
+            scaleMultiplier.y -= dashCurve * 0.015f;
         }
-        else if (jumpPhase >= 0f)
-        {
-            float hop = Mathf.Sin(jumpPhase * Mathf.PI);
-            animatedPosition.y += hop * jumpHeight;
-            animatedPosition += localMoveDirection * (hop * jumpHeight * JumpForwardFactor);
 
-            float edgeSquash = (1f - hop) * 0.1f;
-            animatedScale.x += edgeSquash;
-            animatedScale.z += edgeSquash;
-            animatedScale.y -= edgeSquash * 1.25f;
-            animatedScale.y += hop * 0.08f;
-        }
+        animatedPosition = ClampAnimatedPosition(animatedPosition);
+        Vector3 animatedScale = ClampAnimatedScale(Vector3.Scale(baseLocalScale, scaleMultiplier));
 
         animatedModel.localPosition = animatedPosition;
         animatedModel.localScale = animatedScale;
@@ -128,8 +130,7 @@ public class SlimeVisualAnimator : MonoBehaviour
         movementRoot = ResolveMovementRoot(visualRoot);
         baseLocalPosition = animatedModel.localPosition;
         baseLocalScale = animatedModel.localScale;
-        baseLocalRotation = animatedModel.localRotation;
-        slimeRenderers = animatedModel.GetComponentsInChildren<Renderer>(true);
+        CacheSlimeRenderers();
         phaseOffset = Random.Range(0f, Mathf.PI * 2f);
 
         if (movementRoot != null)
@@ -142,6 +143,41 @@ public class SlimeVisualAnimator : MonoBehaviour
         return true;
     }
 
+    private void CacheSlimeRenderers()
+    {
+        Renderer[] allRenderers = animatedModel.GetComponentsInChildren<Renderer>(true);
+        int count = 0;
+
+        for (int i = 0; i < allRenderers.Length; i++)
+        {
+            if (allRenderers[i] != null && !allRenderers[i].name.Contains("Overlay"))
+            {
+                count++;
+            }
+        }
+
+        if (count == 0)
+        {
+            slimeRenderers = allRenderers;
+            return;
+        }
+
+        slimeRenderers = new Renderer[count];
+        int writeIndex = 0;
+
+        for (int i = 0; i < allRenderers.Length; i++)
+        {
+            Renderer renderer = allRenderers[i];
+
+            if (renderer == null || renderer.name.Contains("Overlay"))
+            {
+                continue;
+            }
+
+            slimeRenderers[writeIndex++] = renderer;
+        }
+    }
+
     private void RestoreBaseTransform()
     {
         if (animatedModel == null)
@@ -151,7 +187,62 @@ public class SlimeVisualAnimator : MonoBehaviour
 
         animatedModel.localPosition = baseLocalPosition;
         animatedModel.localScale = baseLocalScale;
-        animatedModel.localRotation = baseLocalRotation;
+    }
+
+    private Vector3 ClampAnimatedPosition(Vector3 animatedPosition)
+    {
+        Vector3 delta = animatedPosition - baseLocalPosition;
+        delta.y = Mathf.Clamp(delta.y, 0f, MaxVerticalOffset);
+
+        Vector3 horizontal = new Vector3(delta.x, 0f, delta.z);
+
+        if (horizontal.sqrMagnitude > MaxHorizontalOffset * MaxHorizontalOffset)
+        {
+            horizontal = horizontal.normalized * MaxHorizontalOffset;
+        }
+
+        return baseLocalPosition + new Vector3(horizontal.x, delta.y, horizontal.z);
+    }
+
+    private Vector3 ClampAnimatedScale(Vector3 animatedScale)
+    {
+        animatedScale.x = ClampAxisScale(animatedScale.x, baseLocalScale.x);
+        animatedScale.y = ClampAxisScale(animatedScale.y, baseLocalScale.y);
+        animatedScale.z = ClampAxisScale(animatedScale.z, baseLocalScale.z);
+        return animatedScale;
+    }
+
+    private static float ClampAxisScale(float value, float baseAxis)
+    {
+        float safeBase = Mathf.Max(Mathf.Abs(baseAxis), 0.001f);
+        float multiplier = value / safeBase;
+        multiplier = Mathf.Clamp(multiplier, MinScaleMultiplier, MaxScaleMultiplier);
+        return safeBase * multiplier;
+    }
+
+    private float EvaluateContinuousHop(float time)
+    {
+        if (jumpInterval <= 0.001f)
+        {
+            return 0f;
+        }
+
+        float cycleTime = time % jumpInterval;
+        float activeDuration = Mathf.Min(jumpDuration, jumpInterval);
+
+        if (activeDuration <= 0.001f)
+        {
+            return 0f;
+        }
+
+        if (cycleTime > activeDuration)
+        {
+            float tail = (cycleTime - activeDuration) / Mathf.Max(jumpInterval - activeDuration, 0.001f);
+            return Mathf.Max(0f, Mathf.Sin(tail * Mathf.PI * 0.5f) * 0.12f);
+        }
+
+        float phase = cycleTime / activeDuration;
+        return Mathf.Sin(phase * Mathf.PI);
     }
 
     private void UpdateMovementDirection()
@@ -172,25 +263,42 @@ public class SlimeVisualAnimator : MonoBehaviour
         }
     }
 
-    private Vector3 GetLocalMoveDirection()
+    private Vector3 GetWorldMoveDirection()
     {
-        Vector3 worldDirection = cachedMoveDirection;
-
-        if (!hasMovementSample || worldDirection.sqrMagnitude < 0.0001f)
+        if (hasMovementSample && cachedMoveDirection.sqrMagnitude > 0.0001f)
         {
-            worldDirection = animatedModel.parent != null
-                ? animatedModel.parent.forward
-                : animatedModel.forward;
-            worldDirection.y = 0f;
+            return cachedMoveDirection;
         }
 
-        if (worldDirection.sqrMagnitude < 0.0001f)
+        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+
+        if (playerObject != null && movementRoot != null)
+        {
+            Vector3 toPlayer = playerObject.transform.position - movementRoot.position;
+            toPlayer.y = 0f;
+
+            if (toPlayer.sqrMagnitude > 0.0001f)
+            {
+                return toPlayer.normalized;
+            }
+        }
+
+        Vector3 fallbackForward = animatedModel.parent != null
+            ? animatedModel.parent.forward
+            : animatedModel.forward;
+        fallbackForward.y = 0f;
+
+        if (fallbackForward.sqrMagnitude < 0.0001f)
         {
             return Vector3.forward;
         }
 
-        worldDirection.Normalize();
+        return fallbackForward.normalized;
+    }
 
+    private Vector3 GetLocalMoveDirection()
+    {
+        Vector3 worldDirection = GetWorldMoveDirection();
         Transform space = animatedModel.parent != null ? animatedModel.parent : animatedModel;
         Vector3 localDirection = space.InverseTransformDirection(worldDirection);
         localDirection.y = 0f;
@@ -219,7 +327,7 @@ public class SlimeVisualAnimator : MonoBehaviour
         {
             Renderer renderer = slimeRenderers[rendererIndex];
 
-            if (renderer == null)
+            if (renderer == null || !renderer.enabled)
             {
                 continue;
             }
