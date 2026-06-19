@@ -4,9 +4,9 @@ using UnityEngine;
 public class EnemySeparationController : MonoBehaviour
 {
     [SerializeField] private float separationRadius = 0.85f;
-    [SerializeField] private float separationStrength = 0.9f;
+    [SerializeField] private float separationStrength = 0.25f;
     [SerializeField] private float updateInterval = 0.08f;
-    [SerializeField] private float maxSeparationStep = 0.045f;
+    [SerializeField] private float maxSeparationStep = 0.015f;
 
     private static readonly Collider[] OverlapBuffer = new Collider[24];
 

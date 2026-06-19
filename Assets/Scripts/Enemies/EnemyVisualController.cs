@@ -123,7 +123,7 @@ public sealed class EnemyVisualController : MonoBehaviour
             viewInstance.name = viewPrefab.name + "_View";
             SanitizeVisualInstance(viewInstance);
             ApplySilhouetteScale(visualRoot, currentType);
-            ApplyBaseColorsToRenderers(GetVisualRenderers(visualRoot));
+            ApplyPrefabViewColors(viewInstance, visualRoot);
             EnsureEliteRing(visualRoot);
             CacheFlashRenderers(GetVisualRenderers(visualRoot));
             return;
@@ -313,6 +313,26 @@ public sealed class EnemyVisualController : MonoBehaviour
         {
             GameVisualStyle.ApplyColor(renderer, EliteRingColor, 0.88f, true, 0.55f);
         }
+    }
+
+    private void ApplyPrefabViewColors(GameObject viewInstance, Transform viewRoot)
+    {
+        if (viewRoot == null)
+        {
+            return;
+        }
+
+        if (currentType != Enemy.EnemyType.Normal)
+        {
+            return;
+        }
+
+        if (viewInstance != null && viewInstance.GetComponentInChildren<SlimeVisualAnimator>(true) != null)
+        {
+            return;
+        }
+
+        ApplyBaseColorsToRenderers(GetVisualRenderers(viewRoot));
     }
 
     private void ApplyBaseColorsToRenderers(Renderer[] renderers)

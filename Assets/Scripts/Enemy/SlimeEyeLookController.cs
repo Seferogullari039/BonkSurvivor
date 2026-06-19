@@ -99,14 +99,7 @@ public class SlimeEyeLookController : MonoBehaviour
 
     private static Transform ResolveMotionRoot(Transform visualRoot)
     {
-        Transform motion = visualRoot.Find("SlimeMotionRoot");
-
-        if (motion != null)
-        {
-            return motion;
-        }
-
-        return visualRoot.Find("Model");
+        return visualRoot.Find("SlimeMotionRoot");
     }
 
     private void CreateProceduralPupilOverlays()
