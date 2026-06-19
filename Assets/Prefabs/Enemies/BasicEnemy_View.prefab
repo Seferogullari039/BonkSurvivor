@@ -41,6 +41,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5321071313609037880}
+  - component: {fileID: 8811223344556677889}
   m_Layer: 0
   m_Name: SlimeMotionRoot
   m_TagString: Untagged
@@ -64,6 +65,25 @@ Transform:
   - {fileID: 4288363515509208830}
   m_Father: {fileID: 8455157211570471062}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &8811223344556677889
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 4475510804409261880}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b8c9d0e1f2a345678901abcd12345678, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyVisualFacingController
+  visualPivot: {fileID: 5321071313609037880}
+  facePlayer: 1
+  useMovementDirectionFallback: 1
+  turnSpeed: 12
+  localEulerOffset: {x: 0, y: 0, z: 0}
+  lockPitchRoll: 1
+  minDirectionMagnitude: 0.02
 --- !u!1 &6387015109154427072
 GameObject:
   m_ObjectHideFlags: 0
@@ -135,13 +155,13 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SlimeEyeLookController
   lookTargetMode: 0
-  eyeFollowAmount: 0.035
-  eyeFollowSpeed: 10
-  maxEyeOffset: 0.045
+  eyeFollowAmount: 0.025
+  eyeFollowSpeed: 8
+  maxEyeOffset: 0.035
   enableProceduralPupilOverlay: 0
   leftPupilLocalPosition: {x: -0.014, y: 0.016, z: 0.024}
   rightPupilLocalPosition: {x: 0.014, y: 0.016, z: 0.024}
-  pupilScale: 0.05
+  pupilScale: 0.04
   pupilMaterial: {fileID: 2100000, guid: d4e5f678901234567890abcde1234567, type: 2}
 --- !u!1 &7196941878954492793
 GameObject:

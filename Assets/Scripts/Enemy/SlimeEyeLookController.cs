@@ -9,13 +9,13 @@ public enum SlimeEyeLookTargetMode
 public class SlimeEyeLookController : MonoBehaviour
 {
     [SerializeField] private SlimeEyeLookTargetMode lookTargetMode = SlimeEyeLookTargetMode.CameraThenPlayer;
-    [SerializeField] private float eyeFollowAmount = 0.035f;
-    [SerializeField] private float eyeFollowSpeed = 10f;
-    [SerializeField] private float maxEyeOffset = 0.045f;
+    [SerializeField] private float eyeFollowAmount = 0.025f;
+    [SerializeField] private float eyeFollowSpeed = 8f;
+    [SerializeField] private float maxEyeOffset = 0.035f;
     [SerializeField] private bool enableProceduralPupilOverlay = false;
     [SerializeField] private Vector3 leftPupilLocalPosition = new Vector3(-0.014f, 0.016f, 0.024f);
     [SerializeField] private Vector3 rightPupilLocalPosition = new Vector3(0.014f, 0.016f, 0.024f);
-    [SerializeField] private float pupilScale = 0.05f;
+    [SerializeField] private float pupilScale = 0.04f;
     [SerializeField] private Material pupilMaterial;
 
     private Transform motionRoot;
@@ -213,19 +213,19 @@ public class SlimeEyeLookController : MonoBehaviour
             return false;
         }
 
-        Camera mainCamera = Camera.main;
-
-        if (mainCamera != null)
-        {
-            lookTargetWorldPosition = mainCamera.transform.position;
-            return true;
-        }
-
         GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
 
         if (playerObject != null)
         {
             lookTargetWorldPosition = playerObject.transform.position + Vector3.up * 1.2f;
+            return true;
+        }
+
+        Camera mainCamera = Camera.main;
+
+        if (mainCamera != null)
+        {
+            lookTargetWorldPosition = mainCamera.transform.position;
             return true;
         }
 
