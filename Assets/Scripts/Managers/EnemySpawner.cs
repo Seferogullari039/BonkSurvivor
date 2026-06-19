@@ -5,14 +5,18 @@ public class EnemySpawner : MonoBehaviour
     [SerializeField] private GameObject enemyPrefab;
     [SerializeField] private GameObject dragonBossPrefab;
     [SerializeField] private Transform player;
+    [SerializeField] private int absoluteMaxEnemies = 65;
+    [SerializeField] private float waveBurstSpawnDelay = 0.12f;
+    [SerializeField] private float minimumSpawnInterval = 0.4f;
 
-    private float spawnInterval = 2.5f;
+    private float spawnInterval = 0.95f;
     private float spawnDistance = 14f;
     private float timer;
     private float runTimer;
     private int currentWave = 0;
     private int spawnedBossWave = 0;
-    private const int MaxEnemies = 65;
+    private int pendingWaveBurstCount;
+    private float waveBurstTimer;
 
     public int CurrentWave => currentWave;
 
@@ -20,42 +24,8 @@ public class EnemySpawner : MonoBehaviour
     {
         currentWave = Mathf.Max(1, currentWave + 1);
         runTimer = (currentWave - 1) * 10f;
-
-        if (currentWave <= 1)
-        {
-            spawnInterval = 2.5f;
-            spawnDistance = 14f;
-        }
-        else if (currentWave == 2)
-        {
-            spawnInterval = 2f;
-            spawnDistance = 15f;
-        }
-        else if (currentWave == 3)
-        {
-            spawnInterval = 1.65f;
-            spawnDistance = 16f;
-        }
-        else if (currentWave <= 5)
-        {
-            spawnInterval = 1.35f;
-            spawnDistance = 17f;
-        }
-        else if (currentWave <= 10)
-        {
-            spawnInterval = 1.05f;
-            spawnDistance = 18f;
-        }
-        else if (currentWave <= 20)
-        {
-            spawnInterval = 0.85f;
-            spawnDistance = 19f;
-        }
-        else
-        {
-            spawnInterval = 0.75f;
-            spawnDistance = 20f;
-        }
+        ApplyWaveSpawnSettings(currentWave, out spawnInterval, out spawnDistance);
+        QueueWaveBurst(currentWave);
 
         if (HUDManager.Instance != null)
         {
@@ -76,7 +46,7 @@ public class EnemySpawner : MonoBehaviour
     {
         if (enemyPrefab == null || player == null) return;
 
-        if (GameObject.FindGameObjectsWithTag("Enemy").Length >= MaxEnemies)
+        if (GameObject.FindGameObjectsWithTag("Enemy").Length >= GetMaxAliveEnemies(currentWave))
         {
             return;
         }
@@ -119,7 +89,7 @@ public class EnemySpawner : MonoBehaviour
     {
         if (enemyPrefab == null || player == null) return false;
 
-        if (GameObject.FindGameObjectsWithTag("Enemy").Length >= MaxEnemies)
+        if (GameObject.FindGameObjectsWithTag("Enemy").Length >= GetMaxAliveEnemies(currentWave))
         {
             return false;
         }
@@ -149,8 +119,10 @@ public class EnemySpawner : MonoBehaviour
         runTimer = 0f;
         currentWave = 0;
         spawnedBossWave = 0;
-        spawnInterval = 2.5f;
-        spawnDistance = 14f;
+        pendingWaveBurstCount = 0;
+        waveBurstTimer = 0f;
+        spawnInterval = ResolveSpawnInterval(1);
+        spawnDistance = ResolveSpawnDistance(1);
         DragonBossSpawnTracker.ResetRun();
     }
 
@@ -161,6 +133,7 @@ public class EnemySpawner : MonoBehaviour
 
         runTimer += Time.deltaTime;
         UpdateWaveSettings();
+        ProcessWaveBurst();
 
         timer += Time.deltaTime;
 
@@ -171,54 +144,49 @@ public class EnemySpawner : MonoBehaviour
             effectiveSpawnInterval *= BloodMoonEventManager.Instance.SpawnIntervalMultiplier;
         }
 
+        effectiveSpawnInterval = Mathf.Max(minimumSpawnInterval, effectiveSpawnInterval);
+
         if (timer >= effectiveSpawnInterval)
         {
-            SpawnEnemy();
-            timer = 0f;
+            if (TrySpawnEnemy())
+            {
+                timer = 0f;
+            }
         }
+    }
+
+    private void ProcessWaveBurst()
+    {
+        if (pendingWaveBurstCount <= 0)
+        {
+            return;
+        }
+
+        waveBurstTimer += Time.deltaTime;
+
+        while (pendingWaveBurstCount > 0 && waveBurstTimer >= waveBurstSpawnDelay)
+        {
+            waveBurstTimer -= waveBurstSpawnDelay;
+
+            if (!TrySpawnEnemy())
+            {
+                return;
+            }
+
+            pendingWaveBurstCount--;
+        }
+    }
+
+    private void QueueWaveBurst(int wave)
+    {
+        pendingWaveBurstCount = ResolveWaveBurstCount(wave);
+        waveBurstTimer = waveBurstSpawnDelay;
     }
 
     private void UpdateWaveSettings()
     {
         int newWave = Mathf.FloorToInt(runTimer / 10f) + 1;
-        float newSpawnInterval;
-        float newSpawnDistance;
-
-        if (newWave <= 1)
-        {
-            newSpawnInterval = 2.5f;
-            newSpawnDistance = 14f;
-        }
-        else if (newWave == 2)
-        {
-            newSpawnInterval = 2f;
-            newSpawnDistance = 15f;
-        }
-        else if (newWave == 3)
-        {
-            newSpawnInterval = 1.65f;
-            newSpawnDistance = 16f;
-        }
-        else if (newWave <= 5)
-        {
-            newSpawnInterval = 1.35f;
-            newSpawnDistance = 17f;
-        }
-        else if (newWave <= 10)
-        {
-            newSpawnInterval = 1.05f;
-            newSpawnDistance = 18f;
-        }
-        else if (newWave <= 20)
-        {
-            newSpawnInterval = 0.85f;
-            newSpawnDistance = 19f;
-        }
-        else
-        {
-            newSpawnInterval = 0.75f;
-            newSpawnDistance = 20f;
-        }
+        ApplyWaveSpawnSettings(newWave, out float newSpawnInterval, out float newSpawnDistance);
 
         spawnInterval = newSpawnInterval;
         spawnDistance = newSpawnDistance;
@@ -233,9 +201,141 @@ public class EnemySpawner : MonoBehaviour
             }
 
             RunEventMessageDisplay.ShowWave(currentWave);
-
+            QueueWaveBurst(currentWave);
             TrySpawnMiniBoss();
         }
+    }
+
+    private static void ApplyWaveSpawnSettings(int wave, out float interval, out float distance)
+    {
+        interval = ResolveSpawnInterval(wave);
+        distance = ResolveSpawnDistance(wave);
+    }
+
+    private static float ResolveSpawnInterval(int wave)
+    {
+        if (wave <= 1)
+        {
+            return 0.95f;
+        }
+
+        if (wave == 2)
+        {
+            return 0.88f;
+        }
+
+        if (wave == 3)
+        {
+            return 0.82f;
+        }
+
+        if (wave <= 5)
+        {
+            return 0.75f;
+        }
+
+        if (wave <= 10)
+        {
+            return 0.62f;
+        }
+
+        if (wave <= 20)
+        {
+            return 0.52f;
+        }
+
+        return 0.48f;
+    }
+
+    private static float ResolveSpawnDistance(int wave)
+    {
+        if (wave <= 1)
+        {
+            return 14f;
+        }
+
+        if (wave == 2)
+        {
+            return 15f;
+        }
+
+        if (wave == 3)
+        {
+            return 16f;
+        }
+
+        if (wave <= 5)
+        {
+            return 17f;
+        }
+
+        if (wave <= 10)
+        {
+            return 18f;
+        }
+
+        if (wave <= 20)
+        {
+            return 19f;
+        }
+
+        return 20f;
+    }
+
+    private int GetMaxAliveEnemies(int wave)
+    {
+        int waveCap;
+
+        if (wave <= 1)
+        {
+            waveCap = 20;
+        }
+        else if (wave == 2)
+        {
+            waveCap = 22;
+        }
+        else if (wave == 3)
+        {
+            waveCap = 24;
+        }
+        else if (wave <= 5)
+        {
+            waveCap = 28;
+        }
+        else if (wave <= 10)
+        {
+            waveCap = 34;
+        }
+        else if (wave <= 20)
+        {
+            waveCap = 45;
+        }
+        else
+        {
+            waveCap = 60;
+        }
+
+        return Mathf.Min(waveCap, absoluteMaxEnemies);
+    }
+
+    private static int ResolveWaveBurstCount(int wave)
+    {
+        if (wave <= 1)
+        {
+            return 6;
+        }
+
+        if (wave == 2)
+        {
+            return 7;
+        }
+
+        if (wave == 3)
+        {
+            return 8;
+        }
+
+        return Mathf.Clamp(8 + (wave - 4), 8, 10);
     }
 
     private void TrySpawnMiniBoss()
@@ -418,11 +518,11 @@ public class EnemySpawner : MonoBehaviour
         }
     }
 
-    private void SpawnEnemy()
+    private bool TrySpawnEnemy()
     {
-        if (GameObject.FindGameObjectsWithTag("Enemy").Length >= MaxEnemies)
+        if (GameObject.FindGameObjectsWithTag("Enemy").Length >= GetMaxAliveEnemies(currentWave))
         {
-            return;
+            return false;
         }
 
         Vector3 spawnPosition;
@@ -461,7 +561,10 @@ public class EnemySpawner : MonoBehaviour
         GameObject enemyObject = Instantiate(enemyPrefab, spawnPosition, Quaternion.identity);
         Enemy enemy = enemyObject.GetComponent<Enemy>();
 
-        if (enemy == null) return;
+        if (enemy == null)
+        {
+            return false;
+        }
 
         Enemy.EnemyType enemyType = GetRandomEnemyType(fpsSpawnZone);
         ApplyEnemyType(enemy, enemyObject.transform, enemyType);
@@ -470,6 +573,8 @@ public class EnemySpawner : MonoBehaviour
         {
             ApplyEliteMutation(enemy, enemyObject.transform);
         }
+
+        return true;
     }
 
     private static bool IsBlockedEliteSpawn(FPSSpawnZone fpsSpawnZone)
