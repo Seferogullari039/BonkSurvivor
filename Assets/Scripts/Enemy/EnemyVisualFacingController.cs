@@ -152,7 +152,7 @@ public class EnemyVisualFacingController : MonoBehaviour
         }
     }
 
-    private static Transform ResolveMovementRoot()
+    private Transform ResolveMovementRoot()
     {
         Transform current = transform;
 
