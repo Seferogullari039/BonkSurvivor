@@ -191,6 +191,7 @@ MonoBehaviour:
   bodyBobAmount: 0.035
   bodyBobSpeed: 7
   bodySwayAngle: 2
+  bodyLeanAngle: 3.5
   moveThreshold: 0.015
   walkFrequency: 7
   attackRange: 2.2
@@ -199,6 +200,11 @@ MonoBehaviour:
   attackRaiseAngle: -55
   attackSlashAngle: 75
   attackSideAngle: 15
+  attackAxisMode: 7
+  rightUpperArmRaiseAxis: {x: 1, y: 0, z: 0}
+  rightUpperArmSlashAxis: {x: 0, y: 0, z: 1}
+  rightForeArmAxis: {x: 1, y: 0, z: 0}
+  rightHandAxis: {x: 0, y: 0, z: 1}
   walkBobAmount: 0.045
   walkSwayAngle: 3.5
   walkLeanAngle: 3
@@ -208,6 +214,7 @@ MonoBehaviour:
   chest: {fileID: 0}
   leftUpperArm: {fileID: 0}
   leftForeArm: {fileID: 0}
+  leftHand: {fileID: 0}
   rightUpperArm: {fileID: 0}
   rightForeArm: {fileID: 0}
   rightHand: {fileID: 0}
@@ -245,7 +252,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 691cff9a0623620449c483da988c0eff, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.0032328367
+      value: -0.25323284
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 691cff9a0623620449c483da988c0eff, type: 3}
       propertyPath: m_LocalPosition.z
@@ -309,20 +316,21 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkeletonVisualAnimator
   walkSpeed: 6
-  legSwingAngle: 18
-  armSwingAngle: 10
-  bodyBobAmount: 0.025
+  legSwingAngle: 28
+  armSwingAngle: 18
+  bodyBobAmount: 0.055
   bodyBobSpeed: 6.5
-  bodySwayAngle: 2
+  bodySwayAngle: 4
+  bodyLeanAngle: 3.5
   moveThreshold: 0.015
-  walkFrequency: 6.5
-  attackRange: 3
-  attackCooldown: 1
-  attackDuration: 0.65
-  attackRaiseAngle: -85
-  attackSlashAngle: 120
-  attackSideAngle: 20
-  attackAxisMode: 3
+  walkFrequency: 7.5
+  attackRange: 3.2
+  attackCooldown: 0.95
+  attackDuration: 0.78
+  attackRaiseAngle: -110
+  attackSlashAngle: 155
+  attackSideAngle: 35
+  attackAxisMode: 7
   rightUpperArmRaiseAxis: {x: 1, y: 0, z: 0}
   rightUpperArmSlashAxis: {x: 0, y: 0, z: 1}
   rightForeArmAxis: {x: 1, y: 0, z: 0}
@@ -336,6 +344,7 @@ MonoBehaviour:
   chest: {fileID: 0}
   leftUpperArm: {fileID: 0}
   leftForeArm: {fileID: 0}
+  leftHand: {fileID: 0}
   rightUpperArm: {fileID: 0}
   rightForeArm: {fileID: 0}
   rightHand: {fileID: 0}
