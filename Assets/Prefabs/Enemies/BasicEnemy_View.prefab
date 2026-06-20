@@ -81,7 +81,7 @@ MonoBehaviour:
   facePlayer: 1
   useMovementDirectionFallback: 1
   turnSpeed: 12
-  localEulerOffset: {x: 0, y: 120, z: 0}
+  localEulerOffset: {x: 0, y: -120, z: 0}
   lockPitchRoll: 1
   minDirectionMagnitude: 0.02
   debugFacing: 1
