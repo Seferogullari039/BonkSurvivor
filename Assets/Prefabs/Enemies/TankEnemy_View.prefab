@@ -316,12 +316,17 @@ MonoBehaviour:
   bodySwayAngle: 2
   moveThreshold: 0.015
   walkFrequency: 6.5
-  attackRange: 2.2
-  attackCooldown: 1.15
-  attackDuration: 0.55
-  attackRaiseAngle: -50
-  attackSlashAngle: 75
-  attackSideAngle: 10
+  attackRange: 3.2
+  attackCooldown: 1
+  attackDuration: 0.7
+  attackRaiseAngle: -85
+  attackSlashAngle: 120
+  attackSideAngle: 25
+  attackAxisMode: 3
+  rightUpperArmRaiseAxis: {x: 1, y: 0, z: 0}
+  rightUpperArmSlashAxis: {x: 0, y: 0, z: 1}
+  rightForeArmAxis: {x: 1, y: 0, z: 0}
+  rightHandAxis: {x: 0, y: 0, z: 1}
   walkBobAmount: 0.045
   walkSwayAngle: 3.5
   walkLeanAngle: 3
