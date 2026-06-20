@@ -363,6 +363,11 @@ public class EnemyVisualFacingController : MonoBehaviour
 
     public static Vector3 ResolveFacingOffset(Enemy.EnemyType enemyType)
     {
+        if (enemyType == Enemy.EnemyType.Normal)
+        {
+            return new Vector3(0f, 180f, 0f);
+        }
+
         if (enemyType == Enemy.EnemyType.Tank)
         {
             return new Vector3(0f, 90f, 0f);
