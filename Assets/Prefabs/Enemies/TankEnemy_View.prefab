@@ -83,7 +83,7 @@ MonoBehaviour:
   facePlayer: 1
   useMovementDirectionFallback: 1
   turnSpeed: 12
-  localEulerOffset: {x: 0, y: 90, z: 0}
+  localEulerOffset: {x: 0, y: 180, z: 0}
   lockPitchRoll: 1
   minDirectionMagnitude: 0.02
   debugFacing: 1
@@ -190,10 +190,8 @@ MonoBehaviour:
   armSwingAngle: 12
   bodyBobAmount: 0.035
   bodyBobSpeed: 7
+  bodySwayAngle: 2
   moveThreshold: 0.015
-  walkBobAmount: 0.045
-  walkSwayAngle: 3.5
-  walkLeanAngle: 3
   walkFrequency: 7
   attackRange: 2.2
   attackCooldown: 1.2
@@ -201,6 +199,9 @@ MonoBehaviour:
   attackRaiseAngle: -55
   attackSlashAngle: 75
   attackSideAngle: 15
+  walkBobAmount: 0.045
+  walkSwayAngle: 3.5
+  walkLeanAngle: 3
   autoFindBones: 1
   hips: {fileID: 0}
   spine: {fileID: 0}
@@ -285,8 +286,62 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 691cff9a0623620449c483da988c0eff, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 8936713256983149250}
   m_SourcePrefab: {fileID: 100100000, guid: 691cff9a0623620449c483da988c0eff, type: 3}
+--- !u!1 &1619884835150474568 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 691cff9a0623620449c483da988c0eff, type: 3}
+  m_PrefabInstance: {fileID: 1926297630609149977}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &8936713256983149250
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1619884835150474568}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9c8d7e6f5a4321098765432fedcba10, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkeletonVisualAnimator
+  walkSpeed: 6
+  legSwingAngle: 18
+  armSwingAngle: 10
+  bodyBobAmount: 0.025
+  bodyBobSpeed: 6.5
+  bodySwayAngle: 2
+  moveThreshold: 0.015
+  walkFrequency: 6.5
+  attackRange: 2.2
+  attackCooldown: 1.15
+  attackDuration: 0.55
+  attackRaiseAngle: -50
+  attackSlashAngle: 75
+  attackSideAngle: 10
+  walkBobAmount: 0.045
+  walkSwayAngle: 3.5
+  walkLeanAngle: 3
+  autoFindBones: 1
+  hips: {fileID: 0}
+  spine: {fileID: 0}
+  chest: {fileID: 0}
+  leftUpperArm: {fileID: 0}
+  leftForeArm: {fileID: 0}
+  rightUpperArm: {fileID: 0}
+  rightForeArm: {fileID: 0}
+  rightHand: {fileID: 0}
+  leftUpperLeg: {fileID: 0}
+  leftLowerLeg: {fileID: 0}
+  leftFoot: {fileID: 0}
+  rightUpperLeg: {fileID: 0}
+  rightLowerLeg: {fileID: 0}
+  rightFoot: {fileID: 0}
+  swordTransform: {fileID: 0}
+  enableFallbackVisuals: 1
 --- !u!4 &2103510880722352114 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 691cff9a0623620449c483da988c0eff, type: 3}
