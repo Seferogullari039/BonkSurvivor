@@ -58,7 +58,7 @@ Transform:
   m_GameObject: {fileID: 4475510804409261880}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0.53824425, z: 0}
+  m_LocalPosition: {x: 0, y: 0.45, z: 0}
   m_LocalScale: {x: 26.937384, y: 26.937384, z: 26.937384}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -81,7 +81,7 @@ MonoBehaviour:
   facePlayer: 1
   useMovementDirectionFallback: 1
   turnSpeed: 12
-  localEulerOffset: {x: 0, y: -120, z: 0}
+  localEulerOffset: {x: 0, y: -100, z: 0}
   lockPitchRoll: 1
   minDirectionMagnitude: 0.02
   debugFacing: 1
