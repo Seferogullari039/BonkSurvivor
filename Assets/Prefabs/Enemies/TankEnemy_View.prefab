@@ -324,9 +324,9 @@ MonoBehaviour:
   bodyLeanAngle: 0.5
   moveThreshold: 0.015
   walkFrequency: 5
-  attackRange: 3.5
-  attackCooldown: 0.9
-  attackDuration: 0.8
+  attackRange: 5
+  attackCooldown: 0.8
+  attackDuration: 0.9
   attackRaiseAngle: -120
   attackForeArmBendAngle: -35
   attackSlashAngle: 170
@@ -357,6 +357,7 @@ MonoBehaviour:
   rightFoot: {fileID: 0}
   swordTransform: {fileID: 0}
   visualGroundYOffset: 0
+  debugForceAttackPose: 0
   enableFallbackVisuals: 1
 --- !u!4 &2103510880722352114 stripped
 Transform:
