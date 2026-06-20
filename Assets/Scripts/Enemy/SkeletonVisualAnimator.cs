@@ -43,6 +43,7 @@ public class SkeletonVisualAnimator : MonoBehaviour
     [SerializeField] private Transform chest;
     [SerializeField] private Transform leftUpperArm;
     [SerializeField] private Transform leftForeArm;
+    [SerializeField] private Transform leftHand;
     [SerializeField] private Transform rightUpperArm;
     [SerializeField] private Transform rightForeArm;
     [SerializeField] private Transform rightHand;
