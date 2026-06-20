@@ -46,6 +46,9 @@ public class SkeletonVisualAnimator : MonoBehaviour
     [SerializeField] private Transform rightFoot;
     [SerializeField] private Transform swordTransform;
 
+    [Header("Safety")]
+    [SerializeField] private bool enableFallbackVisuals = true;
+
     private enum AttackMode
     {
         None,
@@ -79,6 +82,11 @@ public class SkeletonVisualAnimator : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (!enableFallbackVisuals)
+        {
+            return;
+        }
+
         if (!initialized && !TryInitialize())
         {
             return;

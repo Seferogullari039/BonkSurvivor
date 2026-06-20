@@ -82,7 +82,7 @@ MonoBehaviour:
   facePlayer: 1
   useMovementDirectionFallback: 1
   turnSpeed: 12
-  localEulerOffset: {x: 0, y: 180, z: 0}
+  localEulerOffset: {x: 0, y: 0, z: 0}
   lockPitchRoll: 1
   minDirectionMagnitude: 0.02
   debugFacing: 1
@@ -112,7 +112,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: aa8b97cf0ec94df4d9e94378871f2cf0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.50060266
+      value: -0.002033949
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: aa8b97cf0ec94df4d9e94378871f2cf0, type: 3}
       propertyPath: m_LocalPosition.z
@@ -175,7 +175,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 940889865459084005}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: b9c8d7e6f5a4321098765432fedcba10, type: 3}
   m_Name: 
@@ -212,6 +212,7 @@ MonoBehaviour:
   rightLowerLeg: {fileID: 0}
   rightFoot: {fileID: 0}
   swordTransform: {fileID: 0}
+  enableFallbackVisuals: 0
 --- !u!1001 &8962469679951895997
 PrefabInstance:
   m_ObjectHideFlags: 0
