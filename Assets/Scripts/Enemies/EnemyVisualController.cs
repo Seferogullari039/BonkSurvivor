@@ -128,6 +128,7 @@ public sealed class EnemyVisualController : MonoBehaviour
             ApplyPrefabViewColors(viewInstance, visualRoot);
             EnsureEliteRing(visualRoot);
             CacheFlashRenderers(GetVisualRenderers(visualRoot));
+            EnemyVisualFacingController.BindToViewInstance(viewInstance, transform, currentType);
             return;
         }
 
