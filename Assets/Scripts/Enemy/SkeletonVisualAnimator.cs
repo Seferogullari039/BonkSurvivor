@@ -14,6 +14,12 @@ public class SkeletonVisualAnimator : MonoBehaviour
     [SerializeField] private float bodyBobSpeed = 7f;
     [SerializeField] private float moveThreshold = 0.015f;
 
+    [Header("Fallback Walk")]
+    [SerializeField] private float walkBobAmount = 0.045f;
+    [SerializeField] private float walkSwayAngle = 3.5f;
+    [SerializeField] private float walkLeanAngle = 3f;
+    [SerializeField] private float walkFrequency = 7f;
+
     [Header("Attack")]
     [SerializeField] private float attackRange = 2.2f;
     [SerializeField] private float attackCooldown = 1.2f;
@@ -38,19 +44,32 @@ public class SkeletonVisualAnimator : MonoBehaviour
     [SerializeField] private Transform rightUpperLeg;
     [SerializeField] private Transform rightLowerLeg;
     [SerializeField] private Transform rightFoot;
+    [SerializeField] private Transform swordTransform;
+
+    private enum AttackMode
+    {
+        None,
+        Bones,
+        SwordTransform,
+        ModelFallback
+    }
 
     private readonly Dictionary<Transform, Quaternion> baseRotations = new Dictionary<Transform, Quaternion>();
     private Transform enemyRoot;
     private Vector3 baseLocalPosition;
     private Quaternion baseLocalRotation;
+    private Vector3 baseSwordLocalPosition;
+    private Quaternion baseSwordLocalRotation;
     private Vector3 lastEnemyPosition;
     private float smoothedMoveSpeed;
     private float walkPhase;
     private float nextAttackTime;
     private float attackStartTime;
     private bool attackActive;
-    private bool attackVisualEnabled = true;
     private bool useModelRootFallback;
+    private bool rigReported;
+    private AttackMode attackMode = AttackMode.None;
+    private GameObject slashArcVisual;
     private bool initialized;
 
     private void Awake()
@@ -67,25 +86,48 @@ public class SkeletonVisualAnimator : MonoBehaviour
 
         UpdateMovementSample();
         float attackBlend = UpdateAttackState();
+        float attackNormalized = attackActive
+            ? (Time.time - attackStartTime) / Mathf.Max(0.001f, attackDuration)
+            : 0f;
 
-        if (useModelRootFallback)
+        switch (attackMode)
         {
-            ApplyModelRootAnimation(attackBlend);
-            return;
-        }
+            case AttackMode.Bones:
+                ApplyBoneIdleOrWalk(attackBlend);
+                ApplyBoneAttack(attackBlend);
+                HideSlashArc();
+                break;
 
-        ApplyBoneIdleOrWalk(attackBlend);
-        ApplyBoneAttack(attackBlend);
+            case AttackMode.SwordTransform:
+                ApplyBoneIdleOrWalk(attackBlend);
+                ApplySwordTransformAttack(attackBlend, attackNormalized);
+                HideSlashArc();
+                break;
+
+            case AttackMode.ModelFallback:
+                ApplyModelRootAnimation(attackBlend, attackNormalized);
+                break;
+
+            default:
+                ApplyModelRootAnimation(attackBlend, attackNormalized);
+                break;
+        }
     }
 
     private void OnDisable()
     {
         RestoreBasePose();
+        HideSlashArc();
     }
 
     private void OnDestroy()
     {
         RestoreBasePose();
+
+        if (slashArcVisual != null)
+        {
+            Destroy(slashArcVisual);
+        }
     }
 
     private bool TryInitialize()
@@ -111,28 +153,70 @@ public class SkeletonVisualAnimator : MonoBehaviour
         if (autoFindBones)
         {
             AutoFindBones();
+            swordTransform ??= FindSwordTransform();
         }
 
+        ReportRigStatus();
         CacheBaseRotations();
         useModelRootFallback = !HasWalkBones();
+        attackMode = ResolveAttackMode();
 
-        if (!HasAttackBones())
-        {
-            attackVisualEnabled = false;
-            Debug.LogWarning(
-                "[SkeletonVisualAnimator] Right arm bones not found, sword attack visual disabled.",
-                this);
-        }
-
-        if (useModelRootFallback)
+        if (attackMode == AttackMode.ModelFallback)
         {
             Debug.LogWarning(
-                "[SkeletonVisualAnimator] Rig bones not found, using model-root procedural fallback.",
+                "[SkeletonVisualAnimator] Gerçek rig yok, visual fallback kullanıldı.",
                 this);
         }
 
         initialized = true;
         return true;
+    }
+
+    private void ReportRigStatus()
+    {
+        if (rigReported)
+        {
+            return;
+        }
+
+        rigReported = true;
+
+        SkinnedMeshRenderer[] skinned = GetComponentsInChildren<SkinnedMeshRenderer>(true);
+        int boneCount = 0;
+
+        for (int i = 0; i < skinned.Length; i++)
+        {
+            if (skinned[i]?.bones != null)
+            {
+                boneCount += skinned[i].bones.Length;
+            }
+        }
+
+        Debug.Log(
+            "[SkeletonVisualAnimator] skinnedMeshes="
+            + skinned.Length
+            + " skinnedBones="
+            + boneCount
+            + " hierarchyTransforms="
+            + GetComponentsInChildren<Transform>(true).Length,
+            this);
+    }
+
+    private AttackMode ResolveAttackMode()
+    {
+        if (HasAttackBones())
+        {
+            return AttackMode.Bones;
+        }
+
+        if (swordTransform != null)
+        {
+            baseSwordLocalPosition = swordTransform.localPosition;
+            baseSwordLocalRotation = swordTransform.localRotation;
+            return AttackMode.SwordTransform;
+        }
+
+        return AttackMode.ModelFallback;
     }
 
     private void UpdateMovementSample()
@@ -146,17 +230,12 @@ public class SkeletonVisualAnimator : MonoBehaviour
 
         if (isMoving)
         {
-            walkPhase += Time.deltaTime * walkSpeed * Mathf.Clamp(smoothedMoveSpeed * 0.35f, 0.6f, 1.6f);
+            walkPhase += Time.deltaTime * walkFrequency * Mathf.Clamp(smoothedMoveSpeed * 0.35f, 0.6f, 1.6f);
         }
     }
 
     private float UpdateAttackState()
     {
-        if (!attackVisualEnabled)
-        {
-            return 0f;
-        }
-
         Transform target = ResolveTargetTransform();
 
         if (target == null)
@@ -207,22 +286,46 @@ public class SkeletonVisualAnimator : MonoBehaviour
         return 1f - Mathf.SmoothStep(0f, 1f, (normalized - 0.55f) / 0.45f);
     }
 
-    private void ApplyModelRootAnimation(float attackBlend)
+    private void ApplyModelRootAnimation(float attackBlend, float attackNormalized)
     {
         bool isMoving = smoothedMoveSpeed > moveThreshold;
         float bob = isMoving
-            ? Mathf.Sin(walkPhase) * bodyBobAmount
-            : Mathf.Sin(Time.time * bodyBobSpeed) * (bodyBobAmount * 0.35f);
-        float sway = isMoving ? Mathf.Sin(walkPhase) * 4f : 0f;
+            ? Mathf.Sin(walkPhase) * walkBobAmount
+            : Mathf.Sin(Time.time * bodyBobSpeed) * (walkBobAmount * 0.35f);
+        float sway = isMoving ? Mathf.Sin(walkPhase) * walkSwayAngle : 0f;
+        float lean = isMoving ? Mathf.Cos(walkPhase * 0.5f) * walkLeanAngle : 0f;
 
         float attackRaise = attackBlend * attackRaiseAngle;
         float attackSlash = attackBlend * attackSlashAngle;
         float attackSide = attackBlend * attackSideAngle;
+        float strikeLean = attackBlend * 12f;
 
         transform.localPosition = baseLocalPosition + new Vector3(0f, bob, 0f);
         transform.localRotation =
             baseLocalRotation
-            * Quaternion.Euler(attackRaise + attackSlash * 0.35f, attackSide, sway);
+            * Quaternion.Euler(
+                attackRaise + attackSlash * 0.35f + lean + strikeLean,
+                attackSide,
+                sway);
+
+        UpdateFallbackSlashArc(attackBlend, attackNormalized);
+    }
+
+    private void ApplySwordTransformAttack(float attackBlend, float attackNormalized)
+    {
+        if (swordTransform == null || attackBlend <= 0.001f)
+        {
+            return;
+        }
+
+        float raise = attackRaiseAngle * attackBlend;
+        float slash = attackSlashAngle * attackBlend;
+        float side = attackSideAngle * attackBlend;
+
+        swordTransform.localRotation =
+            baseSwordLocalRotation * Quaternion.Euler(raise + slash, side, 0f);
+        swordTransform.localPosition =
+            baseSwordLocalPosition + new Vector3(0f, attackBlend * 0.04f, attackBlend * 0.02f);
     }
 
     private void ApplyBoneIdleOrWalk(float attackBlend)
@@ -260,7 +363,7 @@ public class SkeletonVisualAnimator : MonoBehaviour
 
     private void ApplyBoneAttack(float attackBlend)
     {
-        if (attackBlend <= 0.001f || !attackVisualEnabled)
+        if (attackBlend <= 0.001f)
         {
             return;
         }
@@ -285,6 +388,93 @@ public class SkeletonVisualAnimator : MonoBehaviour
 
         eulerOffset.x += extraX;
         bone.localRotation = baseRotation * Quaternion.Euler(eulerOffset);
+    }
+
+    private void UpdateFallbackSlashArc(float attackBlend, float attackNormalized)
+    {
+        if (attackBlend <= 0.05f || attackNormalized < 0.2f || attackNormalized > 0.65f)
+        {
+            HideSlashArc();
+            return;
+        }
+
+        EnsureSlashArcVisual();
+        slashArcVisual.SetActive(true);
+
+        float strikeT = Mathf.InverseLerp(0.2f, 0.55f, attackNormalized);
+        Transform arcTransform = slashArcVisual.transform;
+        arcTransform.localPosition = new Vector3(0.08f, 0.55f, 0.35f + strikeT * 0.15f);
+        arcTransform.localRotation = Quaternion.Euler(-20f - attackSlashAngle * strikeT, 15f, 0f);
+        arcTransform.localScale = new Vector3(0.55f, 0.04f, 0.18f + strikeT * 0.25f);
+    }
+
+    private void EnsureSlashArcVisual()
+    {
+        if (slashArcVisual != null)
+        {
+            return;
+        }
+
+        slashArcVisual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        slashArcVisual.name = "SlashArcVisual";
+        slashArcVisual.transform.SetParent(transform, false);
+
+        Collider collider = slashArcVisual.GetComponent<Collider>();
+
+        if (collider != null)
+        {
+            Destroy(collider);
+        }
+
+        Renderer renderer = slashArcVisual.GetComponent<Renderer>();
+
+        if (renderer != null)
+        {
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+
+            Material material = renderer.material;
+            material.color = new Color(0.95f, 0.85f, 0.35f, 0.55f);
+
+            if (material.HasProperty("_Surface"))
+            {
+                material.SetFloat("_Surface", 1f);
+            }
+        }
+
+        slashArcVisual.SetActive(false);
+    }
+
+    private void HideSlashArc()
+    {
+        if (slashArcVisual != null)
+        {
+            slashArcVisual.SetActive(false);
+        }
+    }
+
+    private Transform FindSwordTransform()
+    {
+        Transform[] all = GetComponentsInChildren<Transform>(true);
+
+        for (int i = 0; i < all.Length; i++)
+        {
+            Transform candidate = all[i];
+
+            if (candidate == null || candidate == transform)
+            {
+                continue;
+            }
+
+            string name = candidate.name.ToLowerInvariant();
+
+            if (name.Contains("sword") || name.Contains("blade") || name.Contains("weapon"))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 
     private void AutoFindBones()
@@ -377,16 +567,6 @@ public class SkeletonVisualAnimator : MonoBehaviour
             }
         }
 
-        if (side == Side.Left && lowerName.Contains("arm") && lowerName.Contains("fore"))
-        {
-            score -= 5;
-        }
-
-        if (side == Side.Right && lowerName.Contains("arm") && lowerName.Contains("upper"))
-        {
-            score += 2;
-        }
-
         return score;
     }
 
@@ -457,6 +637,46 @@ public class SkeletonVisualAnimator : MonoBehaviour
                 entry.Key.localRotation = entry.Value;
             }
         }
+
+        if (swordTransform != null)
+        {
+            swordTransform.localPosition = baseSwordLocalPosition;
+            swordTransform.localRotation = baseSwordLocalRotation;
+        }
+    }
+
+    private static Bounds CalculateRendererBounds(Transform root)
+    {
+        Renderer[] renderers = root.GetComponentsInChildren<Renderer>(true);
+        bool hasBounds = false;
+        Bounds bounds = new Bounds(root.position, Vector3.zero);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer == null || !renderer.enabled)
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                bounds = renderer.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        if (!hasBounds)
+        {
+            bounds = new Bounds(root.position, Vector3.one * 0.1f);
+        }
+
+        return bounds;
     }
 
     private Transform FindEnemyRoot()
