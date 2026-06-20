@@ -83,7 +83,7 @@ MonoBehaviour:
   facePlayer: 1
   useMovementDirectionFallback: 1
   turnSpeed: 12
-  localEulerOffset: {x: 0, y: 180, z: 0}
+  localEulerOffset: {x: 0, y: 0, z: 0}
   lockPitchRoll: 1
   minDirectionMagnitude: 0.02
   debugFacing: 1
@@ -316,12 +316,12 @@ MonoBehaviour:
   bodySwayAngle: 2
   moveThreshold: 0.015
   walkFrequency: 6.5
-  attackRange: 3.2
+  attackRange: 3
   attackCooldown: 1
-  attackDuration: 0.7
+  attackDuration: 0.65
   attackRaiseAngle: -85
   attackSlashAngle: 120
-  attackSideAngle: 25
+  attackSideAngle: 20
   attackAxisMode: 3
   rightUpperArmRaiseAxis: {x: 1, y: 0, z: 0}
   rightUpperArmSlashAxis: {x: 0, y: 0, z: 1}

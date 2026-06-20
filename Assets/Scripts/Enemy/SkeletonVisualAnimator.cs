@@ -17,12 +17,12 @@ public class SkeletonVisualAnimator : MonoBehaviour
     [SerializeField] private float walkFrequency = 6.5f;
 
     [Header("Attack")]
-    [SerializeField] private float attackRange = 3.2f;
+    [SerializeField] private float attackRange = 3f;
     [SerializeField] private float attackCooldown = 1f;
-    [SerializeField] private float attackDuration = 0.7f;
+    [SerializeField] private float attackDuration = 0.65f;
     [SerializeField] private float attackRaiseAngle = -85f;
     [SerializeField] private float attackSlashAngle = 120f;
-    [SerializeField] private float attackSideAngle = 25f;
+    [SerializeField] private float attackSideAngle = 20f;
 
     [Header("Attack Axes")]
     [SerializeField] private AttackAxisMode attackAxisMode = AttackAxisMode.XZCombined;
@@ -352,14 +352,12 @@ public class SkeletonVisualAnimator : MonoBehaviour
         Debug.Log(
             "[SkeletonVisualAnimator] Attack trigger distance="
             + distance.ToString("F2")
-            + " rightUpperArm="
+            + " upperArm="
             + BoneName(rightUpperArm)
-            + " rightForeArm="
+            + " foreArm="
             + BoneName(rightForeArm)
-            + " rightHand="
+            + " hand="
             + BoneName(rightHand)
-            + " sword="
-            + BoneName(swordTransform)
             + " mode="
             + attackMode,
             this);
@@ -812,6 +810,7 @@ public class SkeletonVisualAnimator : MonoBehaviour
             Side.Right,
             "R.ForeArm",
             "R.LowerArm",
+            "R.DownArm",
             "RightForeArm",
             "RightLowerArm",
             "ForeArm.R",
