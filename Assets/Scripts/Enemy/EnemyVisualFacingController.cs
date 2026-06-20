@@ -370,7 +370,7 @@ public class EnemyVisualFacingController : MonoBehaviour
 
         if (enemyType == Enemy.EnemyType.Tank)
         {
-            return Vector3.zero;
+            return new Vector3(0f, 90f, 0f);
         }
 
         return Vector3.zero;
