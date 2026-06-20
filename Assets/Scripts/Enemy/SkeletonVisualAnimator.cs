@@ -796,7 +796,7 @@ public class SkeletonVisualAnimator : MonoBehaviour
         }
     }
 
-    private static void GetForcedAttackEulers(
+    private void GetForcedAttackEulers(
         float normalized,
         float sideSign,
         out Vector3 upperEuler,
