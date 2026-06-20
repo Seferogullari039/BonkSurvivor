@@ -8,25 +8,26 @@ public class SkeletonVisualAnimator : MonoBehaviour
 {
     [Header("Walk")]
     [SerializeField] private float walkSpeed = 6f;
-    [SerializeField] private float legSwingAngle = 18f;
-    [SerializeField] private float armSwingAngle = 18f;
-    [SerializeField] private float bodyBobAmount = 0.055f;
-    [SerializeField] private float bodyBobSpeed = 6.5f;
-    [SerializeField] private float bodySwayAngle = 4f;
-    [SerializeField] private float bodyLeanAngle = 3.5f;
+    [SerializeField] private float legSwingAngle = 12f;
+    [SerializeField] private float armSwingAngle = 5f;
+    [SerializeField] private float bodyBobAmount = 0.014f;
+    [SerializeField] private float bodyBobSpeed = 5f;
+    [SerializeField] private float bodySwayAngle = 0.8f;
+    [SerializeField] private float bodyLeanAngle = 0.5f;
     [SerializeField] private float moveThreshold = 0.015f;
-    [SerializeField] private float walkFrequency = 7.5f;
+    [SerializeField] private float walkFrequency = 5f;
 
     [Header("Attack")]
-    [SerializeField] private float attackRange = 3.2f;
-    [SerializeField] private float attackCooldown = 0.95f;
-    [SerializeField] private float attackDuration = 0.78f;
-    [SerializeField] private float attackRaiseAngle = -110f;
-    [SerializeField] private float attackSlashAngle = 155f;
-    [SerializeField] private float attackSideAngle = 35f;
+    [SerializeField] private float attackRange = 3f;
+    [SerializeField] private float attackCooldown = 1f;
+    [SerializeField] private float attackDuration = 0.62f;
+    [SerializeField] private float attackRaiseAngle = -75f;
+    [SerializeField] private float attackForeArmBendAngle = -35f;
+    [SerializeField] private float attackSlashAngle = 95f;
+    [SerializeField] private float attackSideAngle = 8f;
 
     [Header("Attack Axes")]
-    [SerializeField] private AttackAxisMode attackAxisMode = AttackAxisMode.XZCombined;
+    [SerializeField] private AttackAxisMode attackAxisMode = AttackAxisMode.XOnly;
     [SerializeField] private Vector3 rightUpperArmRaiseAxis = Vector3.right;
     [SerializeField] private Vector3 rightUpperArmSlashAxis = Vector3.forward;
     [SerializeField] private Vector3 rightForeArmAxis = Vector3.right;
@@ -55,6 +56,9 @@ public class SkeletonVisualAnimator : MonoBehaviour
     [SerializeField] private Transform rightLowerLeg;
     [SerializeField] private Transform rightFoot;
     [SerializeField] private Transform swordTransform;
+
+    [Header("Tank Visual")]
+    [SerializeField] private float visualGroundYOffset = 0f;
 
     [Header("Safety")]
     [SerializeField] private bool enableFallbackVisuals = true;
@@ -129,14 +133,12 @@ public class SkeletonVisualAnimator : MonoBehaviour
             case AttackMode.Bones:
                 ApplyBoneIdleOrWalk(attackBlend);
                 ApplyBoneAttack(attackBlend, attackNormalized);
-                UpdateBoneAttackSlashArc(attackBlend, attackNormalized);
                 break;
 
             case AttackMode.SwordTransform:
                 ApplyBoneIdleOrWalk(attackBlend);
                 ApplyBoneAttack(attackBlend, attackNormalized);
                 ApplySwordTransformAttack(attackBlend, attackNormalized);
-                UpdateBoneAttackSlashArc(attackBlend, attackNormalized);
                 break;
 
             case AttackMode.ModelFallback:
@@ -179,6 +181,13 @@ public class SkeletonVisualAnimator : MonoBehaviour
             Debug.LogWarning("[SkeletonVisualAnimator] Enemy root not found. Disabling component.", this);
             enabled = false;
             return false;
+        }
+
+        if (Mathf.Abs(visualGroundYOffset) > 0.0001f)
+        {
+            Vector3 groundedPosition = transform.localPosition;
+            groundedPosition.y += visualGroundYOffset;
+            transform.localPosition = groundedPosition;
         }
 
         baseLocalPosition = transform.localPosition;
@@ -312,7 +321,7 @@ public class SkeletonVisualAnimator : MonoBehaviour
 
         if (isMoving)
         {
-            walkPhase += Time.deltaTime * walkFrequency * Mathf.Clamp(smoothedMoveSpeed * 0.35f, 0.6f, 1.6f);
+            walkPhase += Time.deltaTime * walkFrequency * Mathf.Clamp(smoothedMoveSpeed * 0.22f, 0.45f, 1.1f);
         }
     }
 
@@ -362,16 +371,16 @@ public class SkeletonVisualAnimator : MonoBehaviour
     private void LogAttackTrigger(float distance)
     {
         Debug.Log(
-            "[SkeletonVisualAnimator] Attack trigger distance="
-            + distance.ToString("F2")
-            + " upperArm="
+            "[SkeletonVisualAnimator] Tank sword attack triggered upperArm="
             + BoneName(rightUpperArm)
             + " foreArm="
             + BoneName(rightForeArm)
             + " hand="
             + BoneName(rightHand)
-            + " mode="
-            + attackMode,
+            + " sword="
+            + BoneName(swordTransform)
+            + " distance="
+            + distance.ToString("F2"),
             this);
     }
 
@@ -421,22 +430,24 @@ public class SkeletonVisualAnimator : MonoBehaviour
     {
         float windUp = normalized < 0.35f
             ? Mathf.SmoothStep(0f, 1f, normalized / 0.35f)
-            : Mathf.Lerp(1f, 0.15f, Mathf.Clamp01((normalized - 0.35f) / 0.3f));
+            : normalized < 0.70f
+                ? 1f
+                : Mathf.Lerp(1f, 0f, (normalized - 0.70f) / 0.30f);
 
         float strike = 0f;
 
-        if (normalized >= 0.35f && normalized <= 0.65f)
+        if (normalized >= 0.35f && normalized < 0.70f)
         {
-            strike = Mathf.SmoothStep(0f, 1f, (normalized - 0.35f) / 0.3f);
+            strike = Mathf.SmoothStep(0f, 1f, (normalized - 0.35f) / 0.35f);
         }
-        else if (normalized > 0.65f)
+        else if (normalized >= 0.70f)
         {
-            strike = Mathf.Lerp(1f, 0f, (normalized - 0.65f) / 0.35f);
+            strike = Mathf.Lerp(1f, 0f, (normalized - 0.70f) / 0.30f);
         }
 
         raiseAmount = attackRaiseAngle * windUp;
         slashAmount = attackSlashAngle * strike;
-        sideAmount = attackSideAngle * Mathf.Max(windUp, strike);
+        sideAmount = attackSideAngle * Mathf.Max(windUp, strike) * 0.35f;
     }
 
     private void ApplyModelRootAnimation(float attackBlend, float attackNormalized)
@@ -484,13 +495,13 @@ public class SkeletonVisualAnimator : MonoBehaviour
         bool isMoving = smoothedMoveSpeed > moveThreshold;
         float bob = isMoving
             ? Mathf.Sin(walkPhase) * bodyBobAmount
-            : Mathf.Sin(Time.time * bodyBobSpeed) * (bodyBobAmount * 0.35f);
+            : Mathf.Sin(Time.time * bodyBobSpeed) * (bodyBobAmount * 0.25f);
         float sway = isMoving ? Mathf.Sin(walkPhase * 0.5f) * bodySwayAngle : 0f;
         float lean = isMoving ? Mathf.Cos(walkPhase * 0.5f) * bodyLeanAngle : 0f;
 
-        ApplyBoneRotation(hips, new Vector3(lean * 0.35f, 0f, sway), bob * 26f);
-        ApplyBoneRotation(spine, new Vector3(lean * 0.6f, 0f, sway * 0.7f), bob * 16f);
-        ApplyBoneRotation(chest, new Vector3(lean, 0f, sway * 0.45f), bob * 11f);
+        ApplyBoneRotation(hips, new Vector3(lean * 0.2f, 0f, sway * 0.5f), bob * 8f);
+        ApplyBoneRotation(spine, new Vector3(0f, 0f, sway * 0.25f), bob * 4f);
+        ApplyBoneRotation(chest, Vector3.zero, bob * 2f);
 
         if (!isMoving)
         {
@@ -501,21 +512,21 @@ public class SkeletonVisualAnimator : MonoBehaviour
         float armSwing = Mathf.Sin(walkPhase + Mathf.PI) * armSwingAngle;
 
         ApplyBoneRotation(leftUpperLeg, new Vector3(legSwing, 0f, 0f));
-        ApplyBoneRotation(leftLowerLeg, new Vector3(-legSwing * 0.8f, 0f, 0f));
-        ApplyBoneRotation(leftFoot, new Vector3(legSwing * 0.38f, 0f, 0f));
+        ApplyBoneRotation(leftLowerLeg, new Vector3(-legSwing * 0.45f, 0f, 0f));
+        ApplyBoneRotation(leftFoot, new Vector3(legSwing * 0.2f, 0f, 0f));
 
         ApplyBoneRotation(rightUpperLeg, new Vector3(-legSwing, 0f, 0f));
-        ApplyBoneRotation(rightLowerLeg, new Vector3(legSwing * 0.8f, 0f, 0f));
-        ApplyBoneRotation(rightFoot, new Vector3(-legSwing * 0.38f, 0f, 0f));
+        ApplyBoneRotation(rightLowerLeg, new Vector3(legSwing * 0.45f, 0f, 0f));
+        ApplyBoneRotation(rightFoot, new Vector3(-legSwing * 0.2f, 0f, 0f));
 
-        ApplyBoneRotation(leftUpperArm, new Vector3(-armSwing * 0.9f, 0f, sway * -0.15f));
-        ApplyBoneRotation(leftForeArm, new Vector3(-armSwing * 0.5f, 0f, 0f));
+        ApplyBoneRotation(leftUpperArm, new Vector3(-armSwing, 0f, 0f));
+        ApplyBoneRotation(leftForeArm, new Vector3(-armSwing * 0.35f, 0f, 0f));
 
         if (attackBlend <= 0.02f)
         {
-            float rightArmSwing = armSwing * 0.12f;
-            ApplyBoneRotation(rightUpperArm, new Vector3(rightArmSwing, 0f, sway * 0.05f));
-            ApplyBoneRotation(rightForeArm, new Vector3(rightArmSwing * 0.3f, 0f, 0f));
+            float rightArmSwing = armSwing * 0.08f;
+            ApplyBoneRotation(rightUpperArm, new Vector3(rightArmSwing, 0f, 0f));
+            ApplyBoneRotation(rightForeArm, new Vector3(rightArmSwing * 0.2f, 0f, 0f));
         }
     }
 
@@ -528,40 +539,38 @@ public class SkeletonVisualAnimator : MonoBehaviour
 
         GetAttackPhaseAngles(attackNormalized, out float raiseAmount, out float slashAmount, out float sideAmount);
 
-        Vector3 upperArmEuler = BuildAttackEuler(
-            raiseAmount,
-            slashAmount,
-            sideAmount,
-            rightUpperArmRaiseAxis,
-            rightUpperArmSlashAxis);
-        Vector3 foreArmEuler = BuildAttackEuler(
-            raiseAmount * 0.45f,
-            slashAmount * 0.85f,
-            sideAmount * 0.5f,
-            rightForeArmAxis,
-            rightForeArmAxis);
-        Vector3 handEuler = BuildAttackEuler(
-            raiseAmount * 0.2f,
-            slashAmount * 0.55f,
-            sideAmount * 0.35f,
-            rightHandAxis,
-            rightHandAxis);
+        float windUp = attackNormalized < 0.35f
+            ? Mathf.SmoothStep(0f, 1f, attackNormalized / 0.35f)
+            : attackNormalized < 0.70f
+                ? 1f
+                : Mathf.Lerp(1f, 0f, (attackNormalized - 0.70f) / 0.30f);
 
-        ApplyBoneRotationAbsolute(rightUpperArm, upperArmEuler);
-        ApplyBoneRotationAbsolute(rightForeArm, foreArmEuler);
-        ApplyBoneRotationAbsolute(rightHand, handEuler);
-        ApplyBoneRotation(chest, new Vector3(-slashAmount * 0.1f, sideAmount * 0.18f, 0f));
-        ApplyBoneRotation(spine, new Vector3(-slashAmount * 0.07f, sideAmount * 0.05f, 0f));
+        float strike = 0f;
+        if (attackNormalized >= 0.35f && attackNormalized < 0.70f)
+        {
+            strike = Mathf.SmoothStep(0f, 1f, (attackNormalized - 0.35f) / 0.35f);
+        }
+        else if (attackNormalized >= 0.70f)
+        {
+            strike = Mathf.Lerp(1f, 0f, (attackNormalized - 0.70f) / 0.30f);
+        }
+
+        float upperArmX = raiseAmount + slashAmount;
+        float foreArmX = attackForeArmBendAngle * windUp;
+        if (strike > 0.01f)
+        {
+            foreArmX = Mathf.Lerp(attackForeArmBendAngle * 0.5f, 10f, strike);
+        }
+
+        float handX = strike * 15f;
+
+        ApplyBoneRotationAbsolute(rightUpperArm, new Vector3(upperArmX, 0f, sideAmount * 0.3f));
+        ApplyBoneRotationAbsolute(rightForeArm, new Vector3(foreArmX, 0f, 0f));
+        ApplyBoneRotationAbsolute(rightHand, new Vector3(handX, 0f, strike * 8f));
 
         if (swordTransform != null && baseRotations.ContainsKey(swordTransform))
         {
-            Vector3 swordEuler = BuildAttackEuler(
-                raiseAmount * 0.25f,
-                slashAmount * 0.65f,
-                sideAmount * 0.25f,
-                Vector3.right,
-                Vector3.forward);
-            ApplyBoneRotationAbsolute(swordTransform, swordEuler);
+            ApplyBoneRotationAbsolute(swordTransform, new Vector3(handX * 0.4f, 0f, strike * 12f));
         }
     }
 
@@ -794,7 +803,25 @@ public class SkeletonVisualAnimator : MonoBehaviour
         hips ??= FindBestBone(candidates, Side.Any, "hips", "pelvis", "root");
         spine ??= FindBestBone(candidates, Side.Any, "spine");
         chest ??= FindBestBone(candidates, Side.Any, "chest", "spine1", "spine2", "torso");
+        leftUpperArm ??= FindBoneByPreferredNames(
+            candidates,
+            Side.Left,
+            "L.UpperArm",
+            "LeftUpperArm",
+            "LeftArm",
+            "Arm.L",
+            "UpperArm.L");
         leftUpperArm ??= FindBestBone(candidates, Side.Left, "upperarm", "upper_arm", "arm");
+        leftForeArm ??= FindBoneByPreferredNames(
+            candidates,
+            Side.Left,
+            "L.ForeArm",
+            "L.LowerArm",
+            "L.DownArm",
+            "LeftForeArm",
+            "LeftLowerArm",
+            "ForeArm.L",
+            "LowerArm.L");
         leftForeArm ??= FindBestBone(
             candidates,
             Side.Left,
@@ -803,6 +830,12 @@ public class SkeletonVisualAnimator : MonoBehaviour
             "lower_arm",
             "fore_arm",
             "downarm");
+        leftHand ??= FindBoneByPreferredNames(
+            candidates,
+            Side.Left,
+            "L.Hand",
+            "LeftHand",
+            "Hand.L");
         leftHand ??= FindBestBone(candidates, Side.Left, "hand", "wrist");
         leftUpperLeg ??= FindBestBone(candidates, Side.Left, "upperleg", "upleg", "thigh", "upper_leg");
         leftLowerLeg ??= FindBestBone(candidates, Side.Left, "downleg", "lowerleg", "lower_leg", "leg", "calf", "shin");

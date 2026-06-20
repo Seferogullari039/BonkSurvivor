@@ -252,7 +252,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 691cff9a0623620449c483da988c0eff, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.25323284
+      value: -0.29323284
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 691cff9a0623620449c483da988c0eff, type: 3}
       propertyPath: m_LocalPosition.z
@@ -316,21 +316,22 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SkeletonVisualAnimator
   walkSpeed: 6
-  legSwingAngle: 28
-  armSwingAngle: 18
-  bodyBobAmount: 0.055
-  bodyBobSpeed: 6.5
-  bodySwayAngle: 4
-  bodyLeanAngle: 3.5
+  legSwingAngle: 12
+  armSwingAngle: 5
+  bodyBobAmount: 0.014
+  bodyBobSpeed: 5
+  bodySwayAngle: 0.8
+  bodyLeanAngle: 0.5
   moveThreshold: 0.015
-  walkFrequency: 7.5
-  attackRange: 3.2
-  attackCooldown: 0.95
-  attackDuration: 0.78
-  attackRaiseAngle: -110
-  attackSlashAngle: 155
-  attackSideAngle: 35
-  attackAxisMode: 7
+  walkFrequency: 5
+  attackRange: 3
+  attackCooldown: 1
+  attackDuration: 0.62
+  attackRaiseAngle: -75
+  attackForeArmBendAngle: -35
+  attackSlashAngle: 95
+  attackSideAngle: 8
+  attackAxisMode: 3
   rightUpperArmRaiseAxis: {x: 1, y: 0, z: 0}
   rightUpperArmSlashAxis: {x: 0, y: 0, z: 1}
   rightForeArmAxis: {x: 1, y: 0, z: 0}
@@ -355,6 +356,7 @@ MonoBehaviour:
   rightLowerLeg: {fileID: 0}
   rightFoot: {fileID: 0}
   swordTransform: {fileID: 0}
+  visualGroundYOffset: 0
   enableFallbackVisuals: 1
 --- !u!4 &2103510880722352114 stripped
 Transform:
