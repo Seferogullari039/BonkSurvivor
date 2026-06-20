@@ -324,14 +324,14 @@ MonoBehaviour:
   bodyLeanAngle: 0.5
   moveThreshold: 0.015
   walkFrequency: 5
-  attackRange: 3
-  attackCooldown: 1
-  attackDuration: 0.62
-  attackRaiseAngle: -75
+  attackRange: 3.5
+  attackCooldown: 0.9
+  attackDuration: 0.8
+  attackRaiseAngle: -120
   attackForeArmBendAngle: -35
-  attackSlashAngle: 95
-  attackSideAngle: 8
-  attackAxisMode: 3
+  attackSlashAngle: 170
+  attackSideAngle: 45
+  attackAxisMode: 7
   rightUpperArmRaiseAxis: {x: 1, y: 0, z: 0}
   rightUpperArmSlashAxis: {x: 0, y: 0, z: 1}
   rightForeArmAxis: {x: 1, y: 0, z: 0}

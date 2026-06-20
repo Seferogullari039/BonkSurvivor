@@ -18,16 +18,16 @@ public class SkeletonVisualAnimator : MonoBehaviour
     [SerializeField] private float walkFrequency = 5f;
 
     [Header("Attack")]
-    [SerializeField] private float attackRange = 3f;
-    [SerializeField] private float attackCooldown = 1f;
-    [SerializeField] private float attackDuration = 0.62f;
-    [SerializeField] private float attackRaiseAngle = -75f;
+    [SerializeField] private float attackRange = 3.5f;
+    [SerializeField] private float attackCooldown = 0.9f;
+    [SerializeField] private float attackDuration = 0.8f;
+    [SerializeField] private float attackRaiseAngle = -120f;
     [SerializeField] private float attackForeArmBendAngle = -35f;
-    [SerializeField] private float attackSlashAngle = 95f;
-    [SerializeField] private float attackSideAngle = 8f;
+    [SerializeField] private float attackSlashAngle = 170f;
+    [SerializeField] private float attackSideAngle = 45f;
 
     [Header("Attack Axes")]
-    [SerializeField] private AttackAxisMode attackAxisMode = AttackAxisMode.XOnly;
+    [SerializeField] private AttackAxisMode attackAxisMode = AttackAxisMode.XZCombined;
     [SerializeField] private Vector3 rightUpperArmRaiseAxis = Vector3.right;
     [SerializeField] private Vector3 rightUpperArmSlashAxis = Vector3.forward;
     [SerializeField] private Vector3 rightForeArmAxis = Vector3.right;
@@ -72,7 +72,14 @@ public class SkeletonVisualAnimator : MonoBehaviour
         ZOnly,
         YOnly,
         XYCombined,
-        XZCombined
+        XZCombined,
+        YZCombined
+    }
+
+    private enum AttackSide
+    {
+        Left,
+        Right
     }
 
     private enum AttackMode
@@ -85,6 +92,13 @@ public class SkeletonVisualAnimator : MonoBehaviour
 
     private readonly Dictionary<Transform, Quaternion> baseRotations = new Dictionary<Transform, Quaternion>();
     private Transform enemyRoot;
+    private Transform attackUpperArm;
+    private Transform attackForeArm;
+    private Transform attackHand;
+    private AttackSide attackSide = AttackSide.Right;
+    private float swordDistanceLeft;
+    private float swordDistanceRight;
+    private bool attackArmLogged;
     private Vector3 baseLocalPosition;
     private Quaternion baseLocalRotation;
     private Vector3 baseSwordLocalPosition;
@@ -133,12 +147,14 @@ public class SkeletonVisualAnimator : MonoBehaviour
             case AttackMode.Bones:
                 ApplyBoneIdleOrWalk(attackBlend);
                 ApplyBoneAttack(attackBlend, attackNormalized);
+                UpdateBoneAttackSlashArc(attackBlend, attackNormalized);
                 break;
 
             case AttackMode.SwordTransform:
                 ApplyBoneIdleOrWalk(attackBlend);
                 ApplyBoneAttack(attackBlend, attackNormalized);
                 ApplySwordTransformAttack(attackBlend, attackNormalized);
+                UpdateBoneAttackSlashArc(attackBlend, attackNormalized);
                 break;
 
             case AttackMode.ModelFallback:
@@ -198,6 +214,7 @@ public class SkeletonVisualAnimator : MonoBehaviour
         {
             AutoFindBones();
             swordTransform ??= FindSwordTransform();
+            ResolveAttackArm();
         }
 
         DisableBlockingAnimators();
@@ -219,15 +236,11 @@ public class SkeletonVisualAnimator : MonoBehaviour
         if (!usingBoneAttack && attackMode == AttackMode.ModelFallback)
         {
             Debug.LogWarning(
-                "[SkeletonVisualAnimator] Right arm bones not found; attack uses slash arc fallback.",
+                "[SkeletonVisualAnimator] Attack arm bones not found; attack uses slash arc fallback.",
                 this);
         }
-        else if (rightUpperArm == null && rightForeArm == null && rightHand == null)
-        {
-            Debug.LogWarning(
-                "[SkeletonVisualAnimator] Right arm bones not found (rightUpperArm/rightForeArm/rightHand=null).",
-                this);
-        }
+
+        LogAttackArmResolution();
 
         initialized = true;
         return true;
@@ -268,6 +281,16 @@ public class SkeletonVisualAnimator : MonoBehaviour
             + BoneName(rightForeArm)
             + " rightHand="
             + BoneName(rightHand)
+            + " leftHand="
+            + BoneName(leftHand)
+            + " attackSide="
+            + attackSide
+            + " attackUpperArm="
+            + BoneName(attackUpperArm)
+            + " attackForeArm="
+            + BoneName(attackForeArm)
+            + " attackHand="
+            + BoneName(attackHand)
             + " leftUpperLeg="
             + BoneName(leftUpperLeg)
             + " rightUpperLeg="
@@ -370,17 +393,58 @@ public class SkeletonVisualAnimator : MonoBehaviour
     [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
     private void LogAttackTrigger(float distance)
     {
+        if (!attackArmLogged)
+        {
+            LogAttackArmResolution();
+        }
+
         Debug.Log(
-            "[SkeletonVisualAnimator] Tank sword attack triggered upperArm="
-            + BoneName(rightUpperArm)
+            "[SkeletonVisualAnimator] Attack trigger distance="
+            + distance.ToString("F2")
+            + " attackSide="
+            + attackSide
+            + " upperArm="
+            + BoneName(attackUpperArm)
             + " foreArm="
-            + BoneName(rightForeArm)
+            + BoneName(attackForeArm)
             + " hand="
-            + BoneName(rightHand)
-            + " sword="
-            + BoneName(swordTransform)
-            + " distance="
-            + distance.ToString("F2"),
+            + BoneName(attackHand)
+            + " attackMode="
+            + attackMode,
+            this);
+
+        ShowSlashArc(0.35f);
+    }
+
+    [System.Diagnostics.Conditional("UNITY_EDITOR")]
+    [System.Diagnostics.Conditional("DEVELOPMENT_BUILD")]
+    private void LogAttackArmResolution()
+    {
+        if (attackArmLogged)
+        {
+            return;
+        }
+
+        attackArmLogged = true;
+
+        string swordLabel = swordTransform != null ? BoneName(swordTransform) : "null";
+
+        Debug.Log(
+            "[SkeletonVisualAnimator] sword="
+            + swordLabel
+            + " attackSide="
+            + attackSide
+            + " upperArm="
+            + BoneName(attackUpperArm)
+            + " foreArm="
+            + BoneName(attackForeArm)
+            + " hand="
+            + BoneName(attackHand)
+            + " swordDistanceL="
+            + swordDistanceLeft.ToString("F3")
+            + " swordDistanceR="
+            + swordDistanceRight.ToString("F3")
+            + (swordTransform == null ? " fallback=Right" : string.Empty),
             this);
     }
 
@@ -447,7 +511,7 @@ public class SkeletonVisualAnimator : MonoBehaviour
 
         raiseAmount = attackRaiseAngle * windUp;
         slashAmount = attackSlashAngle * strike;
-        sideAmount = attackSideAngle * Mathf.Max(windUp, strike) * 0.35f;
+        sideAmount = attackSideAngle * Mathf.Max(windUp, strike);
     }
 
     private void ApplyModelRootAnimation(float attackBlend, float attackNormalized)
@@ -519,10 +583,13 @@ public class SkeletonVisualAnimator : MonoBehaviour
         ApplyBoneRotation(rightLowerLeg, new Vector3(legSwing * 0.45f, 0f, 0f));
         ApplyBoneRotation(rightFoot, new Vector3(-legSwing * 0.2f, 0f, 0f));
 
-        ApplyBoneRotation(leftUpperArm, new Vector3(-armSwing, 0f, 0f));
-        ApplyBoneRotation(leftForeArm, new Vector3(-armSwing * 0.35f, 0f, 0f));
+        if (leftUpperArm != attackUpperArm && leftForeArm != attackForeArm)
+        {
+            ApplyBoneRotation(leftUpperArm, new Vector3(-armSwing, 0f, 0f));
+            ApplyBoneRotation(leftForeArm, new Vector3(-armSwing * 0.35f, 0f, 0f));
+        }
 
-        if (attackBlend <= 0.02f)
+        if (rightUpperArm != attackUpperArm && rightForeArm != attackForeArm && attackBlend <= 0.02f)
         {
             float rightArmSwing = armSwing * 0.08f;
             ApplyBoneRotation(rightUpperArm, new Vector3(rightArmSwing, 0f, 0f));
@@ -555,22 +622,38 @@ public class SkeletonVisualAnimator : MonoBehaviour
             strike = Mathf.Lerp(1f, 0f, (attackNormalized - 0.70f) / 0.30f);
         }
 
-        float upperArmX = raiseAmount + slashAmount;
-        float foreArmX = attackForeArmBendAngle * windUp;
-        if (strike > 0.01f)
-        {
-            foreArmX = Mathf.Lerp(attackForeArmBendAngle * 0.5f, 10f, strike);
-        }
+        Vector3 upperArmEuler = BuildAttackEuler(
+            raiseAmount,
+            slashAmount,
+            sideAmount,
+            rightUpperArmRaiseAxis,
+            rightUpperArmSlashAxis);
+        Vector3 foreArmEuler = BuildAttackEuler(
+            raiseAmount * 0.55f + attackForeArmBendAngle * windUp,
+            slashAmount * 0.75f,
+            sideAmount * 0.45f,
+            rightForeArmAxis,
+            rightForeArmAxis);
+        Vector3 handEuler = BuildAttackEuler(
+            raiseAmount * 0.25f,
+            slashAmount * 0.55f + strike * 15f,
+            sideAmount * 0.35f,
+            rightHandAxis,
+            rightHandAxis);
 
-        float handX = strike * 15f;
-
-        ApplyBoneRotationAbsolute(rightUpperArm, new Vector3(upperArmX, 0f, sideAmount * 0.3f));
-        ApplyBoneRotationAbsolute(rightForeArm, new Vector3(foreArmX, 0f, 0f));
-        ApplyBoneRotationAbsolute(rightHand, new Vector3(handX, 0f, strike * 8f));
+        ApplyBoneRotationAbsolute(attackUpperArm, upperArmEuler);
+        ApplyBoneRotationAbsolute(attackForeArm, foreArmEuler);
+        ApplyBoneRotationAbsolute(attackHand, handEuler);
 
         if (swordTransform != null && baseRotations.ContainsKey(swordTransform))
         {
-            ApplyBoneRotationAbsolute(swordTransform, new Vector3(handX * 0.4f, 0f, strike * 12f));
+            Vector3 swordEuler = BuildAttackEuler(
+                raiseAmount * 0.3f,
+                slashAmount * 0.7f,
+                sideAmount * 0.4f,
+                Vector3.right,
+                Vector3.forward);
+            ApplyBoneRotationAbsolute(swordTransform, swordEuler);
         }
     }
 
@@ -599,6 +682,9 @@ public class SkeletonVisualAnimator : MonoBehaviour
                 Vector3 xyCombined = raiseAxis.normalized * raise + Vector3.up * slash;
                 xyCombined.z += side * 0.35f;
                 return xyCombined;
+
+            case AttackAxisMode.YZCombined:
+                return new Vector3(side * 0.35f, raise + slash * 0.5f, raise * 0.25f + slash);
 
             default:
                 Vector3 combined =
@@ -632,7 +718,7 @@ public class SkeletonVisualAnimator : MonoBehaviour
 
     private void UpdateBoneAttackSlashArc(float attackBlend, float attackNormalized)
     {
-        if (attackBlend <= 0.05f || attackNormalized < 0.3f || attackNormalized > 0.7f)
+        if (attackBlend <= 0.05f)
         {
             if (slashArcVisual != null && Time.time >= slashArcHideTime)
             {
@@ -666,11 +752,13 @@ public class SkeletonVisualAnimator : MonoBehaviour
         slashArcVisual.SetActive(true);
         slashArcHideTime = Time.time + 0.30f;
 
-        float strikeT = Mathf.InverseLerp(0.35f, 0.65f, attackNormalized);
+        float strikeT = attackNormalized < 0.35f
+            ? 0f
+            : Mathf.InverseLerp(0.35f, 0.70f, attackNormalized);
         Transform arcTransform = slashArcVisual.transform;
-        arcTransform.localPosition = new Vector3(0.18f, 1.0f, 0.5f + strikeT * 0.22f);
-        arcTransform.localRotation = Quaternion.Euler(-40f - attackSlashAngle * strikeT * 0.4f, 28f, 35f);
-        arcTransform.localScale = new Vector3(0.88f, 0.06f, 0.28f + strikeT * 0.42f);
+        arcTransform.localPosition = new Vector3(0.22f, 1.05f, 0.55f + strikeT * 0.28f);
+        arcTransform.localRotation = Quaternion.Euler(-55f - attackSlashAngle * strikeT * 0.35f, 32f, 40f);
+        arcTransform.localScale = new Vector3(1.05f, 0.07f, 0.34f + strikeT * 0.55f);
 
         if (slashLineRenderer != null)
         {
@@ -749,6 +837,8 @@ public class SkeletonVisualAnimator : MonoBehaviour
     private Transform FindSwordTransform()
     {
         Transform[] all = GetComponentsInChildren<Transform>(true);
+        Transform best = null;
+        int bestDepth = int.MaxValue;
 
         for (int i = 0; i < all.Length; i++)
         {
@@ -759,19 +849,90 @@ public class SkeletonVisualAnimator : MonoBehaviour
                 continue;
             }
 
-            string name = candidate.name.ToLowerInvariant();
+            if (IsSwordName(candidate.name))
+            {
+                int depth = GetTransformDepth(candidate);
+                if (depth < bestDepth)
+                {
+                    bestDepth = depth;
+                    best = candidate;
+                }
+            }
+        }
 
-            if (name.Contains("sword")
-                || name.Contains("blade")
-                || name.Contains("weapon")
-                || name.Contains("katana")
-                || name.Contains("knife"))
+        Renderer[] renderers = GetComponentsInChildren<Renderer>(true);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer == null || !IsSwordName(renderer.name))
+            {
+                continue;
+            }
+
+            Transform candidate = renderer.transform;
+            int depth = GetTransformDepth(candidate);
+
+            if (depth < bestDepth)
+            {
+                bestDepth = depth;
+                best = candidate;
+            }
+        }
+
+        return best;
+    }
+
+    private static Transform FindSwordTransformUnder(Transform root)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        Transform[] all = root.GetComponentsInChildren<Transform>(true);
+
+        for (int i = 0; i < all.Length; i++)
+        {
+            Transform candidate = all[i];
+
+            if (candidate != null && IsSwordName(candidate.name))
             {
                 return candidate;
             }
         }
 
         return null;
+    }
+
+    private static bool IsSwordName(string name)
+    {
+        if (string.IsNullOrEmpty(name))
+        {
+            return false;
+        }
+
+        string lower = name.ToLowerInvariant();
+        return lower.Contains("sword")
+            || lower.Contains("blade")
+            || lower.Contains("weapon")
+            || lower.Contains("katana")
+            || lower.Contains("knife");
+    }
+
+    private static int GetTransformDepth(Transform node)
+    {
+        int depth = 0;
+        Transform current = node;
+
+        while (current != null)
+        {
+            depth++;
+            current = current.parent;
+        }
+
+        return depth;
     }
 
     private void DisableBlockingAnimators()
@@ -788,12 +949,175 @@ public class SkeletonVisualAnimator : MonoBehaviour
             }
 
             animator.applyRootMotion = false;
+            animator.enabled = false;
+        }
+    }
 
-            if (animator.runtimeAnimatorController == null)
+    private void ResolveAttackArm()
+    {
+        EnsureHandBonesFound();
+
+        swordDistanceLeft = float.PositiveInfinity;
+        swordDistanceRight = float.PositiveInfinity;
+
+        if (swordTransform != null)
+        {
+            Vector3 swordPos = swordTransform.position;
+
+            if (leftHand != null)
             {
-                animator.enabled = false;
+                swordDistanceLeft = Vector3.Distance(swordPos, leftHand.position);
+            }
+
+            if (rightHand != null)
+            {
+                swordDistanceRight = Vector3.Distance(swordPos, rightHand.position);
+            }
+
+            if (swordDistanceLeft <= swordDistanceRight)
+            {
+                attackSide = AttackSide.Left;
+            }
+            else
+            {
+                attackSide = AttackSide.Right;
             }
         }
+        else
+        {
+            attackSide = AttackSide.Right;
+        }
+
+        AssignAttackArmBones();
+
+        if (swordTransform == null && attackHand != null)
+        {
+            swordTransform = FindSwordTransformUnder(attackHand);
+        }
+    }
+
+    private void EnsureHandBonesFound()
+    {
+        List<Transform> candidates = CollectBoneCandidates();
+
+        leftHand ??= FindBoneByPreferredNames(
+            candidates,
+            Side.Left,
+            "L.Hand",
+            "LeftHand",
+            "Hand.L",
+            "L_Hand",
+            "hand.l");
+        leftHand ??= FindBestBone(candidates, Side.Left, "hand", "wrist");
+
+        rightHand ??= FindBoneByPreferredNames(
+            candidates,
+            Side.Right,
+            "R.Hand",
+            "RightHand",
+            "Hand.R",
+            "R_Hand",
+            "hand.r");
+        rightHand ??= FindBestBone(candidates, Side.Right, "hand", "wrist");
+    }
+
+    private void AssignAttackArmBones()
+    {
+        List<Transform> candidates = CollectBoneCandidates();
+
+        if (attackSide == AttackSide.Left)
+        {
+            attackHand = leftHand;
+            attackUpperArm = leftUpperArm ?? FindBoneByPreferredNames(
+                candidates,
+                Side.Left,
+                "L.UpperArm",
+                "LeftUpperArm",
+                "LeftArm",
+                "Arm.L",
+                "UpperArm.L");
+            attackUpperArm ??= FindBestBone(candidates, Side.Left, "upperarm", "upper_arm", "arm");
+            attackForeArm = leftForeArm ?? FindBoneByPreferredNames(
+                candidates,
+                Side.Left,
+                "L.ForeArm",
+                "L.LowerArm",
+                "L.DownArm",
+                "LeftForeArm",
+                "LeftLowerArm",
+                "ForeArm.L",
+                "LowerArm.L");
+            attackForeArm ??= FindBestBone(
+                candidates,
+                Side.Left,
+                "forearm",
+                "lowerarm",
+                "lower_arm",
+                "fore_arm",
+                "downarm");
+        }
+        else
+        {
+            attackHand = rightHand;
+            attackUpperArm = rightUpperArm ?? FindBoneByPreferredNames(
+                candidates,
+                Side.Right,
+                "R.UpperArm",
+                "RightUpperArm",
+                "RightArm",
+                "Arm.R",
+                "UpperArm.R");
+            attackUpperArm ??= FindBestBone(candidates, Side.Right, "upperarm", "upper_arm", "arm");
+            attackForeArm = rightForeArm ?? FindBoneByPreferredNames(
+                candidates,
+                Side.Right,
+                "R.ForeArm",
+                "R.LowerArm",
+                "R.DownArm",
+                "RightForeArm",
+                "RightLowerArm",
+                "ForeArm.R",
+                "LowerArm.R");
+            attackForeArm ??= FindBestBone(
+                candidates,
+                Side.Right,
+                "forearm",
+                "lowerarm",
+                "lower_arm",
+                "fore_arm",
+                "downarm");
+        }
+
+        if (attackHand == null && attackUpperArm != null)
+        {
+            attackHand = FindChildBone(attackUpperArm, "hand", "wrist");
+        }
+    }
+
+    private static Transform FindChildBone(Transform root, params string[] tokens)
+    {
+        if (root == null)
+        {
+            return null;
+        }
+
+        Transform[] children = root.GetComponentsInChildren<Transform>(true);
+
+        for (int i = 0; i < children.Length; i++)
+        {
+            Transform child = children[i];
+            string lowerName = child.name.ToLowerInvariant();
+
+            for (int tokenIndex = 0; tokenIndex < tokens.Length; tokenIndex++)
+            {
+                if (lowerName.Contains(tokens[tokenIndex]))
+                {
+                    return child;
+                }
+            }
+        }
+
+        return null;
     }
 
     private void AutoFindBones()
@@ -835,7 +1159,9 @@ public class SkeletonVisualAnimator : MonoBehaviour
             Side.Left,
             "L.Hand",
             "LeftHand",
-            "Hand.L");
+            "Hand.L",
+            "L_Hand",
+            "hand.l");
         leftHand ??= FindBestBone(candidates, Side.Left, "hand", "wrist");
         leftUpperLeg ??= FindBestBone(candidates, Side.Left, "upperleg", "upleg", "thigh", "upper_leg");
         leftLowerLeg ??= FindBestBone(candidates, Side.Left, "downleg", "lowerleg", "lower_leg", "leg", "calf", "shin");
@@ -872,8 +1198,10 @@ public class SkeletonVisualAnimator : MonoBehaviour
             Side.Right,
             "R.Hand",
             "RightHand",
-            "Hand.R");
-
+            "Hand.R",
+            "R_Hand",
+            "hand.r");
+        rightHand ??= FindBestBone(candidates, Side.Right, "hand", "wrist");
         rightUpperArm ??= FindBestBone(candidates, Side.Right, "upperarm", "upper_arm", "arm");
         rightForeArm ??= FindBestBone(
             candidates,
@@ -883,7 +1211,6 @@ public class SkeletonVisualAnimator : MonoBehaviour
             "lower_arm",
             "fore_arm",
             "downarm");
-        rightHand ??= FindBestBone(candidates, Side.Right, "hand", "wrist");
     }
 
     private static Transform FindBoneByPreferredNames(
@@ -1066,7 +1393,7 @@ public class SkeletonVisualAnimator : MonoBehaviour
 
     private bool HasAttackBones()
     {
-        return rightUpperArm != null || rightForeArm != null || rightHand != null;
+        return attackUpperArm != null || attackForeArm != null || attackHand != null;
     }
 
     private void CacheBaseRotations()
@@ -1077,9 +1404,13 @@ public class SkeletonVisualAnimator : MonoBehaviour
         CacheBone(chest);
         CacheBone(leftUpperArm);
         CacheBone(leftForeArm);
+        CacheBone(leftHand);
         CacheBone(rightUpperArm);
         CacheBone(rightForeArm);
         CacheBone(rightHand);
+        CacheBone(attackUpperArm);
+        CacheBone(attackForeArm);
+        CacheBone(attackHand);
         CacheBone(leftUpperLeg);
         CacheBone(leftLowerLeg);
         CacheBone(leftFoot);
