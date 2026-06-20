@@ -11,13 +11,20 @@ public class EnemyVisualFacingController : MonoBehaviour
     [SerializeField] private Vector3 localEulerOffset = Vector3.zero;
     [SerializeField] private bool lockPitchRoll = true;
     [SerializeField] private float minDirectionMagnitude = 0.02f;
+    [SerializeField] private bool debugFacing = true;
+
+    private const float TargetSearchInterval = 1f;
+    private const float DebugLogInterval = 3f;
 
     private Transform movementRoot;
-    private Transform playerTransform;
+    private Transform cachedTargetTransform;
+    private float nextTargetSearchTime;
+    private float nextDebugLogTime;
     private Vector3 lastMovementSamplePosition;
     private Vector3 cachedMoveDirection = Vector3.forward;
     private bool hasMovementSample;
     private bool initialized;
+    private bool refusedEnemyRoot;
 
     private void Awake()
     {
@@ -26,13 +33,14 @@ public class EnemyVisualFacingController : MonoBehaviour
 
     private void LateUpdate()
     {
-        if (!TryInitialize() || visualPivot == null)
+        if (refusedEnemyRoot || !TryInitialize() || visualPivot == null)
         {
             return;
         }
 
         if (!TryResolveFacingDirection(out Vector3 worldDirection))
         {
+            MaybeLogDebug(false, worldDirection, 0f, 0f);
             return;
         }
 
@@ -40,6 +48,7 @@ public class EnemyVisualFacingController : MonoBehaviour
 
         if (worldDirection.sqrMagnitude < minDirectionMagnitude * minDirectionMagnitude)
         {
+            MaybeLogDebug(cachedTargetTransform != null, worldDirection, 0f, 0f);
             return;
         }
 
@@ -49,6 +58,11 @@ public class EnemyVisualFacingController : MonoBehaviour
 
     private bool TryInitialize()
     {
+        if (refusedEnemyRoot)
+        {
+            return false;
+        }
+
         if (initialized)
         {
             return visualPivot != null;
@@ -59,8 +73,15 @@ public class EnemyVisualFacingController : MonoBehaviour
             visualPivot = transform;
         }
 
+        if (visualPivot != null && visualPivot.GetComponent<Enemy>() != null)
+        {
+            Debug.LogWarning("[EnemyVisualFacing] Refusing to rotate enemy root.", this);
+            refusedEnemyRoot = true;
+            enabled = false;
+            return false;
+        }
+
         movementRoot = ResolveMovementRoot();
-        playerTransform = ResolvePlayerTransform();
 
         if (movementRoot != null)
         {
@@ -74,46 +95,39 @@ public class EnemyVisualFacingController : MonoBehaviour
 
     private void ApplyFacingRotation(Vector3 worldDirection)
     {
-        float targetYaw = Mathf.Atan2(worldDirection.x, worldDirection.z) * Mathf.Rad2Deg;
-        Quaternion targetLocalRotation;
+        Quaternion targetWorldRotation = Quaternion.LookRotation(worldDirection, Vector3.up);
+        Quaternion finalRotation = targetWorldRotation * Quaternion.Euler(localEulerOffset);
 
         if (lockPitchRoll)
         {
-            targetLocalRotation = Quaternion.Euler(
-                localEulerOffset.x,
-                targetYaw + localEulerOffset.y,
-                localEulerOffset.z);
-        }
-        else
-        {
-            Quaternion worldRotation = Quaternion.LookRotation(worldDirection, Vector3.up);
-            Transform parent = visualPivot.parent;
-
-            if (parent != null)
-            {
-                worldRotation = Quaternion.Inverse(parent.rotation) * worldRotation;
-            }
-
-            targetLocalRotation = worldRotation * Quaternion.Euler(localEulerOffset);
+            float yaw = finalRotation.eulerAngles.y;
+            finalRotation = Quaternion.Euler(0f, yaw, 0f);
         }
 
-        visualPivot.localRotation = Quaternion.Slerp(
-            visualPivot.localRotation,
-            targetLocalRotation,
+        visualPivot.rotation = Quaternion.Slerp(
+            visualPivot.rotation,
+            finalRotation,
             Time.deltaTime * turnSpeed);
+
+        MaybeLogDebug(
+            cachedTargetTransform != null,
+            worldDirection,
+            visualPivot.rotation.eulerAngles.y,
+            finalRotation.eulerAngles.y);
     }
 
     private bool TryResolveFacingDirection(out Vector3 worldDirection)
     {
         worldDirection = Vector3.zero;
+        Vector3 origin = movementRoot != null ? movementRoot.position : visualPivot.position;
 
         if (facePlayer)
         {
-            playerTransform = ResolvePlayerTransform();
+            Transform targetTransform = GetTargetTransform();
 
-            if (playerTransform != null)
+            if (targetTransform != null)
             {
-                worldDirection = playerTransform.position - visualPivot.position;
+                worldDirection = targetTransform.position - origin;
                 worldDirection.y = 0f;
 
                 if (worldDirection.sqrMagnitude >= minDirectionMagnitude * minDirectionMagnitude)
@@ -139,8 +153,79 @@ public class EnemyVisualFacingController : MonoBehaviour
         return false;
     }
 
+    private Transform GetTargetTransform()
+    {
+        if (cachedTargetTransform != null)
+        {
+            return cachedTargetTransform;
+        }
+
+        if (Time.unscaledTime < nextTargetSearchTime)
+        {
+            return null;
+        }
+
+        cachedTargetTransform = ResolveTargetTransform();
+        nextTargetSearchTime = Time.unscaledTime + TargetSearchInterval;
+        return cachedTargetTransform;
+    }
+
+    private static Transform ResolveTargetTransform()
+    {
+        GameObject taggedPlayer = GameObject.FindGameObjectWithTag("Player");
+
+        if (taggedPlayer != null)
+        {
+            return taggedPlayer.transform;
+        }
+
+        FPSPlayerController fpsController = Object.FindFirstObjectByType<FPSPlayerController>();
+
+        if (fpsController != null)
+        {
+            return fpsController.transform;
+        }
+
+        PlayerController playerController = Object.FindFirstObjectByType<PlayerController>();
+
+        if (playerController != null)
+        {
+            return playerController.transform;
+        }
+
+        CharacterController[] characterControllers = Object.FindObjectsByType<CharacterController>(
+            FindObjectsInactive.Exclude,
+            FindObjectsSortMode.None);
+
+        for (int i = 0; i < characterControllers.Length; i++)
+        {
+            CharacterController controller = characterControllers[i];
+
+            if (controller == null || controller.GetComponentInParent<Enemy>() != null)
+            {
+                continue;
+            }
+
+            return controller.transform;
+        }
+
+        Camera mainCamera = Camera.main;
+
+        if (mainCamera != null)
+        {
+            return mainCamera.transform;
+        }
+
+        return null;
+    }
+
     private void UpdateMovementDirection()
     {
+        if (movementRoot == null)
+        {
+            return;
+        }
+
         Vector3 worldDelta = movementRoot.position - lastMovementSamplePosition;
         lastMovementSamplePosition = movementRoot.position;
         worldDelta.y = 0f;
@@ -155,6 +240,7 @@ public class EnemyVisualFacingController : MonoBehaviour
     private Transform ResolveMovementRoot()
     {
         Transform current = transform;
+        Transform fallback = transform;
 
         while (current != null)
         {
@@ -163,16 +249,57 @@ public class EnemyVisualFacingController : MonoBehaviour
                 return current;
             }
 
+            fallback = current;
             current = current.parent;
         }
 
-        return null;
+        return fallback;
     }
 
-    private static Transform ResolvePlayerTransform()
+    private void MaybeLogDebug(bool targetFound, Vector3 direction, float currentYaw, float targetYaw)
     {
-        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+        if (!ShouldDebugLog())
+        {
+            return;
+        }
 
-        return playerObject != null ? playerObject.transform : null;
+        if (Time.unscaledTime < nextDebugLogTime)
+        {
+            return;
+        }
+
+        nextDebugLogTime = Time.unscaledTime + DebugLogInterval;
+
+        string targetName = cachedTargetTransform != null ? cachedTargetTransform.name : "none";
+        string pivotName = visualPivot != null ? visualPivot.name : "null";
+        string rootName = movementRoot != null ? movementRoot.name : "null";
+
+        Debug.Log(
+            "[EnemyVisualFacing] target="
+            + (targetFound ? targetName : "missing")
+            + " pivot="
+            + pivotName
+            + " movementRoot="
+            + rootName
+            + " dirMag="
+            + direction.magnitude.ToString("F3")
+            + " currentYaw="
+            + currentYaw.ToString("F1")
+            + " targetYaw="
+            + targetYaw.ToString("F1")
+            + " offset="
+            + localEulerOffset
+            + " dir="
+            + direction,
+            this);
+    }
+
+    private bool ShouldDebugLog()
+    {
+#if UNITY_EDITOR
+        return debugFacing;
+#else
+        return debugFacing && Debug.isDebugBuild;
+#endif
     }
 }
