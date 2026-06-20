@@ -365,7 +365,7 @@ public class EnemyVisualFacingController : MonoBehaviour
     {
         if (enemyType == Enemy.EnemyType.Normal)
         {
-            return new Vector3(0f, 180f, 0f);
+            return new Vector3(0f, 120f, 0f);
         }
 
         if (enemyType == Enemy.EnemyType.Tank)
