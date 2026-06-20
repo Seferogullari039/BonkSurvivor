@@ -82,7 +82,7 @@ MonoBehaviour:
   facePlayer: 1
   useMovementDirectionFallback: 1
   turnSpeed: 12
-  localEulerOffset: {x: 0, y: 90, z: 0}
+  localEulerOffset: {x: 0, y: -90, z: 0}
   lockPitchRoll: 1
   minDirectionMagnitude: 0.02
   debugFacing: 1
@@ -112,7 +112,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: aa8b97cf0ec94df4d9e94378871f2cf0, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.0026365519
+      value: -0.50263655
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: aa8b97cf0ec94df4d9e94378871f2cf0, type: 3}
       propertyPath: m_LocalPosition.z
@@ -153,13 +153,60 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: aa8b97cf0ec94df4d9e94378871f2cf0, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 2839688415007472773}
   m_SourcePrefab: {fileID: 100100000, guid: aa8b97cf0ec94df4d9e94378871f2cf0, type: 3}
 --- !u!4 &451880537418920031 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: aa8b97cf0ec94df4d9e94378871f2cf0, type: 3}
   m_PrefabInstance: {fileID: 130568694248576948}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &940889865459084005 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: aa8b97cf0ec94df4d9e94378871f2cf0, type: 3}
+  m_PrefabInstance: {fileID: 130568694248576948}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2839688415007472773
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 940889865459084005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9c8d7e6f5a4321098765432fedcba10, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SkeletonVisualAnimator
+  walkSpeed: 6
+  legSwingAngle: 18
+  armSwingAngle: 12
+  bodyBobAmount: 0.035
+  bodyBobSpeed: 7
+  moveThreshold: 0.015
+  attackRange: 2.2
+  attackCooldown: 1.2
+  attackDuration: 0.55
+  attackRaiseAngle: -55
+  attackSlashAngle: 75
+  attackSideAngle: 15
+  autoFindBones: 1
+  hips: {fileID: 0}
+  spine: {fileID: 0}
+  chest: {fileID: 0}
+  leftUpperArm: {fileID: 0}
+  leftForeArm: {fileID: 0}
+  rightUpperArm: {fileID: 0}
+  rightForeArm: {fileID: 0}
+  rightHand: {fileID: 0}
+  leftUpperLeg: {fileID: 0}
+  leftLowerLeg: {fileID: 0}
+  leftFoot: {fileID: 0}
+  rightUpperLeg: {fileID: 0}
+  rightLowerLeg: {fileID: 0}
+  rightFoot: {fileID: 0}
 --- !u!1001 &8962469679951895997
 PrefabInstance:
   m_ObjectHideFlags: 0

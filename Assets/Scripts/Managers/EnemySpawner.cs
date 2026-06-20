@@ -673,7 +673,7 @@ public class EnemySpawner : MonoBehaviour
                 enemyTransform.localScale = Vector3.one * 0.8f;
                 break;
             case Enemy.EnemyType.Tank:
-                enemy.Configure(2f, 10, GameVisualPalette.TankEnemy, enemyType);
+                enemy.Configure(2.4f, 10, GameVisualPalette.TankEnemy, enemyType);
                 enemyTransform.localScale = Vector3.one * 1.5f;
                 break;
             default:
