@@ -30,7 +30,7 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 8123456789012345681}
+  - {fileID: 8590310168098346168}
   m_Father: {fileID: 8123456789012345680}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &8811223344556677890
@@ -52,6 +52,7 @@ MonoBehaviour:
   localEulerOffset: {x: 0, y: 0, z: 0}
   lockPitchRoll: 1
   minDirectionMagnitude: 0.02
+  debugFacing: 1
 --- !u!1 &8123456789012345682
 GameObject:
   m_ObjectHideFlags: 0
@@ -151,10 +152,41 @@ PrefabInstance:
     m_RemovedComponents: []
     m_RemovedGameObjects: []
     m_AddedGameObjects: []
-    m_AddedComponents: []
+    m_AddedComponents:
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 5ced2e8aaf9817b44ae015d0df03146a, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 6755960051504153952}
   m_SourcePrefab: {fileID: 100100000, guid: 5ced2e8aaf9817b44ae015d0df03146a, type: 3}
---- !u!4 &8123456789012345681 stripped
+--- !u!4 &8590310168098346168 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: -8679921383154817045, guid: 5ced2e8aaf9817b44ae015d0df03146a, type: 3}
   m_PrefabInstance: {fileID: 8123456789012345683}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &8970388949857848834 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 919132149155446097, guid: 5ced2e8aaf9817b44ae015d0df03146a, type: 3}
+  m_PrefabInstance: {fileID: 8123456789012345683}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &6755960051504153952
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8970388949857848834}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a7b8c9d0e1f2345678901234abcdef01, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BatWingFlapController
+  leftWingBones: []
+  rightWingBones: []
+  autoFindWingBones: 1
+  flapSpeed: 9
+  flapAngle: 32
+  outerWingMultiplier: 1.15
+  innerWingMultiplier: 0.65
+  phaseOffset: 0.12
+  leftFlapAxis: {x: 0, y: 0, z: 1}
+  rightFlapAxis: {x: 0, y: 0, z: -1}
+  useLateUpdate: 1
