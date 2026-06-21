@@ -16,9 +16,9 @@ public class TankAnimatedVisualController : MonoBehaviour
     private const float DefaultAttackVisualDuration = 0.9f;
     private const float DefaultSlashVisualDuration = 0.52f;
     private const float DebugForceAttackInterval = 1.2f;
-    private static readonly Vector3 SwordRestLocalEuler = new Vector3(-12f, 92f, 8f);
-    private static readonly Vector3 SwordRaiseLocalEuler = new Vector3(-58f, 28f, -18f);
-    private static readonly Vector3 SwordSlashLocalEuler = new Vector3(42f, 92f, 28f);
+    private static readonly Vector3 SwordRestLocalEuler = Vector3.zero;
+    private static readonly Vector3 SwordRaiseLocalEuler = new Vector3(-48f, -18f, 22f);
+    private static readonly Vector3 SwordSlashLocalEuler = new Vector3(62f, 12f, 38f);
 
     [Header("Animator")]
     [SerializeField] private RuntimeAnimatorController animatorController;
@@ -49,8 +49,8 @@ public class TankAnimatedVisualController : MonoBehaviour
     [SerializeField] private string preferredHandName = "hand.R";
     [SerializeField] private Material swordMaterial;
     [SerializeField] private Material swordHandleMaterial;
-    [SerializeField] private Vector3 swordAnchorLocalPosition = new Vector3(0.34f, 0.58f, 0.12f);
-    [SerializeField] private Vector3 swordAnchorLocalEuler = new Vector3(-12f, 92f, 8f);
+    [SerializeField] private Vector3 swordAnchorLocalPosition = new Vector3(0.28f, 0.72f, 0.12f);
+    [SerializeField] private Vector3 swordAnchorLocalEuler = new Vector3(10f, -20f, -105f);
 
     private static readonly int IsMovingHash = Animator.StringToHash("IsMoving");
 
@@ -709,25 +709,25 @@ public class TankAnimatedVisualController : MonoBehaviour
         GameObject guard = GameObject.CreatePrimitive(PrimitiveType.Cube);
         guard.name = "Guard";
         guard.transform.SetParent(swordVisualRoot.transform, false);
-        guard.transform.localPosition = new Vector3(0f, 0.01f, 0f);
-        guard.transform.localScale = new Vector3(0.11f, 0.025f, 0.04f);
+        guard.transform.localPosition = Vector3.zero;
+        guard.transform.localScale = new Vector3(0.1f, 0.022f, 0.036f);
         DisableCollider(guard);
         ApplySwordMaterial(guard, swordMaterial, new Color(0.48f, 0.5f, 0.54f), 0.62f);
 
         GameObject handle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         handle.name = "Handle";
         handle.transform.SetParent(swordVisualRoot.transform, false);
-        handle.transform.localPosition = new Vector3(0f, -0.05f, 0f);
+        handle.transform.localPosition = new Vector3(0f, -0.045f, -0.012f);
         handle.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        handle.transform.localScale = new Vector3(0.035f, 0.06f, 0.035f);
+        handle.transform.localScale = new Vector3(0.032f, 0.055f, 0.032f);
         DisableCollider(handle);
         ApplySwordMaterial(handle, swordHandleMaterial, new Color(0.16f, 0.13f, 0.11f), 0.22f);
 
         GameObject blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
         blade.name = "Blade";
         blade.transform.SetParent(swordVisualRoot.transform, false);
-        blade.transform.localPosition = new Vector3(0f, 0.18f, 0f);
-        blade.transform.localScale = new Vector3(0.045f, 0.34f, 0.018f);
+        blade.transform.localPosition = new Vector3(0f, 0.155f, 0f);
+        blade.transform.localScale = new Vector3(0.04f, 0.29f, 0.016f);
         DisableCollider(blade);
         ApplySwordMaterial(blade, swordMaterial, new Color(0.62f, 0.64f, 0.68f), 0.72f);
     }
