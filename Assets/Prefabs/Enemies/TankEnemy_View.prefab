@@ -571,7 +571,9 @@ MonoBehaviour:
   animatorController: {fileID: 9100000, guid: f1a2b3c4d5e6478990ab1cd2ef345678, type: 2}
   bodyMaterial: {fileID: 2100000, guid: a1b2c3d4e5f6478990abcdef12345678, type: 2}
   moveSpeedThreshold: 0.05
-  attackRange: 3.5
+  attackRange: 4
   attackCooldown: 1
+  debugForceAttackLoop: 1
+  debugAnimatorLogs: 1
   createVisualSword: 1
   preferredHandName: hand.R

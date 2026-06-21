@@ -1,9 +1,18 @@
+using System;
 using UnityEngine;
 
 [DisallowMultipleComponent]
 [DefaultExecutionOrder(250)]
 public class TankAnimatedVisualController : MonoBehaviour
 {
+    private const string AttackStateName = "Attack";
+    private const string IdleStateName = "Idle";
+    private const string RunStateName = "Run";
+    private const float AttackCrossFadeDuration = 0.05f;
+    private const float MovementCrossFadeDuration = 0.1f;
+    private const float DefaultAttackVisualDuration = 0.9f;
+    private const float DebugForceAttackInterval = 1.2f;
+
     [Header("Animator")]
     [SerializeField] private RuntimeAnimatorController animatorController;
     [SerializeField] private Material bodyMaterial;
@@ -12,21 +21,32 @@ public class TankAnimatedVisualController : MonoBehaviour
     [SerializeField] private float moveSpeedThreshold = 0.05f;
 
     [Header("Attack Visual")]
-    [SerializeField] private float attackRange = 3.5f;
+    [SerializeField] private float attackRange = 4f;
     [SerializeField] private float attackCooldown = 1f;
+
+    [Header("Debug")]
+    [SerializeField] private bool debugForceAttackLoop = true;
+    [SerializeField] private bool debugAnimatorLogs = true;
 
     [Header("Sword Visual")]
     [SerializeField] private bool createVisualSword = true;
     [SerializeField] private string preferredHandName = "hand.R";
 
     private static readonly int IsMovingHash = Animator.StringToHash("IsMoving");
-    private static readonly int AttackHash = Animator.StringToHash("Attack");
 
     private Animator animator;
     private Transform enemyRoot;
     private Vector3 lastRootPosition;
     private float nextAttackTime;
+    private float nextDebugForceAttackTime;
+    private float nextAnimatorDebugLogTime;
+    private float attackEndTime;
+    private float attackVisualDuration = DefaultAttackVisualDuration;
+    private bool isAttacking;
+    private bool lastIsMoving;
     private bool warnedMissingAnimator;
+    private bool warnedMissingTarget;
+    private string attackClipName = AttackStateName;
     private GameObject swordVisualRoot;
 
     private void Awake()
@@ -34,8 +54,6 @@ public class TankAnimatedVisualController : MonoBehaviour
         animator = GetComponent<Animator>();
         enemyRoot = FindEnemyRoot();
         lastRootPosition = enemyRoot != null ? enemyRoot.position : transform.position;
-
-        animator = GetComponent<Animator>();
 
         if (animator == null)
         {
@@ -45,6 +63,7 @@ public class TankAnimatedVisualController : MonoBehaviour
         SanitizeVisualComponents();
         ConfigureAnimator();
         ApplyBodyMaterial();
+        ResolveAttackClipInfo();
         CreateVisualSwordIfNeeded();
     }
 
@@ -56,7 +75,23 @@ public class TankAnimatedVisualController : MonoBehaviour
         }
 
         UpdateMovementParameter();
-        TryTriggerAttackVisual();
+
+        if (debugForceAttackLoop && !isAttacking && Time.time >= nextDebugForceAttackTime)
+        {
+            nextDebugForceAttackTime = Time.time + DebugForceAttackInterval;
+            PlayAttackDirect(null, 0f, "debugForceAttackLoop");
+        }
+        else if (!isAttacking)
+        {
+            TryTriggerAttackVisual();
+        }
+
+        if (isAttacking && Time.time >= attackEndTime)
+        {
+            EndAttackVisual();
+        }
+
+        MaybeLogAnimatorDebug();
     }
 
     private void ConfigureAnimator()
@@ -82,6 +117,40 @@ public class TankAnimatedVisualController : MonoBehaviour
         }
     }
 
+    private void ResolveAttackClipInfo()
+    {
+        attackVisualDuration = DefaultAttackVisualDuration;
+        attackClipName = AttackStateName;
+
+        if (animator == null || animator.runtimeAnimatorController == null)
+        {
+            Debug.Log("[TankAnimatedVisualController] Attack clip=" + attackClipName + " length=" + attackVisualDuration + " directPlay=True");
+            return;
+        }
+
+        AnimationClip[] clips = animator.runtimeAnimatorController.animationClips;
+
+        for (int i = 0; i < clips.Length; i++)
+        {
+            AnimationClip clip = clips[i];
+
+            if (clip == null)
+            {
+                continue;
+            }
+
+            if (clip.name.IndexOf("attack", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                attackClipName = clip.name;
+                attackVisualDuration = clip.length > 0.01f ? clip.length : DefaultAttackVisualDuration;
+                Debug.Log("[TankAnimatedVisualController] Attack clip=" + attackClipName + " length=" + attackVisualDuration + " directPlay=True");
+                return;
+            }
+        }
+
+        Debug.Log("[TankAnimatedVisualController] Attack clip=" + attackClipName + " length=" + attackVisualDuration + " directPlay=True");
+    }
+
     private void ApplyBodyMaterial()
     {
         if (bodyMaterial == null)
@@ -104,6 +173,11 @@ public class TankAnimatedVisualController : MonoBehaviour
 
     private void UpdateMovementParameter()
     {
+        if (isAttacking)
+        {
+            return;
+        }
+
         if (enemyRoot == null)
         {
             enemyRoot = FindEnemyRoot();
@@ -111,6 +185,7 @@ public class TankAnimatedVisualController : MonoBehaviour
 
         if (enemyRoot == null)
         {
+            lastIsMoving = false;
             animator.SetBool(IsMovingHash, false);
             return;
         }
@@ -119,8 +194,8 @@ public class TankAnimatedVisualController : MonoBehaviour
         lastRootPosition = enemyRoot.position;
         delta.y = 0f;
 
-        bool isMoving = delta.magnitude / Mathf.Max(Time.deltaTime, 0.0001f) > moveSpeedThreshold;
-        animator.SetBool(IsMovingHash, isMoving);
+        lastIsMoving = delta.magnitude / Mathf.Max(Time.deltaTime, 0.0001f) > moveSpeedThreshold;
+        animator.SetBool(IsMovingHash, lastIsMoving);
     }
 
     private void TryTriggerAttackVisual()
@@ -134,20 +209,96 @@ public class TankAnimatedVisualController : MonoBehaviour
 
         if (target == null || enemyRoot == null)
         {
+            if (!warnedMissingTarget)
+            {
+                warnedMissingTarget = true;
+                Debug.LogWarning("[TankAnimatedVisualController] target missing, attack disabled", this);
+            }
+
             return;
         }
 
         Vector3 toTarget = target.position - enemyRoot.position;
         toTarget.y = 0f;
+        float distance = toTarget.magnitude;
 
-        if (toTarget.magnitude > attackRange)
+        if (distance > attackRange)
         {
             return;
         }
 
-        animator.ResetTrigger(AttackHash);
-        animator.SetTrigger(AttackHash);
+        PlayAttackDirect(target, distance);
+    }
+
+    private void PlayAttackDirect(Transform target, float distance, string debugTargetName = null)
+    {
+        if (animator == null)
+        {
+            return;
+        }
+
+        string stateBefore = GetCurrentStateLabel();
+        string targetName = debugTargetName ?? (target != null ? target.name : "unknown");
+
+        animator.CrossFadeInFixedTime(AttackStateName, AttackCrossFadeDuration, 0, 0f);
+        isAttacking = true;
+        attackEndTime = Time.time + attackVisualDuration;
         nextAttackTime = Time.time + attackCooldown;
+
+        Debug.Log("[TankAnimatedVisualController] ATTACK distance=" + distance.ToString("F2")
+            + " target=" + targetName
+            + " stateBefore=" + stateBefore
+            + " clip=" + attackClipName);
+    }
+
+    private void EndAttackVisual()
+    {
+        isAttacking = false;
+
+        string returnState = lastIsMoving ? RunStateName : IdleStateName;
+        animator.CrossFadeInFixedTime(returnState, MovementCrossFadeDuration, 0, 0f);
+        animator.SetBool(IsMovingHash, lastIsMoving);
+    }
+
+    private void MaybeLogAnimatorDebug()
+    {
+        if (!debugAnimatorLogs || Time.time < nextAnimatorDebugLogTime)
+        {
+            return;
+        }
+
+        nextAnimatorDebugLogTime = Time.time + 1f;
+
+        AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+        Debug.Log("[TankAnimatedVisualController] state=" + GetStateLabel(stateInfo)
+            + " normalized=" + stateInfo.normalizedTime.ToString("F2")
+            + " moving=" + lastIsMoving
+            + " attacking=" + isAttacking);
+    }
+
+    private string GetCurrentStateLabel()
+    {
+        return GetStateLabel(animator.GetCurrentAnimatorStateInfo(0));
+    }
+
+    private static string GetStateLabel(AnimatorStateInfo stateInfo)
+    {
+        if (stateInfo.IsName(AttackStateName))
+        {
+            return AttackStateName;
+        }
+
+        if (stateInfo.IsName(RunStateName))
+        {
+            return RunStateName;
+        }
+
+        if (stateInfo.IsName(IdleStateName))
+        {
+            return IdleStateName;
+        }
+
+        return stateInfo.shortNameHash.ToString();
     }
 
     private void SanitizeVisualComponents()
@@ -275,7 +426,7 @@ public class TankAnimatedVisualController : MonoBehaviour
         {
             Transform candidate = transforms[i];
 
-            if (candidate != null && string.Equals(candidate.name, targetName, System.StringComparison.OrdinalIgnoreCase))
+            if (candidate != null && string.Equals(candidate.name, targetName, StringComparison.OrdinalIgnoreCase))
             {
                 return candidate;
             }
@@ -322,6 +473,20 @@ public class TankAnimatedVisualController : MonoBehaviour
         if (playerController != null)
         {
             return playerController.transform;
+        }
+
+        CharacterController[] characterControllers = Object.FindObjectsByType<CharacterController>(FindObjectsSortMode.None);
+
+        for (int i = 0; i < characterControllers.Length; i++)
+        {
+            CharacterController characterController = characterControllers[i];
+
+            if (characterController == null || characterController.GetComponentInParent<Enemy>() != null)
+            {
+                continue;
+            }
+
+            return characterController.transform;
         }
 
         Camera mainCamera = Camera.main;
