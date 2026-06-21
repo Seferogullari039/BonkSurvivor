@@ -13,8 +13,7 @@ public static class AnimatedSkeletonBindingProof
     private const float PositionMoveThreshold = 0.0001f;
     private const float RotationMoveThreshold = 0.05f;
 
-    [MenuItem("Tools/BonkSurvivor/Prove Animated Skeleton Clip Binding", false, 32)]
-    public static void ProveAnimatedSkeletonClipBinding()
+    public static void RunProof()
     {
         AnimatedSkeletonClipAudit.EnsureSkeletonImportForPlayback();
 
@@ -44,7 +43,6 @@ public static class AnimatedSkeletonBindingProof
         ProveRawAnimatorPlayback();
     }
 
-    [MenuItem("Tools/BonkSurvivor/Repair Tank Skeleton Prefab Binding", false, 33)]
     public static void RepairTankSkeletonPrefabBinding()
     {
         Avatar avatar = FindAvatar();
@@ -73,7 +71,7 @@ public static class AnimatedSkeletonBindingProof
             return 0;
         }
 
-        GameObject instance = Object.Instantiate(source);
+        GameObject instance = UnityEngine.Object.Instantiate(source);
         instance.hideFlags = HideFlags.HideAndDontSave;
         instance.name = "AnimatedSkeletonBindingProof_" + label;
 
@@ -102,7 +100,7 @@ public static class AnimatedSkeletonBindingProof
         }
         finally
         {
-            Object.DestroyImmediate(instance);
+            UnityEngine.Object.DestroyImmediate(instance);
         }
     }
 
@@ -121,7 +119,7 @@ public static class AnimatedSkeletonBindingProof
         GameObject instance = PrefabUtility.InstantiatePrefab(source) as GameObject;
         if (instance == null)
         {
-            instance = Object.Instantiate(source);
+            instance = UnityEngine.Object.Instantiate(source);
         }
 
         instance.hideFlags = HideFlags.HideAndDontSave;
@@ -152,7 +150,7 @@ public static class AnimatedSkeletonBindingProof
         }
         finally
         {
-            Object.DestroyImmediate(instance);
+            UnityEngine.Object.DestroyImmediate(instance);
         }
     }
 
@@ -285,7 +283,7 @@ public static class AnimatedSkeletonBindingProof
 
     private static Avatar FindAvatar()
     {
-        Object[] subAssets = AssetDatabase.LoadAllAssetsAtPath(SkeletonPath);
+        UnityEngine.Object[] subAssets = AssetDatabase.LoadAllAssetsAtPath(SkeletonPath);
         for (int i = 0; i < subAssets.Length; i++)
         {
             if (subAssets[i] is Avatar avatar)
@@ -299,7 +297,7 @@ public static class AnimatedSkeletonBindingProof
 
     private static AnimationClip FindClip(System.Func<AnimationClip, bool> matcher)
     {
-        Object[] subAssets = AssetDatabase.LoadAllAssetsAtPath(SkeletonPath);
+        UnityEngine.Object[] subAssets = AssetDatabase.LoadAllAssetsAtPath(SkeletonPath);
         for (int i = 0; i < subAssets.Length; i++)
         {
             if (subAssets[i] is AnimationClip clip && !clip.name.StartsWith("__preview") && matcher(clip))

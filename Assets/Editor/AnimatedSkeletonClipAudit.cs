@@ -15,7 +15,6 @@ public static class AnimatedSkeletonClipAudit
         Debug.Log(BuildAuditReport());
     }
 
-    [MenuItem("Tools/BonkSurvivor/Fix Tank Skeleton Playback", false, 31)]
     public static void FixTankSkeletonPlayback()
     {
         EnsureSkeletonImportForPlayback();
@@ -50,7 +49,7 @@ public static class AnimatedSkeletonClipAudit
 
     private static Avatar FindAvatar()
     {
-        CollectSkeletonAssets(out _, out _, out _, out Avatar avatar, out _);
+        CollectSkeletonAssets(out AnimationClip unusedIdle, out AnimationClip unusedRun, out AnimationClip unusedAttack, out Avatar avatar, out int unusedClipCount);
         return avatar;
     }
 
@@ -203,7 +202,7 @@ public static class AnimatedSkeletonClipAudit
             return;
         }
 
-        CollectSkeletonAssets(out AnimationClip idleClip, out AnimationClip runClip, out AnimationClip attackClip, out _, out _);
+        CollectSkeletonAssets(out AnimationClip idleClip, out AnimationClip runClip, out AnimationClip attackClip, out Avatar unusedAvatar, out int unusedClipCount);
         bool needsReimport = idleClip == null || runClip == null || attackClip == null
             || idleClip.length < 0.01f || runClip.length < 0.01f || attackClip.length < 0.01f;
 
@@ -231,7 +230,6 @@ public static class AnimatedSkeletonClipAudit
             firstFrame = 0,
             lastFrame = 0,
             loopTime = loopTime,
-            loopPose = loopTime,
         };
     }
 
