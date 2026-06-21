@@ -147,12 +147,14 @@ public class ShrineEventController : MonoBehaviour
         cachedPlayerStats.AddCoins(CoinReward);
         cachedPlayerStats.AddXP(XpReward);
 
+        bool bonusChestGranted = false;
+
         if (Random.value <= BonusChestChance)
         {
-            return TrySpawnBonusChest(transform.position);
+            bonusChestGranted = TrySpawnBonusChest(transform.position);
         }
 
-        return false;
+        return bonusChestGranted;
     }
 
     private bool TrySpawnBonusChest(Vector3 shrineCenter)
@@ -166,7 +168,7 @@ public class ShrineEventController : MonoBehaviour
 
         if (prefab == null)
         {
-            LogBonusChestSkipOnce("prefab missing");
+            LogBonusChestSkipOnce("valid chest prefab not found");
             return false;
         }
 
@@ -182,17 +184,32 @@ public class ShrineEventController : MonoBehaviour
         if (chest == null)
         {
             Destroy(chestObject);
-            LogBonusChestSkipOnce("Chest component missing on prefab");
+            LogBonusChestSkipOnce("valid chest prefab not found");
             return false;
         }
 
         chest.ConfigureDroppedReward(ChestRarity.Normal, false);
+
+        if (!IsValidSpawnedBonusChest(chestObject))
+        {
+            Destroy(chestObject);
+            LogBonusChestSkipOnce("spawned chest failed validation");
+            return false;
+        }
+
         LogBonusChestSpawnOnce(chestObject, spawnPosition);
         return true;
     }
 
     private static GameObject ResolveBonusChestPrefab()
     {
+        GameObject prefab = ChestPrefabUtility.ResolveChestPrefab(ChestRarity.Normal);
+
+        if (IsValidBonusChestPrefab(prefab))
+        {
+            return prefab;
+        }
+
         ChestSpawner chestSpawner = Object.FindFirstObjectByType<ChestSpawner>();
 
         if (chestSpawner != null)
@@ -203,13 +220,6 @@ public class ShrineEventController : MonoBehaviour
             {
                 return spawnerPrefab;
             }
-        }
-
-        GameObject utilityPrefab = ChestPrefabUtility.ResolveChestPrefab(ChestRarity.Normal);
-
-        if (IsValidBonusChestPrefab(utilityPrefab))
-        {
-            return utilityPrefab;
         }
 
         return null;
@@ -227,7 +237,20 @@ public class ShrineEventController : MonoBehaviour
             return false;
         }
 
-        if (prefab.GetComponent<ChestVisual>() == null)
+        if (prefab.GetComponent<ChestVisual>() == null
+            && prefab.transform.Find("ChestVisualRoot") == null)
+        {
+            return false;
+        }
+
+        if (prefab.name.IndexOf("Chest", System.StringComparison.OrdinalIgnoreCase) < 0)
+        {
+            return false;
+        }
+
+        Renderer rootRenderer = prefab.GetComponent<Renderer>();
+
+        if (rootRenderer != null && rootRenderer.enabled)
         {
             return false;
         }
@@ -235,22 +258,106 @@ public class ShrineEventController : MonoBehaviour
         return true;
     }
 
-    private static bool TryFindBonusChestSpawnPosition(Vector3 shrineCenter, out Vector3 spawnPosition)
+    private static bool IsValidSpawnedBonusChest(GameObject chestObject)
+    {
+        if (chestObject == null)
+        {
+            return false;
+        }
+
+        Chest chest = chestObject.GetComponent<Chest>();
+
+        if (chest == null)
+        {
+            return false;
+        }
+
+        ChestVisual chestVisual = chestObject.GetComponent<ChestVisual>();
+        Transform visualRoot = chestObject.transform.Find("ChestVisualRoot");
+
+        if (chestVisual == null && visualRoot == null)
+        {
+            return false;
+        }
+
+        Renderer rootRenderer = chestObject.GetComponent<Renderer>();
+
+        if (rootRenderer != null && rootRenderer.enabled)
+        {
+            return false;
+        }
+
+        Vector3 scale = chestObject.transform.localScale;
+
+        if (scale.x > 1.5f || scale.y > 1.5f || scale.z > 1.5f)
+        {
+            return false;
+        }
+
+        if (LooksLikeStandaloneFallbackCube(chestObject))
+        {
+            return false;
+        }
+
+        Transform resolvedVisualRoot = visualRoot;
+
+        if (resolvedVisualRoot == null && chestVisual != null)
+        {
+            resolvedVisualRoot = chestObject.transform.Find("ChestVisualRoot");
+        }
+
+        if (resolvedVisualRoot == null)
+        {
+            return false;
+        }
+
+        Transform chestBase = resolvedVisualRoot.Find("ChestBase");
+        Transform chestLid = resolvedVisualRoot.Find("ChestLid");
+
+        if (chestBase == null || chestLid == null)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool LooksLikeStandaloneFallbackCube(GameObject chestObject)
+    {
+        if (chestObject.transform.childCount > 0)
+        {
+            return false;
+        }
+
+        MeshFilter meshFilter = chestObject.GetComponent<MeshFilter>();
+        Renderer renderer = chestObject.GetComponent<Renderer>();
+
+        if (meshFilter == null || renderer == null || !renderer.enabled)
+        {
+            return false;
+        }
+
+        if (meshFilter.sharedMesh == null)
+        {
+            return true;
+        }
+
+        string meshName = meshFilter.sharedMesh.name;
+
+        return meshName.IndexOf("Cube", System.StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private bool TryFindBonusChestSpawnPosition(Vector3 shrineCenter, out Vector3 spawnPosition)
     {
         spawnPosition = shrineCenter;
         Vector3 flatCenter = shrineCenter;
         flatCenter.y = 0f;
 
-        if (ProceduralGrassArena.TryGetSafeChestSpawnPoint(flatCenter, 3.5f, 5f, 1.2f, out spawnPosition))
+        if (ProceduralGrassArena.TryGetSafeChestSpawnPoint(flatCenter, 3.5f, 5f, 1.2f, out spawnPosition)
+            && IsBonusChestSpawnCandidateValid(flatCenter, spawnPosition))
         {
-            Vector3 flatSpawn = spawnPosition;
-            flatSpawn.y = 0f;
-
-            if ((flatSpawn - flatCenter).sqrMagnitude >= 3.2f * 3.2f)
-            {
-                spawnPosition.y = ProceduralGrassArena.GetLootSpawnY(0.5f);
-                return true;
-            }
+            spawnPosition.y = ProceduralGrassArena.GetLootSpawnY(0.5f);
+            return true;
         }
 
         for (int attempt = 0; attempt < 10; attempt++)
@@ -263,16 +370,7 @@ public class ShrineEventController : MonoBehaviour
             ProceduralGrassArena.TryClampHorizontal(ref candidate);
             ProceduralGrassArena.TryResolveBlockedSpawn(ref candidate, 3.5f, 1.2f);
 
-            Vector3 flatCandidate = candidate;
-            flatCandidate.y = 0f;
-
-            if ((flatCandidate - flatCenter).sqrMagnitude < 3.2f * 3.2f)
-            {
-                continue;
-            }
-
-            if (ProceduralGrassArena.Instance != null
-                && ProceduralGrassArena.Instance.IsPositionBlocked(candidate, 1.2f))
+            if (!IsBonusChestSpawnCandidateValid(flatCenter, candidate))
             {
                 continue;
             }
@@ -284,6 +382,36 @@ public class ShrineEventController : MonoBehaviour
         return false;
     }
 
+    private bool IsBonusChestSpawnCandidateValid(Vector3 flatShrineCenter, Vector3 candidate)
+    {
+        Vector3 flatCandidate = candidate;
+        flatCandidate.y = 0f;
+
+        if ((flatCandidate - flatShrineCenter).sqrMagnitude < 3.2f * 3.2f)
+        {
+            return false;
+        }
+
+        if (ProceduralGrassArena.Instance != null
+            && ProceduralGrassArena.Instance.IsPositionBlocked(candidate, 1.2f))
+        {
+            return false;
+        }
+
+        if (playerTransform != null)
+        {
+            Vector3 flatPlayer = playerTransform.position;
+            flatPlayer.y = 0f;
+
+            if ((flatCandidate - flatPlayer).sqrMagnitude < 2.5f * 2.5f)
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private static void LogBonusChestSkipOnce(string reason)
     {
         if (loggedBonusChestSkipWarning)
@@ -292,7 +420,7 @@ public class ShrineEventController : MonoBehaviour
         }
 
         loggedBonusChestSkipWarning = true;
-        Debug.LogWarning("[ShrineEvent] Bonus chest spawn skipped: " + reason + ".");
+        Debug.LogWarning("[ShrineEvent] Bonus chest skipped: " + reason + ".");
     }
 
     private static void LogBonusChestSpawnOnce(GameObject chestObject, Vector3 position)
@@ -307,18 +435,32 @@ public class ShrineEventController : MonoBehaviour
         Chest chest = chestObject.GetComponent<Chest>();
         ChestVisual chestVisual = chestObject.GetComponent<ChestVisual>();
         Renderer rootRenderer = chestObject.GetComponent<Renderer>();
+        MeshFilter rootMeshFilter = chestObject.GetComponent<MeshFilter>();
+        string parentName = chestObject.transform.parent != null
+            ? chestObject.transform.parent.name
+            : "none";
         string materialName = rootRenderer != null && rootRenderer.sharedMaterial != null
             ? rootRenderer.sharedMaterial.name
             : "none";
+        string meshName = rootMeshFilter != null && rootMeshFilter.sharedMesh != null
+            ? rootMeshFilter.sharedMesh.name
+            : "none";
+        Vector3 scale = chestObject.transform.localScale;
 
-        Debug.Log("[ShrineEvent] Bonus chest spawn result: object="
+        Debug.Log("[ShrineEvent] Bonus chest result: object="
             + chestObject.name
+            + " parent="
+            + parentName
             + " hasChest="
             + (chest != null)
             + " hasChestVisual="
             + (chestVisual != null)
             + " material="
             + materialName
+            + " mesh="
+            + meshName
+            + " scale="
+            + scale
             + " position="
             + position);
     }
