@@ -16,6 +16,14 @@ public class ShrineEventController : MonoBehaviour
     private const int CoinReward = 25;
     private const int XpReward = 3;
     private const float CompletionDuration = 0.62f;
+    private const float PromptBaseLocalY = 1.35f;
+    private const float PromptWaveOverlapLocalY = 1.12f;
+    private const float PromptMinScale = 0.55f;
+    private const float PromptMaxScale = 0.82f;
+    private const float PromptCloseDistance = 3.5f;
+    private const float PromptFarDistance = 18f;
+    private const float PromptFontSize = 1.45f;
+    private const float WaveBannerSuppressDuration = 2.1f;
     private const int OuterRingSegmentCount = 44;
     private const float InnerFillOutsideAlpha = 0.04f;
     private const float InnerFillInsideAlpha = 0.085f;
@@ -46,6 +54,9 @@ public class ShrineEventController : MonoBehaviour
     private bool isFadingOut;
     private bool playerInsideRadiusLastFrame;
     private PlayerStats cachedPlayerStats;
+    private EnemySpawner cachedSpawner;
+    private int cachedWaveBannerWave = -1;
+    private float waveBannerEndTime;
 
     public void Initialize(ShrineEventManager manager)
     {
@@ -62,6 +73,7 @@ public class ShrineEventController : MonoBehaviour
         if (isCompleted || isFadingOut) return;
 
         CachePlayer();
+        UpdateWaveBannerState();
 
         if (playerTransform == null)
         {
@@ -369,11 +381,12 @@ public class ShrineEventController : MonoBehaviour
     {
         GameObject textObject = new GameObject("ShrinePrompt");
         textObject.transform.SetParent(transform, false);
-        textObject.transform.localPosition = new Vector3(0f, 1.85f, 0f);
+        textObject.transform.localPosition = new Vector3(0f, PromptBaseLocalY, 0f);
 
         promptText = textObject.AddComponent<TextMeshPro>();
         promptText.alignment = TextAlignmentOptions.Center;
-        promptText.fontSize = 1.65f;
+        promptText.fontSize = PromptFontSize;
+        promptText.lineSpacing = -2f;
         promptText.fontStyle = FontStyles.Bold;
         promptText.color = PromptColor;
         promptText.text = string.Empty;
@@ -397,9 +410,35 @@ public class ShrineEventController : MonoBehaviour
         triggerCollider.center = new Vector3(0f, 0.5f, 0f);
     }
 
+    private void UpdateWaveBannerState()
+    {
+        if (cachedSpawner == null)
+        {
+            cachedSpawner = FindFirstObjectByType<EnemySpawner>();
+        }
+
+        if (cachedSpawner == null)
+        {
+            return;
+        }
+
+        int currentWave = cachedSpawner.CurrentWave;
+
+        if (currentWave == cachedWaveBannerWave)
+        {
+            return;
+        }
+
+        cachedWaveBannerWave = currentWave;
+        waveBannerEndTime = Time.time + WaveBannerSuppressDuration;
+    }
+
     private void UpdatePrompt(bool visible, float normalizedProgress)
     {
-        if (promptText == null) return;
+        if (promptText == null)
+        {
+            return;
+        }
 
         if (!visible)
         {
@@ -419,20 +458,41 @@ public class ShrineEventController : MonoBehaviour
             promptText.text = "HOLD THE SHRINE";
         }
 
-        if (Camera.main != null)
+        bool waveBannerActive = Time.time < waveBannerEndTime;
+        float localY = waveBannerActive ? PromptWaveOverlapLocalY : PromptBaseLocalY;
+        promptText.transform.localPosition = new Vector3(0f, localY, 0f);
+
+        Camera camera = Camera.main;
+
+        if (camera == null)
         {
-            Vector3 lookDirection = promptText.transform.position - Camera.main.transform.position;
-            lookDirection.y = 0f;
-
-            if (lookDirection.sqrMagnitude > 0.001f)
-            {
-                promptText.transform.rotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
-            }
-
-            float cameraDistance = Vector3.Distance(Camera.main.transform.position, promptText.transform.position);
-            float scale = cameraDistance < 6f ? 0.72f : (cameraDistance < 12f ? 0.86f : 1f);
-            promptText.transform.localScale = Vector3.one * scale;
+            promptText.transform.localScale = Vector3.one * PromptMinScale;
+            promptText.color = PromptColor;
+            return;
         }
+
+        Vector3 lookDirection = promptText.transform.position - camera.transform.position;
+        lookDirection.y = 0f;
+
+        if (lookDirection.sqrMagnitude > 0.001f)
+        {
+            promptText.transform.rotation = Quaternion.LookRotation(lookDirection.normalized, Vector3.up);
+        }
+
+        float cameraDistance = Vector3.Distance(camera.transform.position, promptText.transform.position);
+        float distanceT = Mathf.InverseLerp(PromptCloseDistance, PromptFarDistance, cameraDistance);
+        float scale = Mathf.Lerp(PromptMinScale, PromptMaxScale, distanceT);
+
+        if (waveBannerActive)
+        {
+            scale *= 0.88f;
+        }
+
+        promptText.transform.localScale = Vector3.one * scale;
+
+        Color textColor = PromptColor;
+        textColor.a = waveBannerActive ? PromptColor.a * 0.78f : PromptColor.a;
+        promptText.color = textColor;
     }
 
     private void UpdateRadiusVisual(bool playerInside)
