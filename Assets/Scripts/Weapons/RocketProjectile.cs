@@ -345,8 +345,11 @@ public class RocketProjectile : MonoBehaviour
 
     private static void SpawnExplosionVisual(Vector3 center, float explosionRadius)
     {
-        float visualMaxScale = Mathf.Max(3f, explosionRadius * 2.2f);
-        float startScale = Mathf.Max(0.35f, explosionRadius * 0.18f);
+        // Visual only. Gameplay explosionRadius and damage are unchanged.
+        const float maxVisualScale = 1.75f;
+        const float minVisualScale = 0.45f;
+        float visualMaxScale = Mathf.Clamp(explosionRadius * 0.55f, minVisualScale, maxVisualScale);
+        float startScale = Mathf.Clamp(explosionRadius * 0.14f, 0.25f, 0.55f);
 
         GameObject flash = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         flash.name = "RocketExplosionFx";

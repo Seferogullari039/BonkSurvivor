@@ -163,6 +163,7 @@ public class DevAdminPanel : MonoBehaviour
         CreateButton(scrollContent, "Trigger Blood Moon", TriggerBloodMoon);
         CreateButton(scrollContent, "Trigger Void Portal", TriggerVoidPortal);
         CreateButton(scrollContent, "Spawn Shrine Event", SpawnShrine);
+        CreateButton(scrollContent, "Scan Large Visuals (F8)", ScanLargeVisuals);
         CreateButton(scrollContent, "Give Rocket Launcher", GiveRocketLauncher);
         CreateButton(scrollContent, "Give Laser Beam", GiveLaserBeam);
         CreateButton(scrollContent, "Give Chain Lightning", GiveChainLightning);
@@ -459,6 +460,17 @@ public class DevAdminPanel : MonoBehaviour
         }
 
         manager?.DevTriggerVoidPortal();
+    }
+
+    private void ScanLargeVisuals()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[DevAdminPanel] Scan Large Visuals requires Play Mode.");
+            return;
+        }
+
+        VisualBugInspector.ReportLargeRenderersInScene("[DevAdminPanel] Manual large visual scan");
     }
 
     private void SpawnShrine()

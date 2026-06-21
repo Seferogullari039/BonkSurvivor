@@ -130,6 +130,10 @@ public class ShrineEventController : MonoBehaviour
         bool bonusChestGranted = GrantRewards();
         UpdatePrompt(false, 1f);
         ShrineRewardPopup.Show(CoinReward, XpReward, bonusChestGranted);
+        VisualBugInspector.ReportLargeRenderersNearOnce(
+            transform.position,
+            10f,
+            "[ShrineEvent] Post-completion visual scan");
         StartCoroutine(PlayCompletionSequence());
     }
 
@@ -485,12 +489,14 @@ public class ShrineEventController : MonoBehaviour
             true,
             0.85f);
 
+        const float completionRingDiameter = 3.6f;
+
         GameObject burstRing = CreateTransientPart(
-            transform,
+            visualRoot,
             "ShrineCompletionBurstRing",
             PrimitiveType.Cylinder,
             new Vector3(0f, 0.05f, 0f),
-            new Vector3(HoldRadius * 2f, 0.02f, HoldRadius * 2f),
+            new Vector3(completionRingDiameter, 0.02f, completionRingDiameter),
             BurstGoldColor,
             0.58f,
             true,
@@ -543,10 +549,8 @@ public class ShrineEventController : MonoBehaviour
 
             if (burstRing != null)
             {
-                burstRing.transform.localScale = new Vector3(
-                    HoldRadius * 2f * (1f + t * 0.55f),
-                    0.02f,
-                    HoldRadius * 2f * (1f + t * 0.55f));
+                float ringDiameter = completionRingDiameter * (1f + t * 0.35f);
+                burstRing.transform.localScale = new Vector3(ringDiameter, 0.02f, ringDiameter);
                 FadeTransientPart(burstRing, 1f - t);
             }
 
@@ -958,12 +962,78 @@ public class ShrineEventController : MonoBehaviour
 
         if (renderer != null)
         {
-            Material baseMaterial = ChestVisualMaterials.GetGlowBaseMaterial();
-            renderer.material = baseMaterial != null ? new Material(baseMaterial) : renderer.material;
-            GameVisualStyle.ApplyColor(renderer, color, smoothness, glow, emission);
+            Material effectMaterial = CreateTransientEffectMaterial(color, smoothness, glow, emission);
+
+            if (effectMaterial != null)
+            {
+                renderer.material = effectMaterial;
+            }
         }
 
         return partObject;
+    }
+
+    private static Material CreateTransientEffectMaterial(Color color, float smoothness, bool glow, float emission)
+    {
+        Material template = ChestVisualMaterials.GetGlowBaseMaterial();
+
+        if (template != null)
+        {
+            Material instance = new Material(template);
+            ApplyTransientEffectColor(instance, color, smoothness, glow, emission);
+            return instance;
+        }
+
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+
+        if (shader == null)
+        {
+            return null;
+        }
+
+        Material material = new Material(shader);
+        ApplyTransientEffectColor(material, color, smoothness, glow, emission);
+        return material;
+    }
+
+    private static void ApplyTransientEffectColor(
+        Material material,
+        Color color,
+        float smoothness,
+        bool glow,
+        float emission)
+    {
+        if (material == null)
+        {
+            return;
+        }
+
+        material.color = color;
+
+        if (material.HasProperty("_BaseColor"))
+        {
+            material.SetColor("_BaseColor", color);
+        }
+
+        if (material.HasProperty("_Smoothness"))
+        {
+            material.SetFloat("_Smoothness", smoothness);
+        }
+
+        if (!material.HasProperty("_EmissionColor"))
+        {
+            return;
+        }
+
+        if (glow)
+        {
+            material.EnableKeyword("_EMISSION");
+            material.SetColor("_EmissionColor", color * emission);
+            return;
+        }
+
+        material.SetColor("_EmissionColor", Color.black);
+        material.DisableKeyword("_EMISSION");
     }
 
     private static void FadeTransientPart(GameObject partObject, float alphaMultiplier)
