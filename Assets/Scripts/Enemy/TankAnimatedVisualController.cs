@@ -8,14 +8,20 @@ public class TankAnimatedVisualController : MonoBehaviour
     private const string AttackStateName = "Attack";
     private const string IdleStateName = "Idle";
     private const string RunStateName = "Run";
-    private const string SwordAnchorName = "SwordAnchor";
-    private const string VisualSwordName = "VisualSword";
+    private const string TankSwordAnchorName = "TankSwordAnchor";
+    private const string HandBoneName = "hand.R";
     private const float AttackCrossFadeDuration = 0.05f;
     private const float RunCrossFadeDuration = 0.08f;
     private const float IdleCrossFadeDuration = 0.12f;
     private const float DefaultAttackVisualDuration = 0.9f;
     private const float DefaultSlashVisualDuration = 0.52f;
     private const float DebugForceAttackInterval = 1.2f;
+    private static readonly string[] HandBoneRelativePaths =
+    {
+        "skeleton-skeleton/belly/chest/upperarm.R/lowerarm.R/hand.R",
+        "Model/skeleton-skeleton/belly/chest/upperarm.R/lowerarm.R/hand.R",
+        "upperarm.R/lowerarm.R/hand.R",
+    };
     private static readonly Vector3 SwordRestLocalEuler = Vector3.zero;
     private static readonly Vector3 SwordRaiseLocalEuler = new Vector3(-52f, -8f, 18f);
     private static readonly Vector3 SwordSlashLocalEuler = new Vector3(54f, 16f, 34f);
@@ -51,9 +57,11 @@ public class TankAnimatedVisualController : MonoBehaviour
     [SerializeField] private string preferredHandName = "hand.R";
     [SerializeField] private Material swordMaterial;
     [SerializeField] private Material swordHandleMaterial;
-    [SerializeField] private Vector3 swordAnchorLocalPosition = new Vector3(0.42f, 0.24f, 0.04f);
-    [SerializeField] private Vector3 swordAnchorLocalEuler = new Vector3(35f, 25f, -82f);
-    [SerializeField] private Vector3 swordAnchorLocalScale = new Vector3(0.88f, 0.88f, 0.88f);
+    [SerializeField] private Vector3 swordHandLocalPosition = new Vector3(0.02f, 0f, 0f);
+    [SerializeField] private Vector3 swordHandLocalEuler = new Vector3(0f, 90f, -90f);
+    [SerializeField] private Vector3 swordFallbackLocalPosition = new Vector3(0.42f, 0.24f, 0.04f);
+    [SerializeField] private Vector3 swordFallbackLocalEuler = new Vector3(35f, 25f, -82f);
+    [SerializeField] private Vector3 swordFallbackLocalScale = new Vector3(0.88f, 0.88f, 0.88f);
 
     private static readonly int IsMovingHash = Animator.StringToHash("IsMoving");
 
@@ -81,6 +89,8 @@ public class TankAnimatedVisualController : MonoBehaviour
     private string attackClipName = AttackStateName;
     private bool warnedMissingAvatar;
     private bool loggedSwordFallback;
+    private bool loggedSwordParent;
+    private bool swordAnchoredToHandBone;
     private GameObject swordVisualRoot;
     private int skinnedMeshRendererCount;
     private int meshRendererCount;
@@ -444,19 +454,18 @@ public class TankAnimatedVisualController : MonoBehaviour
 
     private void UpdateProceduralVisuals()
     {
-        if (!useProceduralFallback || bodyMotionTransform == null)
-        {
-            return;
-        }
-
         if (isAttacking)
         {
             UpdateSwordSlashVisual();
             return;
         }
 
-        UpdateWalkBobVisual();
         ResetSwordToRest();
+
+        if (useProceduralFallback && bodyMotionTransform != null)
+        {
+            UpdateWalkBobVisual();
+        }
     }
 
     private void UpdateWalkBobVisual()
@@ -515,8 +524,12 @@ public class TankAnimatedVisualController : MonoBehaviour
         }
 
         swordMountTransform.localRotation = Quaternion.Euler(swordEuler);
-        bodyMotionTransform.localRotation = bodyRestLocalRotation * Quaternion.Euler(bodyPitch, 0f, 0f);
-        bodyMotionTransform.localScale = bodyRestLocalScale * scalePulse;
+
+        if (useProceduralFallback && bodyMotionTransform != null)
+        {
+            bodyMotionTransform.localRotation = bodyRestLocalRotation * Quaternion.Euler(bodyPitch, 0f, 0f);
+            bodyMotionTransform.localScale = bodyRestLocalScale * scalePulse;
+        }
     }
 
     private void ResetSwordToRest()
@@ -698,68 +711,147 @@ public class TankAnimatedVisualController : MonoBehaviour
             return;
         }
 
-        Transform swordParent = ResolveSwordParentTransform();
-
-        swordVisualRoot = new GameObject(VisualSwordName);
-        swordVisualRoot.transform.SetParent(swordParent, false);
-        swordVisualRoot.transform.localPosition = Vector3.zero;
-        swordVisualRoot.transform.localRotation = Quaternion.Euler(SwordRestLocalEuler);
-        swordVisualRoot.transform.localScale = Vector3.one;
-        swordMountTransform = swordVisualRoot.transform;
-
-        GameObject guard = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        guard.name = "Guard";
-        guard.transform.SetParent(swordVisualRoot.transform, false);
-        guard.transform.localPosition = Vector3.zero;
-        guard.transform.localScale = new Vector3(0.09f, 0.02f, 0.032f);
-        DisableCollider(guard);
-        ApplySwordMaterial(guard, swordMaterial, new Color(0.48f, 0.5f, 0.54f), 0.62f);
+        Transform swordAnchor = ResolveSwordAnchorTransform();
+        swordMountTransform = swordAnchor;
+        swordVisualRoot = swordAnchor.gameObject;
 
         GameObject handle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        handle.name = "Handle";
-        handle.transform.SetParent(swordVisualRoot.transform, false);
-        handle.transform.localPosition = new Vector3(0f, -0.038f, -0.018f);
+        handle.name = "SwordHandle";
+        handle.transform.SetParent(swordAnchor, false);
+        handle.transform.localPosition = Vector3.zero;
         handle.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        handle.transform.localScale = new Vector3(0.028f, 0.048f, 0.028f);
+        handle.transform.localScale = new Vector3(0.022f, 0.038f, 0.022f);
         DisableCollider(handle);
         ApplySwordMaterial(handle, swordHandleMaterial, new Color(0.16f, 0.13f, 0.11f), 0.22f);
 
+        GameObject guard = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        guard.name = "SwordGuard";
+        guard.transform.SetParent(swordAnchor, false);
+        guard.transform.localPosition = Vector3.zero;
+        guard.transform.localScale = new Vector3(0.072f, 0.016f, 0.026f);
+        DisableCollider(guard);
+        ApplySwordMaterial(guard, swordMaterial, new Color(0.48f, 0.5f, 0.54f), 0.62f);
+
         GameObject blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        blade.name = "Blade";
-        blade.transform.SetParent(swordVisualRoot.transform, false);
-        blade.transform.localPosition = new Vector3(0f, 0.13f, 0.015f);
-        blade.transform.localScale = new Vector3(0.036f, 0.26f, 0.014f);
+        blade.name = "SwordBlade";
+        blade.transform.SetParent(swordAnchor, false);
+        blade.transform.localPosition = new Vector3(0f, 0.105f, 0.012f);
+        blade.transform.localScale = new Vector3(0.029f, 0.21f, 0.011f);
         DisableCollider(blade);
         ApplySwordMaterial(blade, swordMaterial, new Color(0.62f, 0.64f, 0.68f), 0.72f);
     }
 
-    private Transform ResolveSwordParentTransform()
+    private Transform ResolveSwordAnchorTransform()
     {
-        Transform hand = FindTransformByName(preferredHandName);
+        Transform handBone = FindHandBoneTransform(out string handPath);
+        Transform anchorParent = handBone != null ? handBone : transform;
+        swordAnchoredToHandBone = handBone != null;
 
-        if (hand != null && !useProceduralFallback && bonesMovedLastFrame)
-        {
-            return hand;
-        }
-
-        Transform existingAnchor = transform.Find(SwordAnchorName);
+        Transform existingAnchor = anchorParent.Find(TankSwordAnchorName);
         if (existingAnchor != null)
         {
-            ApplySwordAnchorTransform(existingAnchor);
+            ApplySwordAnchorTransform(existingAnchor, swordAnchoredToHandBone);
+            LogSwordParentOnce(existingAnchor, handPath);
             return existingAnchor;
         }
 
-        GameObject anchor = new GameObject(SwordAnchorName);
-        anchor.transform.SetParent(transform, false);
-        ApplySwordAnchorTransform(anchor.transform);
+        GameObject anchor = new GameObject(TankSwordAnchorName);
+        anchor.transform.SetParent(anchorParent, false);
+        ApplySwordAnchorTransform(anchor.transform, swordAnchoredToHandBone);
+        LogSwordParentOnce(anchor.transform, handPath);
         return anchor.transform;
     }
 
-    private void ApplySwordAnchorTransform(Transform anchor)
+    private void LogSwordParentOnce(Transform anchor, string handPath)
     {
-        anchor.localPosition = swordAnchorLocalPosition;
-        anchor.localRotation = Quaternion.Euler(swordAnchorLocalEuler);
-        anchor.localScale = swordAnchorLocalScale;
+        if (loggedSwordParent)
+        {
+            return;
+        }
+
+        loggedSwordParent = true;
+
+        if (swordAnchoredToHandBone)
+        {
+            Debug.Log("[TankAnimatedVisualController] sword parent=hand.R path="
+                + handPath
+                + " anchorPath="
+                + GetTransformPath(anchor));
+            return;
+        }
+
+        Debug.LogWarning("[TankAnimatedVisualController] WARNING: hand.R not found, using fallback anchor. path="
+            + GetTransformPath(anchor));
+    }
+
+    private Transform FindHandBoneTransform(out string resolvedPath)
+    {
+        resolvedPath = string.Empty;
+        Transform searchRoot = transform;
+
+        for (int i = 0; i < HandBoneRelativePaths.Length; i++)
+        {
+            string relativePath = HandBoneRelativePaths[i];
+            Transform found = searchRoot.Find(relativePath);
+            if (found != null)
+            {
+                resolvedPath = relativePath;
+                return found;
+            }
+        }
+
+        Transform recursiveHand = FindTransformByName(HandBoneName);
+        if (recursiveHand != null)
+        {
+            resolvedPath = GetTransformPath(recursiveHand);
+            return recursiveHand;
+        }
+
+        if (!string.Equals(preferredHandName, HandBoneName, StringComparison.OrdinalIgnoreCase))
+        {
+            recursiveHand = FindTransformByName(preferredHandName);
+            if (recursiveHand != null)
+            {
+                resolvedPath = GetTransformPath(recursiveHand);
+                return recursiveHand;
+            }
+        }
+
+        return null;
+    }
+
+    private void ApplySwordAnchorTransform(Transform anchor, bool useHandBonePlacement)
+    {
+        if (useHandBonePlacement)
+        {
+            anchor.localPosition = swordHandLocalPosition;
+            anchor.localRotation = Quaternion.Euler(swordHandLocalEuler);
+            anchor.localScale = Vector3.one;
+            return;
+        }
+
+        anchor.localPosition = swordFallbackLocalPosition;
+        anchor.localRotation = Quaternion.Euler(swordFallbackLocalEuler);
+        anchor.localScale = swordFallbackLocalScale;
+    }
+
+    private static string GetTransformPath(Transform target)
+    {
+        if (target == null)
+        {
+            return "null";
+        }
+
+        System.Collections.Generic.List<string> parts = new System.Collections.Generic.List<string>(8);
+        Transform current = target;
+        while (current != null)
+        {
+            parts.Add(current.name);
+            current = current.parent;
+        }
+
+        parts.Reverse();
+        return string.Join("/", parts);
     }
 
     private void ApplySwordMaterial(GameObject target, Material sharedMaterial, Color fallbackColor, float smoothness)

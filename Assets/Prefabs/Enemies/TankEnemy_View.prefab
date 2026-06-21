@@ -517,9 +517,11 @@ MonoBehaviour:
   preferredHandName: hand.R
   swordMaterial: {fileID: 2100000, guid: b7c8d9e0f1a2436589abcdef01234567, type: 2}
   swordHandleMaterial: {fileID: 0}
-  swordAnchorLocalPosition: {x: 0.42, y: 0.24, z: 0.04}
-  swordAnchorLocalEuler: {x: 35, y: 25, z: -82}
-  swordAnchorLocalScale: {x: 0.88, y: 0.88, z: 0.88}
+  swordHandLocalPosition: {x: 0.02, y: 0, z: 0}
+  swordHandLocalEuler: {x: 0, y: 90, z: -90}
+  swordFallbackLocalPosition: {x: 0.42, y: 0.24, z: 0.04}
+  swordFallbackLocalEuler: {x: 35, y: 25, z: -82}
+  swordFallbackLocalScale: {x: 0.88, y: 0.88, z: 0.88}
 --- !u!1001 &8962469679951895997
 PrefabInstance:
   m_ObjectHideFlags: 0
