@@ -503,11 +503,20 @@ MonoBehaviour:
   moveSpeedThreshold: 0.03
   attackRange: 4
   attackCooldown: 1
+  slashVisualDuration: 0.52
+  fallbackProceduralAnimation: 1
+  walkBobAmount: 0.025
+  walkSwayAngle: 2.5
+  attackBodyLeanAngle: 10
   debugForceAttackLoop: 0
   debugForceRun: 0
-  debugAnimatorLogs: 1
+  debugAnimatorLogs: 0
   createVisualSword: 1
   preferredHandName: hand.R
+  swordMaterial: {fileID: 2100000, guid: b7c8d9e0f1a2436589abcdef01234567, type: 2}
+  swordHandleMaterial: {fileID: 0}
+  swordAnchorLocalPosition: {x: 0.34, y: 0.58, z: 0.12}
+  swordAnchorLocalEuler: {x: -12, y: 92, z: 8}
 --- !u!1001 &8962469679951895997
 PrefabInstance:
   m_ObjectHideFlags: 0

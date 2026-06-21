@@ -8,11 +8,17 @@ public class TankAnimatedVisualController : MonoBehaviour
     private const string AttackStateName = "Attack";
     private const string IdleStateName = "Idle";
     private const string RunStateName = "Run";
+    private const string SwordAnchorName = "SwordAnchor";
+    private const string VisualSwordName = "VisualSword";
     private const float AttackCrossFadeDuration = 0.05f;
     private const float RunCrossFadeDuration = 0.08f;
     private const float IdleCrossFadeDuration = 0.12f;
     private const float DefaultAttackVisualDuration = 0.9f;
+    private const float DefaultSlashVisualDuration = 0.52f;
     private const float DebugForceAttackInterval = 1.2f;
+    private static readonly Vector3 SwordRestLocalEuler = new Vector3(-12f, 92f, 8f);
+    private static readonly Vector3 SwordRaiseLocalEuler = new Vector3(-58f, 28f, -18f);
+    private static readonly Vector3 SwordSlashLocalEuler = new Vector3(42f, 92f, 28f);
 
     [Header("Animator")]
     [SerializeField] private RuntimeAnimatorController animatorController;
@@ -25,25 +31,42 @@ public class TankAnimatedVisualController : MonoBehaviour
     [Header("Attack Visual")]
     [SerializeField] private float attackRange = 4f;
     [SerializeField] private float attackCooldown = 1f;
+    [SerializeField] private float slashVisualDuration = DefaultSlashVisualDuration;
+
+    [Header("Procedural Fallback")]
+    [SerializeField] private bool fallbackProceduralAnimation = true;
+    [SerializeField] private float walkBobAmount = 0.025f;
+    [SerializeField] private float walkSwayAngle = 2.5f;
+    [SerializeField] private float attackBodyLeanAngle = 10f;
 
     [Header("Debug")]
     [SerializeField] private bool debugForceAttackLoop = false;
     [SerializeField] private bool debugForceRun = false;
-    [SerializeField] private bool debugAnimatorLogs = true;
+    [SerializeField] private bool debugAnimatorLogs = false;
 
     [Header("Sword Visual")]
     [SerializeField] private bool createVisualSword = true;
     [SerializeField] private string preferredHandName = "hand.R";
+    [SerializeField] private Material swordMaterial;
+    [SerializeField] private Material swordHandleMaterial;
+    [SerializeField] private Vector3 swordAnchorLocalPosition = new Vector3(0.34f, 0.58f, 0.12f);
+    [SerializeField] private Vector3 swordAnchorLocalEuler = new Vector3(-12f, 92f, 8f);
 
     private static readonly int IsMovingHash = Animator.StringToHash("IsMoving");
 
     private Animator animator;
     private Transform enemyRoot;
+    private Transform bodyMotionTransform;
+    private Transform swordMountTransform;
     private Vector3 lastRootPosition;
+    private Vector3 bodyRestLocalPosition;
+    private Quaternion bodyRestLocalRotation;
+    private Vector3 bodyRestLocalScale;
     private float nextAttackTime;
     private float nextDebugForceAttackTime;
     private float nextAnimatorDebugLogTime;
     private float attackEndTime;
+    private float attackSlashStartTime;
     private float attackVisualDuration = DefaultAttackVisualDuration;
     private bool isAttacking;
     private bool lastIsMoving;
@@ -55,12 +78,14 @@ public class TankAnimatedVisualController : MonoBehaviour
     private string attackClipName = AttackStateName;
     private bool warnedMissingAvatar;
     private bool warnedNonSkinnedMesh;
+    private bool loggedSwordFallback;
     private GameObject swordVisualRoot;
     private int skinnedMeshRendererCount;
     private int meshRendererCount;
     private Transform boneProbeTransform;
     private Quaternion boneProbeLastRotation;
     private bool bonesMovedLastFrame;
+    private bool useProceduralFallback;
 
     public void ConfigurePlaybackReferences(Avatar avatar, RuntimeAnimatorController controller = null)
     {
@@ -80,6 +105,7 @@ public class TankAnimatedVisualController : MonoBehaviour
         ResolveAnimatedAnimator();
         enemyRoot = FindEnemyRoot();
         lastRootPosition = enemyRoot != null ? enemyRoot.position : transform.position;
+        bodyMotionTransform = transform;
 
         if (animator == null)
         {
@@ -89,12 +115,14 @@ public class TankAnimatedVisualController : MonoBehaviour
         SanitizeVisualComponents();
         ConfigureAnimator();
         ApplyBodyMaterial();
-        ResolveAttackClipInfo();
-        ResolveRunClipInfo();
         CacheMeshDiagnostics();
         InitBoneProbe();
+        ResolveProceduralFallbackMode();
+        ResolveAttackClipInfo();
+        ResolveRunClipInfo();
         LogMeshDiagnosticOnce();
         CreateVisualSwordIfNeeded();
+        CacheBodyRestTransform();
         PlayMovementVisualState(force: true);
     }
 
@@ -135,6 +163,7 @@ public class TankAnimatedVisualController : MonoBehaviour
         }
 
         UpdateMovementParameter();
+        UpdateProceduralVisuals();
 
         if (debugForceAttackLoop && !isAttacking && Time.time >= nextDebugForceAttackTime)
         {
@@ -153,6 +182,16 @@ public class TankAnimatedVisualController : MonoBehaviour
 
         UpdateBoneMovementProbe();
         MaybeLogAnimatorDebug();
+    }
+
+    private void ResolveProceduralFallbackMode()
+    {
+        useProceduralFallback = fallbackProceduralAnimation && skinnedMeshRendererCount == 0;
+
+        if (useProceduralFallback)
+        {
+            attackVisualDuration = slashVisualDuration;
+        }
     }
 
     private void ConfigureAnimator()
@@ -195,12 +234,11 @@ public class TankAnimatedVisualController : MonoBehaviour
 
     private void ResolveAttackClipInfo()
     {
-        attackVisualDuration = DefaultAttackVisualDuration;
+        attackVisualDuration = useProceduralFallback ? slashVisualDuration : DefaultAttackVisualDuration;
         attackClipName = AttackStateName;
 
-        if (animator == null || animator.runtimeAnimatorController == null)
+        if (animator == null || animator.runtimeAnimatorController == null || useProceduralFallback)
         {
-            Debug.Log("[TankAnimatedVisualController] Attack clip=" + attackClipName + " length=" + attackVisualDuration + " directPlay=True");
             return;
         }
 
@@ -219,12 +257,9 @@ public class TankAnimatedVisualController : MonoBehaviour
             {
                 attackClipName = clip.name;
                 attackVisualDuration = clip.length > 0.01f ? clip.length : DefaultAttackVisualDuration;
-                Debug.Log("[TankAnimatedVisualController] Attack clip=" + attackClipName + " length=" + attackVisualDuration + " directPlay=True");
                 return;
             }
         }
-
-        Debug.Log("[TankAnimatedVisualController] Attack clip=" + attackClipName + " length=" + attackVisualDuration + " directPlay=True");
     }
 
     private void ResolveRunClipInfo()
@@ -327,8 +362,12 @@ public class TankAnimatedVisualController : MonoBehaviour
 
     private void CrossFadeVisualState(string stateName, float duration)
     {
-        animator.CrossFadeInFixedTime(stateName, duration, 0, 0f);
-        animator.Update(0f);
+        if (!useProceduralFallback)
+        {
+            animator.CrossFadeInFixedTime(stateName, duration, 0, 0f);
+            animator.Update(0f);
+        }
+
         currentVisualState = stateName;
     }
 
@@ -376,23 +415,138 @@ public class TankAnimatedVisualController : MonoBehaviour
 
         CrossFadeVisualState(AttackStateName, AttackCrossFadeDuration);
         isAttacking = true;
+        attackSlashStartTime = Time.time;
         attackEndTime = Time.time + attackVisualDuration;
         nextAttackTime = Time.time + attackCooldown;
 
         Debug.Log("[TankAnimatedVisualController] ATTACK distance=" + distance.ToString("F2")
             + " target=" + targetName
             + " stateBefore=" + stateBefore
-            + " clip=" + attackClipName);
+            + " clip=" + attackClipName
+            + " proceduralSlash=" + useProceduralFallback);
     }
 
     private void EndAttackVisual()
     {
         isAttacking = false;
+        ResetProceduralAttackPose();
 
         string returnState = (debugForceRun || lastIsMoving) ? RunStateName : IdleStateName;
         float crossFadeDuration = returnState == RunStateName ? RunCrossFadeDuration : IdleCrossFadeDuration;
         CrossFadeVisualState(returnState, crossFadeDuration);
         animator.SetBool(IsMovingHash, lastIsMoving);
+    }
+
+    private void UpdateProceduralVisuals()
+    {
+        if (!useProceduralFallback || bodyMotionTransform == null)
+        {
+            return;
+        }
+
+        if (isAttacking)
+        {
+            UpdateSwordSlashVisual();
+            return;
+        }
+
+        UpdateWalkBobVisual();
+        ResetSwordToRest();
+    }
+
+    private void UpdateWalkBobVisual()
+    {
+        bool shouldMove = debugForceRun || lastIsMoving;
+
+        if (!shouldMove)
+        {
+            bodyMotionTransform.localPosition = bodyRestLocalPosition;
+            bodyMotionTransform.localRotation = bodyRestLocalRotation;
+            bodyMotionTransform.localScale = bodyRestLocalScale;
+            return;
+        }
+
+        float bob = Mathf.Sin(Time.time * 9f) * walkBobAmount;
+        float sway = Mathf.Sin(Time.time * 4.5f) * walkSwayAngle;
+        bodyMotionTransform.localPosition = bodyRestLocalPosition + new Vector3(0f, bob, 0f);
+        bodyMotionTransform.localRotation = bodyRestLocalRotation * Quaternion.Euler(0f, 0f, sway);
+        bodyMotionTransform.localScale = bodyRestLocalScale;
+    }
+
+    private void UpdateSwordSlashVisual()
+    {
+        if (swordMountTransform == null)
+        {
+            return;
+        }
+
+        float duration = Mathf.Max(slashVisualDuration, 0.01f);
+        float normalized = Mathf.Clamp01((Time.time - attackSlashStartTime) / duration);
+        const float raiseEnd = 0.22f;
+        const float slashEnd = 0.62f;
+
+        Vector3 swordEuler;
+        float bodyPitch;
+        float scalePulse = 1f;
+
+        if (normalized < raiseEnd)
+        {
+            float blend = normalized / raiseEnd;
+            swordEuler = Vector3.Lerp(SwordRestLocalEuler, SwordRaiseLocalEuler, blend);
+            bodyPitch = Mathf.Lerp(0f, -attackBodyLeanAngle * 0.45f, blend);
+        }
+        else if (normalized < slashEnd)
+        {
+            float blend = (normalized - raiseEnd) / (slashEnd - raiseEnd);
+            swordEuler = Vector3.Lerp(SwordRaiseLocalEuler, SwordSlashLocalEuler, blend);
+            bodyPitch = Mathf.Lerp(-attackBodyLeanAngle * 0.45f, attackBodyLeanAngle, blend);
+            scalePulse = 1f + 0.025f * Mathf.Sin(blend * Mathf.PI);
+        }
+        else
+        {
+            float blend = (normalized - slashEnd) / (1f - slashEnd);
+            swordEuler = Vector3.Lerp(SwordSlashLocalEuler, SwordRestLocalEuler, blend);
+            bodyPitch = Mathf.Lerp(attackBodyLeanAngle, 0f, blend);
+        }
+
+        swordMountTransform.localRotation = Quaternion.Euler(swordEuler);
+        bodyMotionTransform.localRotation = bodyRestLocalRotation * Quaternion.Euler(bodyPitch, 0f, 0f);
+        bodyMotionTransform.localScale = bodyRestLocalScale * scalePulse;
+    }
+
+    private void ResetSwordToRest()
+    {
+        if (swordMountTransform == null)
+        {
+            return;
+        }
+
+        swordMountTransform.localRotation = Quaternion.Euler(SwordRestLocalEuler);
+    }
+
+    private void ResetProceduralAttackPose()
+    {
+        if (bodyMotionTransform == null)
+        {
+            return;
+        }
+
+        bodyMotionTransform.localPosition = bodyRestLocalPosition;
+        bodyMotionTransform.localRotation = bodyRestLocalRotation;
+        bodyMotionTransform.localScale = bodyRestLocalScale;
+        ResetSwordToRest();
+    }
+
+    private void CacheBodyRestTransform()
+    {
+        if (bodyMotionTransform == null)
+        {
+            return;
+        }
+
+        bodyRestLocalPosition = bodyMotionTransform.localPosition;
+        bodyRestLocalRotation = bodyMotionTransform.localRotation;
+        bodyRestLocalScale = bodyMotionTransform.localScale;
     }
 
     private void MaybeLogAnimatorDebug()
@@ -422,7 +576,8 @@ public class TankAnimatedVisualController : MonoBehaviour
             + " skinnedMeshRendererCount=" + skinnedMeshRendererCount
             + " meshRendererCount=" + meshRendererCount
             + " bonesMoved=" + bonesMovedLastFrame
-            + " visibleMeshLikelySkinned=" + (skinnedMeshRendererCount > 0));
+            + " visibleMeshLikelySkinned=" + (skinnedMeshRendererCount > 0)
+            + " proceduralFallback=" + useProceduralFallback);
     }
 
     private void CacheMeshDiagnostics()
@@ -433,7 +588,7 @@ public class TankAnimatedVisualController : MonoBehaviour
 
     private void InitBoneProbe()
     {
-        boneProbeTransform = FindTransformByName("hand.R")
+        boneProbeTransform = FindTransformByName(preferredHandName)
             ?? FindTransformByName("spine")
             ?? FindTransformByName("skeleton-skeleton");
 
@@ -464,12 +619,19 @@ public class TankAnimatedVisualController : MonoBehaviour
             + skinnedMeshRendererCount
             + " meshRendererCount=" + meshRendererCount
             + " visibleMeshLikelySkinned=" + visibleMeshLikelySkinned
+            + " proceduralFallback=" + useProceduralFallback
             + " animatorRoot=" + (animator != null ? animator.gameObject.name : "null"));
 
         if (skinnedMeshRendererCount == 0 && !warnedNonSkinnedMesh)
         {
             warnedNonSkinnedMesh = true;
             Debug.LogWarning("[TankAnimatedVisualController] Animator bones may move but mesh is not skinned; visible deformation may not happen. Blender skinned mesh re-export required.", this);
+        }
+
+        if (useProceduralFallback && !loggedSwordFallback)
+        {
+            loggedSwordFallback = true;
+            Debug.Log("[TankAnimatedVisualController] using visual sword slash fallback because SkinnedMeshRenderer=0");
         }
     }
 
@@ -535,39 +697,80 @@ public class TankAnimatedVisualController : MonoBehaviour
             return;
         }
 
-        Transform hand = FindTransformByName(preferredHandName);
+        Transform swordParent = ResolveSwordParentTransform();
 
-        if (hand == null)
-        {
-            hand = FindTransformByName("hand.L");
-        }
-
-        if (hand == null)
-        {
-            hand = transform;
-        }
-
-        swordVisualRoot = new GameObject("VisualSword");
-        swordVisualRoot.transform.SetParent(hand, false);
-        swordVisualRoot.transform.localPosition = new Vector3(0.04f, 0.02f, 0.12f);
-        swordVisualRoot.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        swordVisualRoot = new GameObject(VisualSwordName);
+        swordVisualRoot.transform.SetParent(swordParent, false);
+        swordVisualRoot.transform.localPosition = Vector3.zero;
+        swordVisualRoot.transform.localRotation = Quaternion.Euler(SwordRestLocalEuler);
         swordVisualRoot.transform.localScale = Vector3.one;
+        swordMountTransform = swordVisualRoot.transform;
+
+        GameObject guard = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        guard.name = "Guard";
+        guard.transform.SetParent(swordVisualRoot.transform, false);
+        guard.transform.localPosition = new Vector3(0f, 0.01f, 0f);
+        guard.transform.localScale = new Vector3(0.11f, 0.025f, 0.04f);
+        DisableCollider(guard);
+        ApplySwordMaterial(guard, swordMaterial, new Color(0.48f, 0.5f, 0.54f), 0.62f);
+
+        GameObject handle = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        handle.name = "Handle";
+        handle.transform.SetParent(swordVisualRoot.transform, false);
+        handle.transform.localPosition = new Vector3(0f, -0.05f, 0f);
+        handle.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        handle.transform.localScale = new Vector3(0.035f, 0.06f, 0.035f);
+        DisableCollider(handle);
+        ApplySwordMaterial(handle, swordHandleMaterial, new Color(0.16f, 0.13f, 0.11f), 0.22f);
 
         GameObject blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
         blade.name = "Blade";
         blade.transform.SetParent(swordVisualRoot.transform, false);
-        blade.transform.localPosition = new Vector3(0f, 0.16f, 0f);
-        blade.transform.localScale = new Vector3(0.05f, 0.32f, 0.02f);
+        blade.transform.localPosition = new Vector3(0f, 0.18f, 0f);
+        blade.transform.localScale = new Vector3(0.045f, 0.34f, 0.018f);
         DisableCollider(blade);
-        ApplyMaterial(blade, new Color(0.72f, 0.74f, 0.78f), 0.72f);
+        ApplySwordMaterial(blade, swordMaterial, new Color(0.62f, 0.64f, 0.68f), 0.72f);
+    }
 
-        GameObject handle = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        handle.name = "Handle";
-        handle.transform.SetParent(swordVisualRoot.transform, false);
-        handle.transform.localPosition = new Vector3(0f, -0.02f, 0f);
-        handle.transform.localScale = new Vector3(0.045f, 0.12f, 0.045f);
-        DisableCollider(handle);
-        ApplyMaterial(handle, new Color(0.18f, 0.14f, 0.11f), 0.25f);
+    private Transform ResolveSwordParentTransform()
+    {
+        Transform hand = FindTransformByName(preferredHandName);
+
+        if (hand != null && !useProceduralFallback && bonesMovedLastFrame)
+        {
+            return hand;
+        }
+
+        Transform existingAnchor = transform.Find(SwordAnchorName);
+        if (existingAnchor != null)
+        {
+            return existingAnchor;
+        }
+
+        GameObject anchor = new GameObject(SwordAnchorName);
+        anchor.transform.SetParent(transform, false);
+        anchor.transform.localPosition = swordAnchorLocalPosition;
+        anchor.transform.localRotation = Quaternion.Euler(swordAnchorLocalEuler);
+        anchor.transform.localScale = Vector3.one;
+        return anchor.transform;
+    }
+
+    private void ApplySwordMaterial(GameObject target, Material sharedMaterial, Color fallbackColor, float smoothness)
+    {
+        Renderer renderer = target.GetComponent<Renderer>();
+
+        if (renderer == null)
+        {
+            return;
+        }
+
+        if (sharedMaterial != null)
+        {
+            renderer.sharedMaterial = sharedMaterial;
+            return;
+        }
+
+        ApplyMaterial(target, fallbackColor, smoothness);
     }
 
     private static void DisableCollider(GameObject target)
