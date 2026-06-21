@@ -461,21 +461,21 @@ public class TankAnimatedVisualController : MonoBehaviour
             return taggedPlayer.transform;
         }
 
-        FPSPlayerController fpsController = Object.FindFirstObjectByType<FPSPlayerController>();
+        FPSPlayerController fpsController = UnityEngine.Object.FindFirstObjectByType<FPSPlayerController>();
 
         if (fpsController != null)
         {
             return fpsController.transform;
         }
 
-        PlayerController playerController = Object.FindFirstObjectByType<PlayerController>();
+        PlayerController playerController = UnityEngine.Object.FindFirstObjectByType<PlayerController>();
 
         if (playerController != null)
         {
             return playerController.transform;
         }
 
-        CharacterController[] characterControllers = Object.FindObjectsByType<CharacterController>(FindObjectsSortMode.None);
+        CharacterController[] characterControllers = UnityEngine.Object.FindObjectsByType<CharacterController>(FindObjectsSortMode.None);
 
         for (int i = 0; i < characterControllers.Length; i++)
         {
