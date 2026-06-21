@@ -196,41 +196,10 @@ public static class AnimatedSkeletonClipAudit
 
     private static void EnsureClipFrameRanges()
     {
-        ModelImporter importer = AssetImporter.GetAtPath(SkeletonPath) as ModelImporter;
-        if (importer == null)
-        {
-            return;
-        }
-
-        CollectSkeletonAssets(out AnimationClip idleClip, out AnimationClip runClip, out AnimationClip attackClip, out Avatar unusedAvatar, out int unusedClipCount);
-        bool needsReimport = idleClip == null || runClip == null || attackClip == null
-            || idleClip.length < 0.01f || runClip.length < 0.01f || attackClip.length < 0.01f;
-
-        if (!needsReimport)
-        {
-            return;
-        }
-
-        importer.clipAnimations = new[]
-        {
-            BuildClip("Idle", "skeleton-skeleton|idle", true),
-            BuildClip("Run", "skeleton-skeleton|run", true),
-            BuildClip("Attack", "skeleton-skeleton|attack", false),
-        };
-
-        importer.SaveAndReimport();
-    }
-
-    private static ModelImporterClipAnimation BuildClip(string name, string takeName, bool loopTime)
-    {
-        return new ModelImporterClipAnimation
-        {
-            name = name,
-            takeName = takeName,
-            firstFrame = 0,
-            lastFrame = 0,
-            loopTime = loopTime,
-        };
+        AnimatedSkeletonClipFrameRepair.TryRepairClipFrameRangesFromDefaults(
+            "[AnimatedSkeletonClipAudit]",
+            runFollowUpAudits: false,
+            onlyIfNeeded: true);
     }
 
     private static void CollectSkeletonAssets(

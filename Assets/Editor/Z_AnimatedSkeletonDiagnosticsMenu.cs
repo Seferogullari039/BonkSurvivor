@@ -3,6 +3,13 @@ using UnityEngine;
 
 public static class Z_AnimatedSkeletonDiagnosticsMenu
 {
+    [MenuItem("Tools/BonkSurvivor/Repair Animated Skeleton Clip Frame Ranges", false, 9988)]
+    public static void RepairAnimatedSkeletonClipFrameRanges()
+    {
+        Debug.Log("[Z_AnimatedSkeletonDiagnosticsMenu] Clip frame repair menu clicked.");
+        AnimatedSkeletonClipFrameRepair.RepairClipFrameRanges();
+    }
+
     [MenuItem("Tools/BonkSurvivor/ZZ Diagnostic Menu Ping", false, 9989)]
     public static void Ping()
     {
