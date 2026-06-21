@@ -57,6 +57,8 @@ public class ShrineEventController : MonoBehaviour
     private EnemySpawner cachedSpawner;
     private int cachedWaveBannerWave = -1;
     private float waveBannerEndTime;
+    private static bool loggedBonusChestSkipWarning;
+    private static bool loggedBonusChestSpawnResult;
 
     public void Initialize(ShrineEventManager manager)
     {
@@ -153,26 +155,172 @@ public class ShrineEventController : MonoBehaviour
         return false;
     }
 
-    private static bool TrySpawnBonusChest(Vector3 position)
+    private bool TrySpawnBonusChest(Vector3 shrineCenter)
     {
-        if (!LootLimits.CanSpawnChest()) return false;
+        if (!LootLimits.CanSpawnChest())
+        {
+            return false;
+        }
 
-        GameObject prefab = ChestPrefabUtility.ResolveChestPrefab(ChestRarity.Normal);
+        GameObject prefab = ResolveBonusChestPrefab();
 
-        if (prefab == null) return false;
+        if (prefab == null)
+        {
+            LogBonusChestSkipOnce("prefab missing");
+            return false;
+        }
 
-        Vector3 spawnPosition = position;
-        spawnPosition.y = ProceduralGrassArena.GetLootSpawnY(0.5f);
-        ProceduralGrassArena.TryClampHorizontal(ref spawnPosition);
-        ProceduralGrassArena.TryResolveBlockedSpawn(ref spawnPosition, 6f, 1.2f);
+        if (!TryFindBonusChestSpawnPosition(shrineCenter, out Vector3 spawnPosition))
+        {
+            LogBonusChestSkipOnce("safe spawn not found");
+            return false;
+        }
 
         GameObject chestObject = Instantiate(prefab, spawnPosition, Quaternion.identity);
         Chest chest = chestObject.GetComponent<Chest>();
 
-        if (chest == null) return false;
+        if (chest == null)
+        {
+            Destroy(chestObject);
+            LogBonusChestSkipOnce("Chest component missing on prefab");
+            return false;
+        }
 
         chest.ConfigureDroppedReward(ChestRarity.Normal, false);
+        LogBonusChestSpawnOnce(chestObject, spawnPosition);
         return true;
+    }
+
+    private static GameObject ResolveBonusChestPrefab()
+    {
+        ChestSpawner chestSpawner = Object.FindFirstObjectByType<ChestSpawner>();
+
+        if (chestSpawner != null)
+        {
+            GameObject spawnerPrefab = chestSpawner.GetChestPrefabForRarity(ChestRarity.Normal);
+
+            if (IsValidBonusChestPrefab(spawnerPrefab))
+            {
+                return spawnerPrefab;
+            }
+        }
+
+        GameObject utilityPrefab = ChestPrefabUtility.ResolveChestPrefab(ChestRarity.Normal);
+
+        if (IsValidBonusChestPrefab(utilityPrefab))
+        {
+            return utilityPrefab;
+        }
+
+        return null;
+    }
+
+    private static bool IsValidBonusChestPrefab(GameObject prefab)
+    {
+        if (prefab == null)
+        {
+            return false;
+        }
+
+        if (prefab.GetComponent<Chest>() == null)
+        {
+            return false;
+        }
+
+        if (prefab.GetComponent<ChestVisual>() == null)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private static bool TryFindBonusChestSpawnPosition(Vector3 shrineCenter, out Vector3 spawnPosition)
+    {
+        spawnPosition = shrineCenter;
+        Vector3 flatCenter = shrineCenter;
+        flatCenter.y = 0f;
+
+        if (ProceduralGrassArena.TryGetSafeChestSpawnPoint(flatCenter, 3.5f, 5f, 1.2f, out spawnPosition))
+        {
+            Vector3 flatSpawn = spawnPosition;
+            flatSpawn.y = 0f;
+
+            if ((flatSpawn - flatCenter).sqrMagnitude >= 3.2f * 3.2f)
+            {
+                spawnPosition.y = ProceduralGrassArena.GetLootSpawnY(0.5f);
+                return true;
+            }
+        }
+
+        for (int attempt = 0; attempt < 10; attempt++)
+        {
+            float distance = Random.Range(3.5f, 5f);
+            float angle = Random.Range(0f, Mathf.PI * 2f);
+            Vector3 offset = new Vector3(Mathf.Cos(angle), 0f, Mathf.Sin(angle)) * distance;
+            Vector3 candidate = flatCenter + offset;
+            candidate.y = ProceduralGrassArena.GetLootSpawnY(0.5f);
+            ProceduralGrassArena.TryClampHorizontal(ref candidate);
+            ProceduralGrassArena.TryResolveBlockedSpawn(ref candidate, 3.5f, 1.2f);
+
+            Vector3 flatCandidate = candidate;
+            flatCandidate.y = 0f;
+
+            if ((flatCandidate - flatCenter).sqrMagnitude < 3.2f * 3.2f)
+            {
+                continue;
+            }
+
+            if (ProceduralGrassArena.Instance != null
+                && ProceduralGrassArena.Instance.IsPositionBlocked(candidate, 1.2f))
+            {
+                continue;
+            }
+
+            spawnPosition = candidate;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static void LogBonusChestSkipOnce(string reason)
+    {
+        if (loggedBonusChestSkipWarning)
+        {
+            return;
+        }
+
+        loggedBonusChestSkipWarning = true;
+        Debug.LogWarning("[ShrineEvent] Bonus chest spawn skipped: " + reason + ".");
+    }
+
+    private static void LogBonusChestSpawnOnce(GameObject chestObject, Vector3 position)
+    {
+        if (loggedBonusChestSpawnResult || chestObject == null)
+        {
+            return;
+        }
+
+        loggedBonusChestSpawnResult = true;
+
+        Chest chest = chestObject.GetComponent<Chest>();
+        ChestVisual chestVisual = chestObject.GetComponent<ChestVisual>();
+        Renderer rootRenderer = chestObject.GetComponent<Renderer>();
+        string materialName = rootRenderer != null && rootRenderer.sharedMaterial != null
+            ? rootRenderer.sharedMaterial.name
+            : "none";
+
+        Debug.Log("[ShrineEvent] Bonus chest spawn result: object="
+            + chestObject.name
+            + " hasChest="
+            + (chest != null)
+            + " hasChestVisual="
+            + (chestVisual != null)
+            + " material="
+            + materialName
+            + " position="
+            + position);
     }
 
     private IEnumerator PlayCompletionSequence()
