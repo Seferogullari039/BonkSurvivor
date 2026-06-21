@@ -37,6 +37,12 @@ public static class Z_AnimatedSkeletonDiagnosticsMenu
         AnimatedSkeletonClipAudit.FixTankSkeletonPlayback();
     }
 
+    [MenuItem("Tools/BonkSurvivor/Audit Tank Skeleton Prefab Binding", false, 9994)]
+    public static void AuditTankSkeletonPrefabBinding()
+    {
+        Debug.Log(AnimatedSkeletonBindingProof.BuildTankViewPrefabBindingAuditReport());
+    }
+
     [MenuItem("Tools/BonkSurvivor/Repair Tank Skeleton Prefab Binding", false, 9993)]
     public static void RepairTankSkeletonPrefabBinding()
     {

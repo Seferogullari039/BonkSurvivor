@@ -41,6 +41,7 @@ public static class AnimatedSkeletonBindingProof
         }
 
         summary.AppendLine("[AnimatedSkeletonBindingProof] VERDICT: Raw clip kemikleri hareket ettiriyor. Stage 2 raw Animator proof calistiriliyor...");
+        summary.AppendLine("[AnimatedSkeletonBindingProof] Run Tools/BonkSurvivor/Repair Tank Skeleton Prefab Binding to bind TankEnemy_View playback.");
         Debug.Log(summary.ToString());
 
         ProveRawAnimatorPlayback();
@@ -101,11 +102,116 @@ public static class AnimatedSkeletonBindingProof
             return;
         }
 
+        Debug.Log(BuildTankViewPrefabBindingAuditReport());
+
         AnimatedSkeletonClipAudit.RebindControllerMotionsFromFbx();
         RepairTankViewPrefabHierarchy(avatar);
         AssetDatabase.SaveAssets();
         Debug.Log("[AnimatedSkeletonBindingProof] Tank prefab binding repair complete.");
+        Debug.Log(BuildTankViewPrefabBindingAuditReport());
         Debug.Log(AnimatedSkeletonClipAudit.BuildAuditReport());
+    }
+
+    public static string BuildTankViewPrefabBindingAuditReport()
+    {
+        StringBuilder report = new StringBuilder(2048);
+        report.AppendLine("[AnimatedSkeletonBindingProof] === TankEnemy_View prefab binding audit ===");
+
+        GameObject prefabRoot = AssetDatabase.LoadAssetAtPath<GameObject>(TankViewPrefabPath);
+        if (prefabRoot == null)
+        {
+            report.AppendLine("TankEnemy_View prefab missing.");
+            return report.ToString();
+        }
+
+        Transform visualRoot = prefabRoot.transform.Find("VisualRoot");
+        Transform model = visualRoot != null ? visualRoot.Find("Model") : null;
+        report.AppendLine("activeModelHierarchy=" + (model != null ? BuildTransformPath(model) : "missing"));
+
+        Animator[] animators = prefabRoot.GetComponentsInChildren<Animator>(true);
+        report.AppendLine("animatorCount=" + animators.Length);
+
+        for (int i = 0; i < animators.Length; i++)
+        {
+            Animator animator = animators[i];
+            if (animator == null)
+            {
+                continue;
+            }
+
+            RuntimeAnimatorController controller = animator.runtimeAnimatorController;
+            report.AppendLine("  animatorGO=" + BuildTransformPath(animator.transform)
+                + " avatarValid=" + (animator.avatar != null && animator.avatar.isValid)
+                + " controller=" + (controller != null ? controller.name : "null")
+                + " cullingMode=" + animator.cullingMode
+                + " applyRootMotion=" + animator.applyRootMotion
+                + " speed=" + animator.speed);
+        }
+
+        SkinnedMeshRenderer[] skinnedRenderers = prefabRoot.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+        MeshRenderer[] meshRenderers = prefabRoot.GetComponentsInChildren<MeshRenderer>(true);
+        report.AppendLine("skinnedMeshRendererCount=" + skinnedRenderers.Length);
+        report.AppendLine("meshRendererCount=" + meshRenderers.Length);
+
+        for (int i = 0; i < meshRenderers.Length; i++)
+        {
+            MeshRenderer renderer = meshRenderers[i];
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            report.AppendLine("  meshRendererGO=" + BuildTransformPath(renderer.transform));
+        }
+
+        Transform boneRoot = model != null
+            ? FindChildByName(model, "skeleton-skeleton") ?? model
+            : null;
+        report.AppendLine("animatedSkeletonBoneRootPath="
+            + (boneRoot != null ? BuildTransformPath(boneRoot) : "missing"));
+
+        TankAnimatedVisualController[] visualControllers = prefabRoot.GetComponentsInChildren<TankAnimatedVisualController>(true);
+        report.AppendLine("TankAnimatedVisualController count=" + visualControllers.Length);
+
+        for (int i = 0; i < visualControllers.Length; i++)
+        {
+            TankAnimatedVisualController visualController = visualControllers[i];
+            if (visualController == null)
+            {
+                continue;
+            }
+
+            Animator linkedAnimator = visualController.GetComponent<Animator>()
+                ?? visualController.GetComponentInChildren<Animator>(true);
+            report.AppendLine("  visualControllerGO=" + BuildTransformPath(visualController.transform)
+                + " linkedAnimatorGO=" + (linkedAnimator != null ? linkedAnimator.gameObject.name : "null"));
+        }
+
+        if (skinnedRenderers.Length == 0)
+        {
+            report.AppendLine("[AnimatedSkeletonBindingProof] WARNING: SkinnedMeshRenderer count is 0. Bones may move without visible mesh deformation.");
+        }
+
+        return report.ToString();
+    }
+
+    private static string BuildTransformPath(Transform transform)
+    {
+        if (transform == null)
+        {
+            return "null";
+        }
+
+        List<string> parts = new List<string>(8);
+        Transform current = transform;
+        while (current != null)
+        {
+            parts.Add(current.name);
+            current = current.parent;
+        }
+
+        parts.Reverse();
+        return string.Join("/", parts);
     }
 
     private static int ProveClipSample(string label, Func<AnimationClip, bool> matcher, float sampleRatio, StringBuilder summary)
@@ -349,37 +455,46 @@ public static class AnimatedSkeletonBindingProof
             }
 
             Transform existingModel = visualRoot.Find("Model");
-            Transform skeletonRoot = existingModel;
-
-            if (existingModel != null && existingModel.Find("skeleton") != null)
-            {
-                skeletonRoot = existingModel.Find("skeleton");
-            }
-
             if (existingModel == null)
             {
                 Debug.LogError("[AnimatedSkeletonBindingProof] Model missing under VisualRoot.");
                 return;
             }
 
-            Vector3 wrapperScale = existingModel.localScale;
-            Vector3 wrapperPosition = existingModel.localPosition;
-            Quaternion wrapperRotation = existingModel.localRotation;
-
-            bool needsWrapperSplit = skeletonRoot == existingModel && existingModel.GetComponent<SkinnedMeshRenderer>() == null;
-            if (needsWrapperSplit)
+            Transform skeletonRoot = existingModel;
+            Transform nestedSkeleton = existingModel.Find("skeleton");
+            if (nestedSkeleton != null)
             {
-                existingModel.name = "skeleton";
-                GameObject wrapper = new GameObject("Model");
-                wrapper.transform.SetParent(visualRoot, false);
-                wrapper.transform.localPosition = wrapperPosition;
-                wrapper.transform.localRotation = wrapperRotation;
-                wrapper.transform.localScale = wrapperScale;
-                existingModel.SetParent(wrapper.transform, false);
-                existingModel.localPosition = Vector3.zero;
-                existingModel.localRotation = Quaternion.identity;
-                existingModel.localScale = Vector3.one;
-                skeletonRoot = existingModel;
+                skeletonRoot = nestedSkeleton;
+            }
+
+            bool hasAnimatedChild = FindChildByName(existingModel, "skeleton-skeleton") != null;
+            bool animatorOnModelRoot = existingModel.GetComponent<Animator>() != null;
+            bool keepFlatHierarchy = animatorOnModelRoot && hasAnimatedChild;
+
+            if (!keepFlatHierarchy)
+            {
+                Vector3 wrapperScale = existingModel.localScale;
+                Vector3 wrapperPosition = existingModel.localPosition;
+                Quaternion wrapperRotation = existingModel.localRotation;
+                bool needsWrapperSplit = skeletonRoot == existingModel
+                    && existingModel.GetComponent<SkinnedMeshRenderer>() == null
+                    && !animatorOnModelRoot;
+
+                if (needsWrapperSplit)
+                {
+                    existingModel.name = "skeleton";
+                    GameObject wrapper = new GameObject("Model");
+                    wrapper.transform.SetParent(visualRoot, false);
+                    wrapper.transform.localPosition = wrapperPosition;
+                    wrapper.transform.localRotation = wrapperRotation;
+                    wrapper.transform.localScale = wrapperScale;
+                    existingModel.SetParent(wrapper.transform, false);
+                    existingModel.localPosition = Vector3.zero;
+                    existingModel.localRotation = Quaternion.identity;
+                    existingModel.localScale = Vector3.one;
+                    skeletonRoot = existingModel;
+                }
             }
 
             Animator animator = skeletonRoot.GetComponent<Animator>();

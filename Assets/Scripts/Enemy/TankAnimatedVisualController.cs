@@ -27,8 +27,8 @@ public class TankAnimatedVisualController : MonoBehaviour
     [SerializeField] private float attackCooldown = 1f;
 
     [Header("Debug")]
-    [SerializeField] private bool debugForceAttackLoop = true;
-    [SerializeField] private bool debugForceRun = true;
+    [SerializeField] private bool debugForceAttackLoop = false;
+    [SerializeField] private bool debugForceRun = false;
     [SerializeField] private bool debugAnimatorLogs = true;
 
     [Header("Sword Visual")]
@@ -54,7 +54,13 @@ public class TankAnimatedVisualController : MonoBehaviour
     private bool warnedMissingTarget;
     private string attackClipName = AttackStateName;
     private bool warnedMissingAvatar;
+    private bool warnedNonSkinnedMesh;
     private GameObject swordVisualRoot;
+    private int skinnedMeshRendererCount;
+    private int meshRendererCount;
+    private Transform boneProbeTransform;
+    private Quaternion boneProbeLastRotation;
+    private bool bonesMovedLastFrame;
 
     public void ConfigurePlaybackReferences(Avatar avatar, RuntimeAnimatorController controller = null)
     {
@@ -85,6 +91,9 @@ public class TankAnimatedVisualController : MonoBehaviour
         ApplyBodyMaterial();
         ResolveAttackClipInfo();
         ResolveRunClipInfo();
+        CacheMeshDiagnostics();
+        InitBoneProbe();
+        LogMeshDiagnosticOnce();
         CreateVisualSwordIfNeeded();
         PlayMovementVisualState(force: true);
     }
@@ -142,6 +151,7 @@ public class TankAnimatedVisualController : MonoBehaviour
             EndAttackVisual();
         }
 
+        UpdateBoneMovementProbe();
         MaybeLogAnimatorDebug();
     }
 
@@ -408,7 +418,59 @@ public class TankAnimatedVisualController : MonoBehaviour
             + " attacking=" + isAttacking
             + " speed=" + lastMovementSpeed.ToString("F2")
             + " forceRun=" + debugForceRun
-            + " normalized=" + stateInfo.normalizedTime.ToString("F2"));
+            + " normalized=" + stateInfo.normalizedTime.ToString("F2")
+            + " skinnedMeshRendererCount=" + skinnedMeshRendererCount
+            + " meshRendererCount=" + meshRendererCount
+            + " bonesMoved=" + bonesMovedLastFrame
+            + " visibleMeshLikelySkinned=" + (skinnedMeshRendererCount > 0));
+    }
+
+    private void CacheMeshDiagnostics()
+    {
+        skinnedMeshRendererCount = GetComponentsInChildren<SkinnedMeshRenderer>(true).Length;
+        meshRendererCount = GetComponentsInChildren<MeshRenderer>(true).Length;
+    }
+
+    private void InitBoneProbe()
+    {
+        boneProbeTransform = FindTransformByName("hand.R")
+            ?? FindTransformByName("spine")
+            ?? FindTransformByName("skeleton-skeleton");
+
+        if (boneProbeTransform != null)
+        {
+            boneProbeLastRotation = boneProbeTransform.localRotation;
+        }
+    }
+
+    private void UpdateBoneMovementProbe()
+    {
+        if (boneProbeTransform == null)
+        {
+            bonesMovedLastFrame = false;
+            return;
+        }
+
+        float rotationDelta = Quaternion.Angle(boneProbeTransform.localRotation, boneProbeLastRotation);
+        bonesMovedLastFrame = rotationDelta > 0.05f;
+        boneProbeLastRotation = boneProbeTransform.localRotation;
+    }
+
+    private void LogMeshDiagnosticOnce()
+    {
+        bool visibleMeshLikelySkinned = skinnedMeshRendererCount > 0;
+
+        Debug.Log("[TankAnimatedVisualController] meshDiagnostic skinnedMeshRendererCount="
+            + skinnedMeshRendererCount
+            + " meshRendererCount=" + meshRendererCount
+            + " visibleMeshLikelySkinned=" + visibleMeshLikelySkinned
+            + " animatorRoot=" + (animator != null ? animator.gameObject.name : "null"));
+
+        if (skinnedMeshRendererCount == 0 && !warnedNonSkinnedMesh)
+        {
+            warnedNonSkinnedMesh = true;
+            Debug.LogWarning("[TankAnimatedVisualController] Animator bones may move but mesh is not skinned; visible deformation may not happen. Blender skinned mesh re-export required.", this);
+        }
     }
 
     private string GetCurrentStateLabel()
