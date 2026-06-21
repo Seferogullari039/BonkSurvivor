@@ -172,6 +172,9 @@ public class TankAnimatedVisualController : MonoBehaviour
             animator.avatar = skeletonAvatar;
         }
 
+        animator.speed = 1f;
+        animator.Rebind();
+
         if ((animator.avatar == null || !animator.avatar.isValid) && !warnedMissingAvatar)
         {
             warnedMissingAvatar = true;
@@ -398,14 +401,14 @@ public class TankAnimatedVisualController : MonoBehaviour
             : "none";
 
         Debug.Log("[TankAnimatedVisualController] state=" + currentVisualState
+            + " clipInfo=" + clipInfo
+            + " avatarValid=" + (animator.avatar != null && animator.avatar.isValid)
+            + " animatorRoot=" + animator.gameObject.name
             + " moving=" + lastIsMoving
+            + " attacking=" + isAttacking
             + " speed=" + lastMovementSpeed.ToString("F2")
             + " forceRun=" + debugForceRun
-            + " clip=" + runClipName
-            + " clipInfo=" + clipInfo
-            + " normalized=" + stateInfo.normalizedTime.ToString("F2")
-            + " avatarValid=" + (animator.avatar != null && animator.avatar.isValid)
-            + " attacking=" + isAttacking);
+            + " normalized=" + stateInfo.normalizedTime.ToString("F2"));
     }
 
     private string GetCurrentStateLabel()

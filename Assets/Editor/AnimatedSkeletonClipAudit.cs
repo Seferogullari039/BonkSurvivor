@@ -18,12 +18,9 @@ public static class AnimatedSkeletonClipAudit
     [MenuItem("Tools/BonkSurvivor/Fix Tank Skeleton Playback", false, 31)]
     public static void FixTankSkeletonPlayback()
     {
-        EnsureSkeletonImportSettings();
-        AnimationClip idleClip = null;
-        AnimationClip runClip = null;
-        AnimationClip attackClip = null;
-        Avatar avatar = null;
-        CollectSkeletonAssets(out idleClip, out runClip, out attackClip, out avatar, out _);
+        EnsureSkeletonImportForPlayback();
+        RebindControllerMotionsFromFbx();
+        Avatar avatar = FindAvatar();
 
         if (avatar == null)
         {
@@ -31,13 +28,30 @@ public static class AnimatedSkeletonClipAudit
             return;
         }
 
-        RebindControllerMotions(idleClip, runClip, attackClip);
         FixTankViewPrefabAvatar(avatar);
 
         AssetDatabase.SaveAssets();
         AssetDatabase.Refresh();
         Debug.Log("[AnimatedSkeletonClipAudit] Tank skeleton playback fix applied. Re-run audit to verify.");
         AuditAnimatedSkeletonClips();
+    }
+
+    public static void EnsureSkeletonImportForPlayback()
+    {
+        EnsureSkeletonImportSettings();
+        EnsureClipFrameRanges();
+    }
+
+    public static void RebindControllerMotionsFromFbx()
+    {
+        CollectSkeletonAssets(out AnimationClip idleClip, out AnimationClip runClip, out AnimationClip attackClip, out _, out _);
+        RebindControllerMotions(idleClip, runClip, attackClip);
+    }
+
+    private static Avatar FindAvatar()
+    {
+        CollectSkeletonAssets(out _, out _, out _, out Avatar avatar, out _);
+        return avatar;
     }
 
     public static string BuildAuditReport()
@@ -181,6 +195,46 @@ public static class AnimatedSkeletonClipAudit
         }
     }
 
+    private static void EnsureClipFrameRanges()
+    {
+        ModelImporter importer = AssetImporter.GetAtPath(SkeletonPath) as ModelImporter;
+        if (importer == null)
+        {
+            return;
+        }
+
+        CollectSkeletonAssets(out AnimationClip idleClip, out AnimationClip runClip, out AnimationClip attackClip, out _, out _);
+        bool needsReimport = idleClip == null || runClip == null || attackClip == null
+            || idleClip.length < 0.01f || runClip.length < 0.01f || attackClip.length < 0.01f;
+
+        if (!needsReimport)
+        {
+            return;
+        }
+
+        importer.clipAnimations = new[]
+        {
+            BuildClip("Idle", "skeleton-skeleton|idle", true),
+            BuildClip("Run", "skeleton-skeleton|run", true),
+            BuildClip("Attack", "skeleton-skeleton|attack", false),
+        };
+
+        importer.SaveAndReimport();
+    }
+
+    private static ModelImporterClipAnimation BuildClip(string name, string takeName, bool loopTime)
+    {
+        return new ModelImporterClipAnimation
+        {
+            name = name,
+            takeName = takeName,
+            firstFrame = 0,
+            lastFrame = 0,
+            loopTime = loopTime,
+            loopPose = loopTime,
+        };
+    }
+
     private static void CollectSkeletonAssets(
         out AnimationClip idleClip,
         out AnimationClip runClip,
@@ -289,8 +343,10 @@ public static class AnimatedSkeletonClipAudit
             if (animator != null)
             {
                 animator.avatar = avatar;
+                animator.runtimeAnimatorController = AssetDatabase.LoadAssetAtPath<RuntimeAnimatorController>(ControllerPath);
                 animator.applyRootMotion = false;
                 animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+                animator.speed = 1f;
             }
 
             if (visualController != null)
