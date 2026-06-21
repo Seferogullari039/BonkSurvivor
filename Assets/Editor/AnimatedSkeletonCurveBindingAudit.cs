@@ -403,10 +403,7 @@ public static class AnimatedSkeletonCurveBindingAudit
             for (int i = 0; i < takeInfos.Length; i++)
             {
                 report.AppendLine("[AnimatedSkeletonCurveBindingAudit] takeInfo[" + i + "] name='"
-                    + takeInfos[i].name
-                    + "' startFrame=" + takeInfos[i].startFrame
-                    + " stopFrame=" + takeInfos[i].stopFrame
-                    + " frameRate=" + takeInfos[i].sampleRate + "'");
+                    + takeInfos[i].name + "'");
             }
         }
     }
