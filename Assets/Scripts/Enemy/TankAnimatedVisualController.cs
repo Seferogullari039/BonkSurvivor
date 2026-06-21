@@ -23,8 +23,24 @@ public class TankAnimatedVisualController : MonoBehaviour
         "upperarm.R/lowerarm.R/hand.R",
     };
     private static readonly Vector3 SwordRestLocalEuler = Vector3.zero;
-    private static readonly Vector3 SwordRaiseLocalEuler = new Vector3(-52f, -8f, 18f);
-    private static readonly Vector3 SwordSlashLocalEuler = new Vector3(54f, 16f, 34f);
+    private static readonly Vector3 SwordRaiseLocalEuler = new Vector3(-22f, -4f, 8f);
+    private static readonly Vector3 SwordSlashLocalEuler = new Vector3(28f, 6f, 14f);
+    private static readonly string[] LegacySwordObjectNames =
+    {
+        "TankSwordAnchor",
+        "SwordAnchor",
+        "VisualSword",
+        "SwordBlade",
+        "SwordHandle",
+        "SwordGuard",
+        "TankSword",
+        "SwordVisual",
+        "DebugSword",
+        "SwordProbe",
+        "BoneProbe",
+        "HandProbe",
+        "VisualSword",
+    };
 
     [Header("Animator")]
     [SerializeField] private RuntimeAnimatorController animatorController;
@@ -41,9 +57,9 @@ public class TankAnimatedVisualController : MonoBehaviour
 
     [Header("Procedural Fallback")]
     [SerializeField] private bool fallbackProceduralAnimation = true;
-    [SerializeField] private float walkBobAmount = 0.025f;
-    [SerializeField] private float walkSwayAngle = 2.5f;
-    [SerializeField] private float attackBodyLeanAngle = 10f;
+    [SerializeField] private float walkBobAmount = 0.012f;
+    [SerializeField] private float walkSwayAngle = 1.5f;
+    [SerializeField] private float attackBodyLeanAngle = 6f;
 
     [Header("Debug")]
     [SerializeField] private bool debugForceAttackLoop = false;
@@ -51,14 +67,16 @@ public class TankAnimatedVisualController : MonoBehaviour
     [SerializeField] private bool debugAnimatorLogs = false;
     [SerializeField] private bool debugAttackLogs = false;
     [SerializeField] private bool debugMeshDiagnosticLogs = false;
+    [SerializeField] private bool debugSwordPlacement = false;
+    [SerializeField] private bool debugDrawSwordAnchor = false;
 
     [Header("Sword Visual")]
     [SerializeField] private bool createVisualSword = true;
     [SerializeField] private string preferredHandName = "hand.R";
     [SerializeField] private Material swordMaterial;
     [SerializeField] private Material swordHandleMaterial;
-    [SerializeField] private Vector3 swordHandLocalPosition = new Vector3(0.02f, 0f, 0f);
-    [SerializeField] private Vector3 swordHandLocalEuler = new Vector3(0f, 90f, -90f);
+    [SerializeField] private Vector3 swordHandLocalPosition = Vector3.zero;
+    [SerializeField] private Vector3 swordHandLocalEuler = Vector3.zero;
     [SerializeField] private Vector3 swordFallbackLocalPosition = new Vector3(0.42f, 0.24f, 0.04f);
     [SerializeField] private Vector3 swordFallbackLocalEuler = new Vector3(35f, 25f, -82f);
     [SerializeField] private Vector3 swordFallbackLocalScale = new Vector3(0.88f, 0.88f, 0.88f);
@@ -88,8 +106,7 @@ public class TankAnimatedVisualController : MonoBehaviour
     private bool warnedMissingTarget;
     private string attackClipName = AttackStateName;
     private bool warnedMissingAvatar;
-    private bool loggedSwordFallback;
-    private bool loggedSwordParent;
+    private bool loggedSwordVisualInit;
     private bool swordAnchoredToHandBone;
     private GameObject swordVisualRoot;
     private int skinnedMeshRendererCount;
@@ -132,7 +149,7 @@ public class TankAnimatedVisualController : MonoBehaviour
         ResolveProceduralFallbackMode();
         ResolveAttackClipInfo();
         ResolveRunClipInfo();
-        LogMeshDiagnosticOnce();
+        CleanupLegacySwordVisuals();
         CreateVisualSwordIfNeeded();
         CacheBodyRestTransform();
         PlayMovementVisualState(force: true);
@@ -315,7 +332,7 @@ public class TankAnimatedVisualController : MonoBehaviour
         {
             Renderer renderer = renderers[i];
 
-            if (renderer != null)
+            if (renderer != null && !IsSwordRenderer(renderer))
             {
                 renderer.sharedMaterial = bodyMaterial;
             }
@@ -501,7 +518,6 @@ public class TankAnimatedVisualController : MonoBehaviour
 
         Vector3 swordEuler;
         float bodyPitch;
-        float scalePulse = 1f;
 
         if (normalized < raiseEnd)
         {
@@ -514,7 +530,6 @@ public class TankAnimatedVisualController : MonoBehaviour
             float blend = (normalized - raiseEnd) / (slashEnd - raiseEnd);
             swordEuler = Vector3.Lerp(SwordRaiseLocalEuler, SwordSlashLocalEuler, blend);
             bodyPitch = Mathf.Lerp(-attackBodyLeanAngle * 0.45f, attackBodyLeanAngle, blend);
-            scalePulse = 1f + 0.025f * Mathf.Sin(blend * Mathf.PI);
         }
         else
         {
@@ -528,7 +543,6 @@ public class TankAnimatedVisualController : MonoBehaviour
         if (useProceduralFallback && bodyMotionTransform != null)
         {
             bodyMotionTransform.localRotation = bodyRestLocalRotation * Quaternion.Euler(bodyPitch, 0f, 0f);
-            bodyMotionTransform.localScale = bodyRestLocalScale * scalePulse;
         }
     }
 
@@ -631,22 +645,98 @@ public class TankAnimatedVisualController : MonoBehaviour
 
     private void LogMeshDiagnosticOnce()
     {
-        if (debugMeshDiagnosticLogs)
+        if (!debugMeshDiagnosticLogs)
         {
-            bool visibleMeshLikelySkinned = skinnedMeshRendererCount > 0;
-            Debug.Log("[TankAnimatedVisualController] meshDiagnostic skinnedMeshRendererCount="
-                + skinnedMeshRendererCount
-                + " meshRendererCount=" + meshRendererCount
-                + " visibleMeshLikelySkinned=" + visibleMeshLikelySkinned
-                + " proceduralFallback=" + useProceduralFallback
-                + " animatorRoot=" + (animator != null ? animator.gameObject.name : "null"));
+            return;
         }
 
-        if (useProceduralFallback && !loggedSwordFallback)
+        Debug.Log("[TankAnimatedVisualController] meshDiagnostic skinnedMeshRendererCount="
+            + skinnedMeshRendererCount
+            + " meshRendererCount=" + meshRendererCount
+            + " proceduralFallback=" + useProceduralFallback);
+    }
+
+    private void CleanupLegacySwordVisuals()
+    {
+        Transform[] transforms = GetComponentsInChildren<Transform>(true);
+
+        for (int i = transforms.Length - 1; i >= 0; i--)
         {
-            loggedSwordFallback = true;
-            Debug.Log("[TankAnimatedVisualController] using visual sword slash fallback because SkinnedMeshRenderer=0");
+            Transform candidate = transforms[i];
+            if (candidate == null || candidate == transform)
+            {
+                continue;
+            }
+
+            if (!IsLegacySwordVisual(candidate))
+            {
+                continue;
+            }
+
+            if (Application.isPlaying)
+            {
+                Destroy(candidate.gameObject);
+            }
+            else
+            {
+                DestroyImmediate(candidate.gameObject);
+            }
         }
+
+        swordVisualRoot = null;
+        swordMountTransform = null;
+    }
+
+    private static bool IsLegacySwordVisual(Transform candidate)
+    {
+        string name = candidate.name;
+
+        for (int i = 0; i < LegacySwordObjectNames.Length; i++)
+        {
+            if (string.Equals(name, LegacySwordObjectNames[i], StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        if (string.Equals(name, "Guard", StringComparison.Ordinal)
+            || string.Equals(name, "Handle", StringComparison.Ordinal)
+            || string.Equals(name, "Blade", StringComparison.Ordinal))
+        {
+            Transform parent = candidate.parent;
+            if (parent != null
+                && (string.Equals(parent.name, TankSwordAnchorName, StringComparison.Ordinal)
+                    || string.Equals(parent.name, "SwordAnchor", StringComparison.Ordinal)
+                    || string.Equals(parent.name, "VisualSword", StringComparison.Ordinal)))
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static bool IsSwordRenderer(Renderer renderer)
+    {
+        Transform current = renderer != null ? renderer.transform : null;
+
+        while (current != null)
+        {
+            string name = current.name;
+            if (string.Equals(name, TankSwordAnchorName, StringComparison.Ordinal)
+                || string.Equals(name, "SwordAnchor", StringComparison.Ordinal)
+                || string.Equals(name, "VisualSword", StringComparison.Ordinal)
+                || string.Equals(name, "SwordHandle", StringComparison.Ordinal)
+                || string.Equals(name, "SwordGuard", StringComparison.Ordinal)
+                || string.Equals(name, "SwordBlade", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            current = current.parent;
+        }
+
+        return false;
     }
 
     private string GetCurrentStateLabel()
@@ -706,7 +796,7 @@ public class TankAnimatedVisualController : MonoBehaviour
 
     private void CreateVisualSwordIfNeeded()
     {
-        if (!createVisualSword || swordVisualRoot != null)
+        if (!createVisualSword)
         {
             return;
         }
@@ -720,7 +810,7 @@ public class TankAnimatedVisualController : MonoBehaviour
         handle.transform.SetParent(swordAnchor, false);
         handle.transform.localPosition = Vector3.zero;
         handle.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-        handle.transform.localScale = new Vector3(0.022f, 0.038f, 0.022f);
+        handle.transform.localScale = new Vector3(0.018f, 0.02f, 0.018f);
         DisableCollider(handle);
         ApplySwordMaterial(handle, swordHandleMaterial, new Color(0.16f, 0.13f, 0.11f), 0.22f);
 
@@ -728,22 +818,24 @@ public class TankAnimatedVisualController : MonoBehaviour
         guard.name = "SwordGuard";
         guard.transform.SetParent(swordAnchor, false);
         guard.transform.localPosition = Vector3.zero;
-        guard.transform.localScale = new Vector3(0.072f, 0.016f, 0.026f);
+        guard.transform.localScale = new Vector3(0.12f, 0.025f, 0.025f);
         DisableCollider(guard);
         ApplySwordMaterial(guard, swordMaterial, new Color(0.48f, 0.5f, 0.54f), 0.62f);
 
         GameObject blade = GameObject.CreatePrimitive(PrimitiveType.Cube);
         blade.name = "SwordBlade";
         blade.transform.SetParent(swordAnchor, false);
-        blade.transform.localPosition = new Vector3(0f, 0.105f, 0.012f);
-        blade.transform.localScale = new Vector3(0.029f, 0.21f, 0.011f);
+        blade.transform.localPosition = new Vector3(0f, 0f, 0.21f);
+        blade.transform.localScale = new Vector3(0.025f, 0.025f, 0.42f);
         DisableCollider(blade);
         ApplySwordMaterial(blade, swordMaterial, new Color(0.62f, 0.64f, 0.68f), 0.72f);
+
+        LogSwordVisualInitializedOnce(swordAnchor);
     }
 
     private Transform ResolveSwordAnchorTransform()
     {
-        Transform handBone = FindHandBoneTransform(out string handPath);
+        Transform handBone = FindHandBoneTransform(out _);
         Transform anchorParent = handBone != null ? handBone : transform;
         swordAnchoredToHandBone = handBone != null;
 
@@ -751,37 +843,40 @@ public class TankAnimatedVisualController : MonoBehaviour
         if (existingAnchor != null)
         {
             ApplySwordAnchorTransform(existingAnchor, swordAnchoredToHandBone);
-            LogSwordParentOnce(existingAnchor, handPath);
             return existingAnchor;
         }
 
         GameObject anchor = new GameObject(TankSwordAnchorName);
         anchor.transform.SetParent(anchorParent, false);
         ApplySwordAnchorTransform(anchor.transform, swordAnchoredToHandBone);
-        LogSwordParentOnce(anchor.transform, handPath);
         return anchor.transform;
     }
 
-    private void LogSwordParentOnce(Transform anchor, string handPath)
+    private void LogSwordVisualInitializedOnce(Transform anchor)
     {
-        if (loggedSwordParent)
+        if (loggedSwordVisualInit || anchor == null)
         {
             return;
         }
 
-        loggedSwordParent = true;
+        loggedSwordVisualInit = true;
+        string parentPath = GetTransformPath(anchor.parent);
+        Debug.Log("[TankAnimatedVisualController] sword visual initialized parent="
+            + parentPath
+            + " anchorLocalPosition="
+            + anchor.localPosition
+            + " anchorLocalEuler="
+            + anchor.localEulerAngles);
 
-        if (swordAnchoredToHandBone)
+        if (!swordAnchoredToHandBone)
         {
-            Debug.Log("[TankAnimatedVisualController] sword parent=hand.R path="
-                + handPath
-                + " anchorPath="
-                + GetTransformPath(anchor));
-            return;
+            Debug.LogWarning("[TankAnimatedVisualController] WARNING: hand.R not found, using fallback anchor.");
         }
 
-        Debug.LogWarning("[TankAnimatedVisualController] WARNING: hand.R not found, using fallback anchor. path="
-            + GetTransformPath(anchor));
+        if (debugSwordPlacement)
+        {
+            Debug.Log("[TankAnimatedVisualController] sword placement bladeScale=(0.025,0.025,0.42) guardScale=(0.12,0.025,0.025)");
+        }
     }
 
     private Transform FindHandBoneTransform(out string resolvedPath)
@@ -853,6 +948,19 @@ public class TankAnimatedVisualController : MonoBehaviour
         parts.Reverse();
         return string.Join("/", parts);
     }
+
+#if UNITY_EDITOR
+    private void OnDrawGizmosSelected()
+    {
+        if (!debugDrawSwordAnchor || swordMountTransform == null)
+        {
+            return;
+        }
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawWireSphere(swordMountTransform.position, 0.03f);
+    }
+#endif
 
     private void ApplySwordMaterial(GameObject target, Material sharedMaterial, Color fallbackColor, float smoothness)
     {
