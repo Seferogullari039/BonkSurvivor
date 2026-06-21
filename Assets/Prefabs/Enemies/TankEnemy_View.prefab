@@ -480,7 +480,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: fe782908ed674ec41b0eb7ed8065838a, type: 3}
       propertyPath: m_LocalPosition.y
-      value: -0.05
+      value: -0.2
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: fe782908ed674ec41b0eb7ed8065838a, type: 3}
       propertyPath: m_LocalPosition.z
@@ -549,7 +549,7 @@ Animator:
   m_Enabled: 1
   m_Avatar: {fileID: 0}
   m_Controller: {fileID: 9100000, guid: f1a2b3c4d5e6478990ab1cd2ef345678, type: 2}
-  m_CullingMode: 0
+  m_CullingMode: 2
   m_UpdateMode: 0
   m_ApplyRootMotion: 0
   m_HasTransformHierarchy: 1
@@ -570,10 +570,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::TankAnimatedVisualController
   animatorController: {fileID: 9100000, guid: f1a2b3c4d5e6478990ab1cd2ef345678, type: 2}
   bodyMaterial: {fileID: 2100000, guid: a1b2c3d4e5f6478990abcdef12345678, type: 2}
-  moveSpeedThreshold: 0.05
+  moveSpeedThreshold: 0.03
   attackRange: 4
   attackCooldown: 1
   debugForceAttackLoop: 1
+  debugForceRun: 1
   debugAnimatorLogs: 1
   createVisualSword: 1
   preferredHandName: hand.R

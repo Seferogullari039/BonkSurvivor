@@ -9,7 +9,8 @@ public class TankAnimatedVisualController : MonoBehaviour
     private const string IdleStateName = "Idle";
     private const string RunStateName = "Run";
     private const float AttackCrossFadeDuration = 0.05f;
-    private const float MovementCrossFadeDuration = 0.1f;
+    private const float RunCrossFadeDuration = 0.08f;
+    private const float IdleCrossFadeDuration = 0.12f;
     private const float DefaultAttackVisualDuration = 0.9f;
     private const float DebugForceAttackInterval = 1.2f;
 
@@ -18,7 +19,7 @@ public class TankAnimatedVisualController : MonoBehaviour
     [SerializeField] private Material bodyMaterial;
 
     [Header("Movement")]
-    [SerializeField] private float moveSpeedThreshold = 0.05f;
+    [SerializeField] private float moveSpeedThreshold = 0.03f;
 
     [Header("Attack Visual")]
     [SerializeField] private float attackRange = 4f;
@@ -26,6 +27,7 @@ public class TankAnimatedVisualController : MonoBehaviour
 
     [Header("Debug")]
     [SerializeField] private bool debugForceAttackLoop = true;
+    [SerializeField] private bool debugForceRun = true;
     [SerializeField] private bool debugAnimatorLogs = true;
 
     [Header("Sword Visual")]
@@ -44,6 +46,9 @@ public class TankAnimatedVisualController : MonoBehaviour
     private float attackVisualDuration = DefaultAttackVisualDuration;
     private bool isAttacking;
     private bool lastIsMoving;
+    private float lastMovementSpeed;
+    private string currentVisualState = IdleStateName;
+    private string runClipName = RunStateName;
     private bool warnedMissingAnimator;
     private bool warnedMissingTarget;
     private string attackClipName = AttackStateName;
@@ -64,7 +69,9 @@ public class TankAnimatedVisualController : MonoBehaviour
         ConfigureAnimator();
         ApplyBodyMaterial();
         ResolveAttackClipInfo();
+        ResolveRunClipInfo();
         CreateVisualSwordIfNeeded();
+        PlayMovementVisualState(force: true);
     }
 
     private void LateUpdate()
@@ -151,6 +158,34 @@ public class TankAnimatedVisualController : MonoBehaviour
         Debug.Log("[TankAnimatedVisualController] Attack clip=" + attackClipName + " length=" + attackVisualDuration + " directPlay=True");
     }
 
+    private void ResolveRunClipInfo()
+    {
+        runClipName = RunStateName;
+
+        if (animator == null || animator.runtimeAnimatorController == null)
+        {
+            return;
+        }
+
+        AnimationClip[] clips = animator.runtimeAnimatorController.animationClips;
+
+        for (int i = 0; i < clips.Length; i++)
+        {
+            AnimationClip clip = clips[i];
+
+            if (clip == null)
+            {
+                continue;
+            }
+
+            if (clip.name.IndexOf("run", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                runClipName = clip.name;
+                return;
+            }
+        }
+    }
+
     private void ApplyBodyMaterial()
     {
         if (bodyMaterial == null)
@@ -186,7 +221,9 @@ public class TankAnimatedVisualController : MonoBehaviour
         if (enemyRoot == null)
         {
             lastIsMoving = false;
+            lastMovementSpeed = 0f;
             animator.SetBool(IsMovingHash, false);
+            PlayMovementVisualState();
             return;
         }
 
@@ -194,8 +231,30 @@ public class TankAnimatedVisualController : MonoBehaviour
         lastRootPosition = enemyRoot.position;
         delta.y = 0f;
 
-        lastIsMoving = delta.magnitude / Mathf.Max(Time.deltaTime, 0.0001f) > moveSpeedThreshold;
+        lastMovementSpeed = delta.magnitude / Mathf.Max(Time.deltaTime, 0.0001f);
+        lastIsMoving = lastMovementSpeed > moveSpeedThreshold;
         animator.SetBool(IsMovingHash, lastIsMoving);
+        PlayMovementVisualState();
+    }
+
+    private void PlayMovementVisualState(bool force = false)
+    {
+        if (isAttacking)
+        {
+            return;
+        }
+
+        bool shouldRun = debugForceRun || lastIsMoving;
+        string desiredState = shouldRun ? RunStateName : IdleStateName;
+
+        if (!force && currentVisualState == desiredState)
+        {
+            return;
+        }
+
+        float crossFadeDuration = shouldRun ? RunCrossFadeDuration : IdleCrossFadeDuration;
+        animator.CrossFadeInFixedTime(desiredState, crossFadeDuration, 0, 0f);
+        currentVisualState = desiredState;
     }
 
     private void TryTriggerAttackVisual()
@@ -241,6 +300,7 @@ public class TankAnimatedVisualController : MonoBehaviour
         string targetName = debugTargetName ?? (target != null ? target.name : "unknown");
 
         animator.CrossFadeInFixedTime(AttackStateName, AttackCrossFadeDuration, 0, 0f);
+        currentVisualState = AttackStateName;
         isAttacking = true;
         attackEndTime = Time.time + attackVisualDuration;
         nextAttackTime = Time.time + attackCooldown;
@@ -255,8 +315,10 @@ public class TankAnimatedVisualController : MonoBehaviour
     {
         isAttacking = false;
 
-        string returnState = lastIsMoving ? RunStateName : IdleStateName;
-        animator.CrossFadeInFixedTime(returnState, MovementCrossFadeDuration, 0, 0f);
+        string returnState = (debugForceRun || lastIsMoving) ? RunStateName : IdleStateName;
+        float crossFadeDuration = returnState == RunStateName ? RunCrossFadeDuration : IdleCrossFadeDuration;
+        animator.CrossFadeInFixedTime(returnState, crossFadeDuration, 0, 0f);
+        currentVisualState = returnState;
         animator.SetBool(IsMovingHash, lastIsMoving);
     }
 
@@ -270,9 +332,12 @@ public class TankAnimatedVisualController : MonoBehaviour
         nextAnimatorDebugLogTime = Time.time + 1f;
 
         AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
-        Debug.Log("[TankAnimatedVisualController] state=" + GetStateLabel(stateInfo)
-            + " normalized=" + stateInfo.normalizedTime.ToString("F2")
+        Debug.Log("[TankAnimatedVisualController] state=" + currentVisualState
             + " moving=" + lastIsMoving
+            + " speed=" + lastMovementSpeed.ToString("F2")
+            + " forceRun=" + debugForceRun
+            + " clip=" + runClipName
+            + " normalized=" + stateInfo.normalizedTime.ToString("F2")
             + " attacking=" + isAttacking);
     }
 
