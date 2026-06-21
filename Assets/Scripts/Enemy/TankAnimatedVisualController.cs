@@ -56,7 +56,7 @@ public class TankAnimatedVisualController : MonoBehaviour
     [SerializeField] private float slashVisualDuration = DefaultSlashVisualDuration;
 
     [Header("Procedural Fallback")]
-    [SerializeField] private bool fallbackProceduralAnimation = true;
+    [SerializeField] private bool fallbackProceduralAnimation = false;
     [SerializeField] private float walkBobAmount = 0.012f;
     [SerializeField] private float walkSwayAngle = 1.5f;
     [SerializeField] private float attackBodyLeanAngle = 6f;
@@ -71,7 +71,7 @@ public class TankAnimatedVisualController : MonoBehaviour
     [SerializeField] private bool debugDrawSwordAnchor = false;
 
     [Header("Sword Visual")]
-    [SerializeField] private bool createVisualSword = true;
+    [SerializeField] private bool createVisualSword = false;
     [SerializeField] private string preferredHandName = "hand.R";
     [SerializeField] private Material swordMaterial;
     [SerializeField] private Material swordHandleMaterial;
@@ -150,7 +150,11 @@ public class TankAnimatedVisualController : MonoBehaviour
         ResolveAttackClipInfo();
         ResolveRunClipInfo();
         CleanupLegacySwordVisuals();
-        CreateVisualSwordIfNeeded();
+        if (createVisualSword)
+        {
+            CreateVisualSwordIfNeeded();
+        }
+
         CacheBodyRestTransform();
         PlayMovementVisualState(force: true);
     }
@@ -471,18 +475,58 @@ public class TankAnimatedVisualController : MonoBehaviour
 
     private void UpdateProceduralVisuals()
     {
-        if (isAttacking)
+        if (createVisualSword)
         {
-            UpdateSwordSlashVisual();
-            return;
-        }
+            if (isAttacking)
+            {
+                UpdateSwordSlashVisual();
+                return;
+            }
 
-        ResetSwordToRest();
+            ResetSwordToRest();
+        }
 
         if (useProceduralFallback && bodyMotionTransform != null)
         {
+            if (isAttacking)
+            {
+                UpdateProceduralAttackLeanOnly();
+                return;
+            }
+
             UpdateWalkBobVisual();
         }
+    }
+
+    private void UpdateProceduralAttackLeanOnly()
+    {
+        if (bodyMotionTransform == null)
+        {
+            return;
+        }
+
+        float duration = Mathf.Max(slashVisualDuration, 0.01f);
+        float normalized = Mathf.Clamp01((Time.time - attackSlashStartTime) / duration);
+        const float raiseEnd = 0.22f;
+        const float slashEnd = 0.62f;
+        float bodyPitch;
+
+        if (normalized < raiseEnd)
+        {
+            bodyPitch = Mathf.Lerp(0f, -attackBodyLeanAngle * 0.45f, normalized / raiseEnd);
+        }
+        else if (normalized < slashEnd)
+        {
+            float blend = (normalized - raiseEnd) / (slashEnd - raiseEnd);
+            bodyPitch = Mathf.Lerp(-attackBodyLeanAngle * 0.45f, attackBodyLeanAngle, blend);
+        }
+        else
+        {
+            float blend = (normalized - slashEnd) / (1f - slashEnd);
+            bodyPitch = Mathf.Lerp(attackBodyLeanAngle, 0f, blend);
+        }
+
+        bodyMotionTransform.localRotation = bodyRestLocalRotation * Quaternion.Euler(bodyPitch, 0f, 0f);
     }
 
     private void UpdateWalkBobVisual()
@@ -506,7 +550,7 @@ public class TankAnimatedVisualController : MonoBehaviour
 
     private void UpdateSwordSlashVisual()
     {
-        if (swordMountTransform == null)
+        if (!createVisualSword || swordMountTransform == null)
         {
             return;
         }
