@@ -56,7 +56,7 @@ public class TankAnimatedVisualController : MonoBehaviour
     [SerializeField] private float slashVisualDuration = DefaultSlashVisualDuration;
 
     [Header("Procedural Fallback")]
-    [SerializeField] private bool fallbackProceduralAnimation = false;
+    [SerializeField] private bool fallbackProceduralAnimation = true;
     [SerializeField] private float walkBobAmount = 0.012f;
     [SerializeField] private float walkSwayAngle = 1.5f;
     [SerializeField] private float attackBodyLeanAngle = 6f;
