@@ -17,17 +17,17 @@ public class ShrineEventController : MonoBehaviour
     private const int XpReward = 3;
     private const float CompletionDuration = 0.62f;
     private const int OuterRingSegmentCount = 44;
-    private const float InnerFillOutsideAlpha = 0.045f;
-    private const float InnerFillInsideAlpha = 0.11f;
-    private const float OuterRingOutsideAlpha = 0.28f;
-    private const float OuterRingInsideAlpha = 0.38f;
+    private const float InnerFillOutsideAlpha = 0.04f;
+    private const float InnerFillInsideAlpha = 0.085f;
+    private const float OuterRingOutsideAlpha = 0.3f;
+    private const float OuterRingInsideAlpha = 0.4f;
 
     private static readonly Color BaseStoneColor = new Color(0.42f, 0.44f, 0.4f);
     private static readonly Color AccentColor = new Color(0.18f, 0.52f, 0.46f);
     private static readonly Color GlowColor = new Color(0.28f, 0.72f, 0.62f);
     private static readonly Color PromptColor = new Color(0.92f, 0.98f, 0.96f, 0.95f);
-    private static readonly Color InnerFillTeal = new Color(0.16f, 0.58f, 0.54f, 1f);
-    private static readonly Color OuterRingTeal = new Color(0.22f, 0.78f, 0.68f, 1f);
+    private static readonly Color InnerFillTeal = new Color(0.14f, 0.42f, 0.4f, 1f);
+    private static readonly Color OuterRingTeal = new Color(0.2f, 0.72f, 0.64f, 1f);
     private static readonly Color BurstGoldColor = new Color(0.92f, 0.78f, 0.28f);
     private static readonly Color BurstTealColor = new Color(0.28f, 0.82f, 0.68f);
 
@@ -313,7 +313,7 @@ public class ShrineEventController : MonoBehaviour
         rootObject.transform.localScale = Vector3.one;
         radiusVisualRoot = rootObject.transform;
 
-        float innerFillDiameter = (HoldRadius * 2f) - 0.55f;
+        float innerFillDiameter = (HoldRadius * 2f) - 0.85f;
         GameObject innerFillObject = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         innerFillObject.name = "ShrineInnerFill";
         innerFillObject.transform.SetParent(radiusVisualRoot, false);
@@ -331,7 +331,7 @@ public class ShrineEventController : MonoBehaviour
         outerRingObject.transform.localScale = Vector3.one;
         outerRingRoot = outerRingObject.transform;
 
-        const float ringThickness = 0.18f;
+        const float ringThickness = 0.14f;
         float segmentLength = (Mathf.PI * 2f * HoldRadius / OuterRingSegmentCount) * 1.12f;
 
         for (int i = 0; i < OuterRingSegmentCount; i++)
@@ -349,11 +349,20 @@ public class ShrineEventController : MonoBehaviour
             DestroyCollider(segmentObject);
 
             Renderer segmentRenderer = segmentObject.GetComponent<Renderer>();
+
+            if (segmentRenderer == null)
+            {
+                continue;
+            }
+
             SetupRadiusRenderer(segmentRenderer);
             outerRingRenderers.Add(segmentRenderer);
         }
 
-        ApplyRadiusVisual(false, 1f);
+        if (innerFillRenderer != null || outerRingRenderers.Count > 0)
+        {
+            ApplyRadiusVisual(false, 1f);
+        }
     }
 
     private void BuildPromptText()
@@ -445,19 +454,23 @@ public class ShrineEventController : MonoBehaviour
         float innerAlpha = (playerInside ? InnerFillInsideAlpha : InnerFillOutsideAlpha) * alphaMultiplier;
         Color innerColor = InnerFillTeal;
         innerColor.a = innerAlpha;
-        ApplyRadiusRenderer(innerFillRenderer, innerColor, 0.08f, playerInside ? 0.06f : 0.02f);
+        ApplyRadiusRenderer(innerFillRenderer, innerColor, 0.04f, 0f);
 
         float outerAlpha = (playerInside ? OuterRingInsideAlpha : OuterRingOutsideAlpha) * alphaMultiplier;
         Color outerColor = OuterRingTeal;
         outerColor.a = outerAlpha;
+        float outerEmission = playerInside ? 0.14f : 0.06f;
 
         for (int i = 0; i < outerRingRenderers.Count; i++)
         {
-            ApplyRadiusRenderer(
-                outerRingRenderers[i],
-                outerColor,
-                0.14f,
-                playerInside ? 0.2f : 0.1f);
+            Renderer segmentRenderer = outerRingRenderers[i];
+
+            if (segmentRenderer == null)
+            {
+                continue;
+            }
+
+            ApplyRadiusRenderer(segmentRenderer, outerColor, 0.12f, outerEmission);
         }
     }
 
@@ -500,9 +513,47 @@ public class ShrineEventController : MonoBehaviour
 
     private static void ApplyRadiusRenderer(Renderer renderer, Color color, float smoothness, float emission)
     {
-        if (renderer == null) return;
+        if (renderer == null)
+        {
+            return;
+        }
 
-        GameVisualStyle.ApplyColor(renderer, color, smoothness, emission > 0.08f, emission);
+        Material material = renderer.material;
+
+        if (material == null)
+        {
+            return;
+        }
+
+        if (material.HasProperty("_BaseColor"))
+        {
+            material.SetColor("_BaseColor", color);
+        }
+
+        if (material.HasProperty("_Color"))
+        {
+            material.SetColor("_Color", color);
+        }
+
+        if (material.HasProperty("_Smoothness"))
+        {
+            material.SetFloat("_Smoothness", smoothness);
+        }
+
+        if (!material.HasProperty("_EmissionColor"))
+        {
+            return;
+        }
+
+        if (emission <= 0.001f)
+        {
+            material.SetColor("_EmissionColor", Color.black);
+            material.DisableKeyword("_EMISSION");
+            return;
+        }
+
+        material.EnableKeyword("_EMISSION");
+        material.SetColor("_EmissionColor", new Color(color.r, color.g, color.b, 1f) * emission);
     }
 
     private static void DestroyCollider(GameObject target)
