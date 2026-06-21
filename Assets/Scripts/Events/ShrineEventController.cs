@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -15,21 +16,28 @@ public class ShrineEventController : MonoBehaviour
     private const int CoinReward = 25;
     private const int XpReward = 3;
     private const float CompletionDuration = 0.62f;
+    private const int OuterRingSegmentCount = 44;
+    private const float InnerFillOutsideAlpha = 0.045f;
+    private const float InnerFillInsideAlpha = 0.11f;
+    private const float OuterRingOutsideAlpha = 0.28f;
+    private const float OuterRingInsideAlpha = 0.38f;
 
     private static readonly Color BaseStoneColor = new Color(0.42f, 0.44f, 0.4f);
     private static readonly Color AccentColor = new Color(0.18f, 0.52f, 0.46f);
     private static readonly Color GlowColor = new Color(0.28f, 0.72f, 0.62f);
-    private static readonly Color PromptColor = new Color(0.86f, 0.94f, 0.92f, 1f);
-    private static readonly Color RingInsideColor = new Color(0.22f, 0.78f, 0.68f, 0.42f);
-    private static readonly Color RingOutsideColor = new Color(0.18f, 0.58f, 0.62f, 0.22f);
+    private static readonly Color PromptColor = new Color(0.92f, 0.98f, 0.96f, 0.95f);
+    private static readonly Color InnerFillTeal = new Color(0.16f, 0.58f, 0.54f, 1f);
+    private static readonly Color OuterRingTeal = new Color(0.22f, 0.78f, 0.68f, 1f);
     private static readonly Color BurstGoldColor = new Color(0.92f, 0.78f, 0.28f);
     private static readonly Color BurstTealColor = new Color(0.28f, 0.82f, 0.68f);
 
     private ShrineEventManager eventManager;
     private Transform playerTransform;
     private Transform visualRoot;
-    private Transform radiusRingTransform;
-    private Renderer radiusRingRenderer;
+    private Transform radiusVisualRoot;
+    private Renderer innerFillRenderer;
+    private Transform outerRingRoot;
+    private readonly List<Renderer> outerRingRenderers = new List<Renderer>(OuterRingSegmentCount);
     private TextMeshPro promptText;
     private SphereCollider triggerCollider;
     private Light completionLight;
@@ -44,7 +52,7 @@ public class ShrineEventController : MonoBehaviour
         eventManager = manager;
         CachePlayer();
         BuildVisual();
-        BuildRadiusRing();
+        BuildRadiusVisual();
         BuildPromptText();
         BuildTrigger();
     }
@@ -58,7 +66,7 @@ public class ShrineEventController : MonoBehaviour
         if (playerTransform == null)
         {
             UpdatePrompt(false, 0f);
-            UpdateRadiusRing(false);
+            UpdateRadiusVisual(false);
             DecayProgress();
             return;
         }
@@ -89,7 +97,7 @@ public class ShrineEventController : MonoBehaviour
         }
 
         UpdatePrompt(showPrompt, holdProgress / HoldDurationSeconds);
-        UpdateRadiusRing(playerInsideRadius);
+        UpdateRadiusVisual(playerInsideRadius);
         UpdateGlowPulse();
     }
 
@@ -204,7 +212,7 @@ public class ShrineEventController : MonoBehaviour
         completionLight.intensity = 0f;
 
         Vector3 startVisualScale = visualRoot != null ? visualRoot.localScale : Vector3.one;
-        Vector3 startRingScale = radiusRingTransform != null ? radiusRingTransform.localScale : Vector3.one;
+        Vector3 startRadiusVisualScale = radiusVisualRoot != null ? radiusVisualRoot.localScale : Vector3.one;
         float elapsed = 0f;
 
         while (elapsed < CompletionDuration)
@@ -218,10 +226,10 @@ public class ShrineEventController : MonoBehaviour
                 visualRoot.localScale = startVisualScale * (1f - t * 0.92f);
             }
 
-            if (radiusRingTransform != null)
+            if (radiusVisualRoot != null)
             {
-                radiusRingTransform.localScale = startRingScale * (1f + t * 0.35f);
-                ApplyRingColor(Mathf.Lerp(RingInsideColor.a, 0f, t), true);
+                radiusVisualRoot.localScale = startRadiusVisualScale * (1f + t * 0.35f);
+                ApplyRadiusVisual(true, 1f - t);
             }
 
             if (burstOrb != null)
@@ -296,30 +304,56 @@ public class ShrineEventController : MonoBehaviour
         CreatePart(visualRoot, "ShrineGlow", PrimitiveType.Sphere, new Vector3(0f, 0.95f, 0f), new Vector3(0.22f, 0.22f, 0.22f), GlowColor, 0.62f, true, 0.45f);
     }
 
-    private void BuildRadiusRing()
+    private void BuildRadiusVisual()
     {
-        GameObject ringObject = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        ringObject.name = "ShrineRadiusRing";
-        ringObject.transform.SetParent(transform, false);
-        ringObject.transform.localPosition = new Vector3(0f, 0.04f, 0f);
-        ringObject.transform.localRotation = Quaternion.identity;
-        ringObject.transform.localScale = new Vector3(HoldRadius * 2f, 0.015f, HoldRadius * 2f);
+        GameObject rootObject = new GameObject("ShrineRadiusVisual");
+        rootObject.transform.SetParent(transform, false);
+        rootObject.transform.localPosition = Vector3.zero;
+        rootObject.transform.localRotation = Quaternion.identity;
+        rootObject.transform.localScale = Vector3.one;
+        radiusVisualRoot = rootObject.transform;
 
-        Collider ringCollider = ringObject.GetComponent<Collider>();
+        float innerFillDiameter = (HoldRadius * 2f) - 0.55f;
+        GameObject innerFillObject = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        innerFillObject.name = "ShrineInnerFill";
+        innerFillObject.transform.SetParent(radiusVisualRoot, false);
+        innerFillObject.transform.localPosition = new Vector3(0f, 0.035f, 0f);
+        innerFillObject.transform.localRotation = Quaternion.identity;
+        innerFillObject.transform.localScale = new Vector3(innerFillDiameter, 0.003f, innerFillDiameter);
+        DestroyCollider(innerFillObject);
+        innerFillRenderer = innerFillObject.GetComponent<Renderer>();
+        SetupRadiusRenderer(innerFillRenderer);
 
-        if (ringCollider != null)
+        GameObject outerRingObject = new GameObject("ShrineOuterRing");
+        outerRingObject.transform.SetParent(radiusVisualRoot, false);
+        outerRingObject.transform.localPosition = new Vector3(0f, 0.045f, 0f);
+        outerRingObject.transform.localRotation = Quaternion.identity;
+        outerRingObject.transform.localScale = Vector3.one;
+        outerRingRoot = outerRingObject.transform;
+
+        const float ringThickness = 0.18f;
+        float segmentLength = (Mathf.PI * 2f * HoldRadius / OuterRingSegmentCount) * 1.12f;
+
+        for (int i = 0; i < OuterRingSegmentCount; i++)
         {
-            Destroy(ringCollider);
+            float angle = (Mathf.PI * 2f * i) / OuterRingSegmentCount;
+            float x = Mathf.Cos(angle) * HoldRadius;
+            float z = Mathf.Sin(angle) * HoldRadius;
+
+            GameObject segmentObject = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            segmentObject.name = "ShrineOuterRingSegment";
+            segmentObject.transform.SetParent(outerRingRoot, false);
+            segmentObject.transform.localPosition = new Vector3(x, 0f, z);
+            segmentObject.transform.localRotation = Quaternion.Euler(0f, -angle * Mathf.Rad2Deg, 0f);
+            segmentObject.transform.localScale = new Vector3(ringThickness, 0.012f, segmentLength);
+            DestroyCollider(segmentObject);
+
+            Renderer segmentRenderer = segmentObject.GetComponent<Renderer>();
+            SetupRadiusRenderer(segmentRenderer);
+            outerRingRenderers.Add(segmentRenderer);
         }
 
-        radiusRingTransform = ringObject.transform;
-        radiusRingRenderer = ringObject.GetComponent<Renderer>();
-
-        if (radiusRingRenderer != null)
-        {
-            radiusRingRenderer.sharedMaterial = ChestVisualMaterials.GetGlowBaseMaterial();
-            ApplyRingColor(RingOutsideColor.a, false);
-        }
+        ApplyRadiusVisual(false, 1f);
     }
 
     private void BuildPromptText()
@@ -335,8 +369,8 @@ public class ShrineEventController : MonoBehaviour
         promptText.color = PromptColor;
         promptText.text = string.Empty;
         promptText.enabled = false;
-        promptText.outlineWidth = 0.22f;
-        promptText.outlineColor = new Color(0.02f, 0.08f, 0.08f, 0.85f);
+        promptText.outlineWidth = 0.28f;
+        promptText.outlineColor = new Color(0.02f, 0.08f, 0.08f, 0.92f);
 
         TMP_FontAsset font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
 
@@ -392,26 +426,93 @@ public class ShrineEventController : MonoBehaviour
         }
     }
 
-    private void UpdateRadiusRing(bool playerInside)
+    private void UpdateRadiusVisual(bool playerInside)
     {
-        if (radiusRingTransform == null) return;
-
-        float pulse = 1f + Mathf.Sin(Time.time * 2.8f) * 0.03f;
-        radiusRingTransform.localScale = new Vector3(
-            HoldRadius * 2f * pulse,
-            0.015f,
-            HoldRadius * 2f * pulse);
-
-        ApplyRingColor(playerInside ? RingInsideColor.a : RingOutsideColor.a, playerInside);
+        ApplyRadiusVisual(playerInside, 1f);
     }
 
-    private void ApplyRingColor(float alpha, bool playerInside)
+    private void ApplyRadiusVisual(bool playerInside, float alphaMultiplier)
     {
-        if (radiusRingRenderer == null) return;
+        if (radiusVisualRoot == null) return;
 
-        Color ringColor = playerInside ? RingInsideColor : RingOutsideColor;
-        ringColor.a = alpha;
-        GameVisualStyle.ApplyColor(radiusRingRenderer, ringColor, 0.18f, playerInside, playerInside ? 0.35f : 0.12f);
+        float pulse = 1f + Mathf.Sin(Time.time * 2.8f) * 0.025f;
+
+        if (outerRingRoot != null)
+        {
+            outerRingRoot.localScale = Vector3.one * pulse;
+        }
+
+        float innerAlpha = (playerInside ? InnerFillInsideAlpha : InnerFillOutsideAlpha) * alphaMultiplier;
+        Color innerColor = InnerFillTeal;
+        innerColor.a = innerAlpha;
+        ApplyRadiusRenderer(innerFillRenderer, innerColor, 0.08f, playerInside ? 0.06f : 0.02f);
+
+        float outerAlpha = (playerInside ? OuterRingInsideAlpha : OuterRingOutsideAlpha) * alphaMultiplier;
+        Color outerColor = OuterRingTeal;
+        outerColor.a = outerAlpha;
+
+        for (int i = 0; i < outerRingRenderers.Count; i++)
+        {
+            ApplyRadiusRenderer(
+                outerRingRenderers[i],
+                outerColor,
+                0.14f,
+                playerInside ? 0.2f : 0.1f);
+        }
+    }
+
+    private static void SetupRadiusRenderer(Renderer renderer)
+    {
+        if (renderer == null) return;
+
+        Material template = CreateRadiusTransparentMaterial();
+        renderer.material = template != null ? new Material(template) : renderer.material;
+    }
+
+    private static Material radiusTransparentMaterialTemplate;
+
+    private static Material CreateRadiusTransparentMaterial()
+    {
+        if (radiusTransparentMaterialTemplate != null)
+        {
+            return radiusTransparentMaterialTemplate;
+        }
+
+        Shader shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+
+        if (shader == null)
+        {
+            return null;
+        }
+
+        Material material = new Material(shader);
+        material.SetFloat("_Surface", 1f);
+        material.SetFloat("_Blend", 0f);
+        material.SetOverrideTag("RenderType", "Transparent");
+        material.renderQueue = 3000;
+        material.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+        material.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+        material.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+        material.SetInt("_ZWrite", 0);
+        radiusTransparentMaterialTemplate = material;
+        return material;
+    }
+
+    private static void ApplyRadiusRenderer(Renderer renderer, Color color, float smoothness, float emission)
+    {
+        if (renderer == null) return;
+
+        GameVisualStyle.ApplyColor(renderer, color, smoothness, emission > 0.08f, emission);
+    }
+
+    private static void DestroyCollider(GameObject target)
+    {
+        Collider collider = target.GetComponent<Collider>();
+
+        if (collider != null)
+        {
+            Destroy(collider);
+        }
     }
 
     private void UpdateGlowPulse()
