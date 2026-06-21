@@ -6,8 +6,8 @@ public class FloatingDamage : MonoBehaviour
     private static bool faceCameraLogShown;
 
     [SerializeField] private TMP_Text textMesh;
-    [SerializeField] private float lifetime = 0.9f;
-    [SerializeField] private float moveSpeed = 1.4f;
+    [SerializeField] private float lifetime = 0.72f;
+    [SerializeField] private float moveSpeed = 1.25f;
 
     private Color startColor = Color.white;
     private float age;
@@ -78,11 +78,12 @@ public class FloatingDamage : MonoBehaviour
         if (textMesh == null) return;
 
         textMesh.text = "-" + damageAmount;
-        startFontSize = textMesh.fontSize;
+        startFontSize = textMesh.fontSize * 0.82f;
+        textMesh.fontSize = startFontSize;
 
         if (isCrit)
         {
-            textMesh.fontSize = startFontSize * 1.35f;
+            textMesh.fontSize = startFontSize * 1.22f;
             startColor = new Color(1f, 0.86f, 0.28f, 1f);
             textMesh.color = startColor;
         }

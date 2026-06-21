@@ -175,6 +175,16 @@ public class ShrineEventManager : MonoBehaviour
         controller.Initialize(this);
 
         activeShrine = controller;
+        ShowSpawnNotification();
         return true;
+    }
+
+    private static void ShowSpawnNotification()
+    {
+        RunEventMessageDisplay.Show(
+            "ANCIENT SHRINE AWAKENED",
+            new Color(0.32f, 0.78f, 0.68f, 1f),
+            2.5f,
+            RunEventMessageDisplay.Priority.Event);
     }
 }
