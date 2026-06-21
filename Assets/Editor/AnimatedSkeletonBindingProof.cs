@@ -79,12 +79,12 @@ public static class AnimatedSkeletonBindingProof
         try
         {
             Transform[] transforms = instance.GetComponentsInChildren<Transform>(true);
-            Dictionary<Transform, PoseSnapshot> before = CapturePoses(transforms);
+            Dictionary<Transform, AnimatedSkeletonPoseSnapshot> before = CapturePoses(transforms);
 
             float sampleTime = clip.length > 0.01f ? clip.length * sampleRatio : sampleRatio;
             clip.SampleAnimation(instance, sampleTime);
 
-            List<MoveRecord> movers = MeasureMovement(transforms, before);
+            List<AnimatedSkeletonMoveRecord> movers = MeasureMovement(transforms, before);
             string topMoved = BuildTopMovedString(movers, 10);
 
             Debug.Log("[AnimatedSkeletonBindingProof] clip=" + label
@@ -357,8 +357,8 @@ public static class AnimatedSkeletonBindingProof
                 continue;
             }
 
-            float positionDelta = Vector3.Distance(transform.localPosition, start.localPosition);
-            float rotationDelta = Quaternion.Angle(transform.localRotation, start.localRotation);
+            float positionDelta = Vector3.Distance(transform.localPosition, start.LocalPosition);
+            float rotationDelta = Quaternion.Angle(transform.localRotation, start.LocalRotation);
 
             if (positionDelta <= PositionMoveThreshold && rotationDelta <= RotationMoveThreshold)
             {
@@ -368,8 +368,7 @@ public static class AnimatedSkeletonBindingProof
             movers.Add(new AnimatedSkeletonMoveRecord(transform.name, positionDelta, rotationDelta));
         }
 
-        movers.Sort((a, b) => (b.positionDelta + b.rotationDelta * 0.01f)
-            .CompareTo(a.positionDelta + a.rotationDelta * 0.01f));
+        movers.Sort((a, b) => b.Score.CompareTo(a.Score));
 
         return movers;
     }
@@ -392,11 +391,11 @@ public static class AnimatedSkeletonBindingProof
             }
 
             AnimatedSkeletonMoveRecord record = movers[i];
-            builder.Append(record.name)
+            builder.Append(record.Path)
                 .Append("(p=")
-                .Append(record.positionDelta.ToString("F4"))
+                .Append(record.PositionDelta.ToString("F4"))
                 .Append(",r=")
-                .Append(record.rotationDelta.ToString("F2"))
+                .Append(record.RotationDelta.ToString("F2"))
                 .Append(")");
         }
 
@@ -426,30 +425,32 @@ public static class AnimatedSkeletonBindingProof
 
         return stateInfo.shortNameHash.ToString();
     }
-}
 
-internal struct AnimatedSkeletonPoseSnapshot
-{
-    public readonly Vector3 localPosition;
-    public readonly Quaternion localRotation;
-
-    public AnimatedSkeletonPoseSnapshot(Vector3 localPosition, Quaternion localRotation)
+    private readonly struct AnimatedSkeletonPoseSnapshot
     {
-        this.localPosition = localPosition;
-        this.localRotation = localRotation;
+        public readonly Vector3 LocalPosition;
+        public readonly Quaternion LocalRotation;
+
+        public AnimatedSkeletonPoseSnapshot(Vector3 localPosition, Quaternion localRotation)
+        {
+            LocalPosition = localPosition;
+            LocalRotation = localRotation;
+        }
     }
-}
 
-internal struct AnimatedSkeletonMoveRecord
-{
-    public readonly string name;
-    public readonly float positionDelta;
-    public readonly float rotationDelta;
-
-    public AnimatedSkeletonMoveRecord(string name, float positionDelta, float rotationDelta)
+    private readonly struct AnimatedSkeletonMoveRecord
     {
-        this.name = name;
-        this.positionDelta = positionDelta;
-        this.rotationDelta = rotationDelta;
+        public readonly string Path;
+        public readonly float PositionDelta;
+        public readonly float RotationDelta;
+
+        public float Score => PositionDelta + RotationDelta * 0.01f;
+
+        public AnimatedSkeletonMoveRecord(string path, float positionDelta, float rotationDelta)
+        {
+            Path = path;
+            PositionDelta = positionDelta;
+            RotationDelta = rotationDelta;
+        }
     }
 }
