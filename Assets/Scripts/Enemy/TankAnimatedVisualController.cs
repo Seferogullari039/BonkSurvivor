@@ -17,6 +17,7 @@ public class TankAnimatedVisualController : MonoBehaviour
     [Header("Animator")]
     [SerializeField] private RuntimeAnimatorController animatorController;
     [SerializeField] private Material bodyMaterial;
+    [SerializeField] private Avatar skeletonAvatar;
 
     [Header("Movement")]
     [SerializeField] private float moveSpeedThreshold = 0.03f;
@@ -52,11 +53,25 @@ public class TankAnimatedVisualController : MonoBehaviour
     private bool warnedMissingAnimator;
     private bool warnedMissingTarget;
     private string attackClipName = AttackStateName;
+    private bool warnedMissingAvatar;
     private GameObject swordVisualRoot;
+
+    public void ConfigurePlaybackReferences(Avatar avatar, RuntimeAnimatorController controller = null)
+    {
+        if (avatar != null)
+        {
+            skeletonAvatar = avatar;
+        }
+
+        if (controller != null)
+        {
+            animatorController = controller;
+        }
+    }
 
     private void Awake()
     {
-        animator = GetComponent<Animator>();
+        ResolveAnimatedAnimator();
         enemyRoot = FindEnemyRoot();
         lastRootPosition = enemyRoot != null ? enemyRoot.position : transform.position;
 
@@ -72,6 +87,35 @@ public class TankAnimatedVisualController : MonoBehaviour
         ResolveRunClipInfo();
         CreateVisualSwordIfNeeded();
         PlayMovementVisualState(force: true);
+    }
+
+    private void ResolveAnimatedAnimator()
+    {
+        Animator[] animators = GetComponentsInChildren<Animator>(true);
+        Animator best = null;
+
+        for (int i = 0; i < animators.Length; i++)
+        {
+            Animator candidate = animators[i];
+
+            if (candidate == null)
+            {
+                continue;
+            }
+
+            if (candidate.avatar != null && candidate.avatar.isValid)
+            {
+                best = candidate;
+                break;
+            }
+
+            if (best == null)
+            {
+                best = candidate;
+            }
+        }
+
+        animator = best ?? GetComponent<Animator>();
     }
 
     private void LateUpdate()
@@ -121,6 +165,18 @@ public class TankAnimatedVisualController : MonoBehaviour
         if (animatorController != null)
         {
             animator.runtimeAnimatorController = animatorController;
+        }
+
+        if (animator.avatar == null && skeletonAvatar != null)
+        {
+            animator.avatar = skeletonAvatar;
+        }
+
+        if ((animator.avatar == null || !animator.avatar.isValid) && !warnedMissingAvatar)
+        {
+            warnedMissingAvatar = true;
+            Debug.LogWarning("[TankAnimatedVisualController] Animator avatar missing/invalid on "
+                + name + ". Run Tools/BonkSurvivor/Fix Tank Skeleton Playback.", this);
         }
     }
 
@@ -253,8 +309,14 @@ public class TankAnimatedVisualController : MonoBehaviour
         }
 
         float crossFadeDuration = shouldRun ? RunCrossFadeDuration : IdleCrossFadeDuration;
-        animator.CrossFadeInFixedTime(desiredState, crossFadeDuration, 0, 0f);
-        currentVisualState = desiredState;
+        CrossFadeVisualState(desiredState, crossFadeDuration);
+    }
+
+    private void CrossFadeVisualState(string stateName, float duration)
+    {
+        animator.CrossFadeInFixedTime(stateName, duration, 0, 0f);
+        animator.Update(0f);
+        currentVisualState = stateName;
     }
 
     private void TryTriggerAttackVisual()
@@ -299,8 +361,7 @@ public class TankAnimatedVisualController : MonoBehaviour
         string stateBefore = GetCurrentStateLabel();
         string targetName = debugTargetName ?? (target != null ? target.name : "unknown");
 
-        animator.CrossFadeInFixedTime(AttackStateName, AttackCrossFadeDuration, 0, 0f);
-        currentVisualState = AttackStateName;
+        CrossFadeVisualState(AttackStateName, AttackCrossFadeDuration);
         isAttacking = true;
         attackEndTime = Time.time + attackVisualDuration;
         nextAttackTime = Time.time + attackCooldown;
@@ -317,8 +378,7 @@ public class TankAnimatedVisualController : MonoBehaviour
 
         string returnState = (debugForceRun || lastIsMoving) ? RunStateName : IdleStateName;
         float crossFadeDuration = returnState == RunStateName ? RunCrossFadeDuration : IdleCrossFadeDuration;
-        animator.CrossFadeInFixedTime(returnState, crossFadeDuration, 0, 0f);
-        currentVisualState = returnState;
+        CrossFadeVisualState(returnState, crossFadeDuration);
         animator.SetBool(IsMovingHash, lastIsMoving);
     }
 
@@ -332,12 +392,19 @@ public class TankAnimatedVisualController : MonoBehaviour
         nextAnimatorDebugLogTime = Time.time + 1f;
 
         AnimatorStateInfo stateInfo = animator.GetCurrentAnimatorStateInfo(0);
+        AnimatorClipInfo[] clipInfos = animator.GetCurrentAnimatorClipInfo(0);
+        string clipInfo = clipInfos.Length > 0 && clipInfos[0].clip != null
+            ? clipInfos[0].clip.name
+            : "none";
+
         Debug.Log("[TankAnimatedVisualController] state=" + currentVisualState
             + " moving=" + lastIsMoving
             + " speed=" + lastMovementSpeed.ToString("F2")
             + " forceRun=" + debugForceRun
             + " clip=" + runClipName
+            + " clipInfo=" + clipInfo
             + " normalized=" + stateInfo.normalizedTime.ToString("F2")
+            + " avatarValid=" + (animator.avatar != null && animator.avatar.isValid)
             + " attacking=" + isAttacking);
     }
 
