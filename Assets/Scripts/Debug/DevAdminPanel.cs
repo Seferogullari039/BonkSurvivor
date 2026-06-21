@@ -162,6 +162,7 @@ public class DevAdminPanel : MonoBehaviour
         CreateButton(scrollContent, "Spawn Golden Dragon", SpawnGoldenDragon);
         CreateButton(scrollContent, "Trigger Blood Moon", TriggerBloodMoon);
         CreateButton(scrollContent, "Trigger Void Portal", TriggerVoidPortal);
+        CreateButton(scrollContent, "Spawn Shrine Event", SpawnShrine);
         CreateButton(scrollContent, "Give Rocket Launcher", GiveRocketLauncher);
         CreateButton(scrollContent, "Give Laser Beam", GiveLaserBeam);
         CreateButton(scrollContent, "Give Chain Lightning", GiveChainLightning);
@@ -458,6 +459,37 @@ public class DevAdminPanel : MonoBehaviour
         }
 
         manager?.DevTriggerVoidPortal();
+    }
+
+    private void SpawnShrine()
+    {
+        if (!panelVisible || !IsDevPanelEnabled()) return;
+
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[DevAdminPanel] Spawn Shrine requires Play Mode.");
+            return;
+        }
+
+        Debug.Log("[DevAdminPanel] Spawn Shrine requested.");
+
+        ShrineEventManager manager = ShrineEventManager.Instance;
+
+        if (manager == null)
+        {
+            manager = FindFirstObjectByType<ShrineEventManager>();
+        }
+
+        if (manager == null)
+        {
+            Debug.LogWarning("[DevAdminPanel] ShrineEventManager not found.");
+            return;
+        }
+
+        if (!manager.DevSpawnShrine())
+        {
+            Debug.Log("[DevAdminPanel] Shrine spawn skipped (active shrine or invalid state).");
+        }
     }
 
     private void SpawnMimicChest()
