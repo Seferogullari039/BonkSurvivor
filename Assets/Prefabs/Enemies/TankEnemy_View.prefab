@@ -511,12 +511,15 @@ MonoBehaviour:
   debugForceAttackLoop: 0
   debugForceRun: 0
   debugAnimatorLogs: 0
+  debugAttackLogs: 0
+  debugMeshDiagnosticLogs: 0
   createVisualSword: 1
   preferredHandName: hand.R
   swordMaterial: {fileID: 2100000, guid: b7c8d9e0f1a2436589abcdef01234567, type: 2}
   swordHandleMaterial: {fileID: 0}
-  swordAnchorLocalPosition: {x: 0.28, y: 0.72, z: 0.12}
-  swordAnchorLocalEuler: {x: 10, y: -20, z: -105}
+  swordAnchorLocalPosition: {x: 0.42, y: 0.24, z: 0.04}
+  swordAnchorLocalEuler: {x: 35, y: 25, z: -82}
+  swordAnchorLocalScale: {x: 0.88, y: 0.88, z: 0.88}
 --- !u!1001 &8962469679951895997
 PrefabInstance:
   m_ObjectHideFlags: 0

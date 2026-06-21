@@ -63,6 +63,7 @@ public class ProceduralGrassArena : MonoBehaviour
     [SerializeField] private float playerSpawnMaxDistanceFromCenter = 50f;
 
     [Header("Run Debug")]
+    [SerializeField] private bool debugLargeSpawnLogs = false;
     [SerializeField] private int currentRunSeed;
     [SerializeField] private Vector3 selectedPlayerSpawn;
 
@@ -1390,7 +1391,10 @@ public class ProceduralGrassArena : MonoBehaviour
 #if UNITY_EDITOR
     private void LogLargeObjectSpawn(string category, string objectName, Vector3 worldPosition, float objectRadius)
     {
-        if (!spawnSelected) return;
+        if (!spawnSelected || !debugLargeSpawnLogs)
+        {
+            return;
+        }
 
         Vector3 flatPosition = worldPosition;
         flatPosition.y = 0f;
