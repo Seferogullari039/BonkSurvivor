@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEditor;
@@ -59,7 +60,7 @@ public static class AnimatedSkeletonBindingProof
         Debug.Log(AnimatedSkeletonClipAudit.BuildAuditReport());
     }
 
-    private static int ProveClipSample(string label, System.Func<AnimationClip, bool> matcher, float sampleRatio, StringBuilder summary)
+    private static int ProveClipSample(string label, Func<AnimationClip, bool> matcher, float sampleRatio, StringBuilder summary)
     {
         GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(SkeletonPath);
         AnimationClip clip = FindClip(matcher);
@@ -295,7 +296,7 @@ public static class AnimatedSkeletonBindingProof
         return null;
     }
 
-    private static AnimationClip FindClip(System.Func<AnimationClip, bool> matcher)
+    private static AnimationClip FindClip(Func<AnimationClip, bool> matcher)
     {
         UnityEngine.Object[] subAssets = AssetDatabase.LoadAllAssetsAtPath(SkeletonPath);
         for (int i = 0; i < subAssets.Length; i++)
@@ -324,9 +325,9 @@ public static class AnimatedSkeletonBindingProof
         return clip.name.ToLowerInvariant().Contains("attack");
     }
 
-    private static Dictionary<Transform, PoseSnapshot> CapturePoses(Transform[] transforms)
+    private static Dictionary<Transform, AnimatedSkeletonPoseSnapshot> CapturePoses(Transform[] transforms)
     {
-        Dictionary<Transform, PoseSnapshot> poses = new Dictionary<Transform, PoseSnapshot>(transforms.Length);
+        Dictionary<Transform, AnimatedSkeletonPoseSnapshot> poses = new Dictionary<Transform, AnimatedSkeletonPoseSnapshot>(transforms.Length);
 
         for (int i = 0; i < transforms.Length; i++)
         {
@@ -336,20 +337,22 @@ public static class AnimatedSkeletonBindingProof
                 continue;
             }
 
-            poses[transform] = new PoseSnapshot(transform.localPosition, transform.localRotation);
+            poses[transform] = new AnimatedSkeletonPoseSnapshot(transform.localPosition, transform.localRotation);
         }
 
         return poses;
     }
 
-    private static List<MoveRecord> MeasureMovement(Transform[] transforms, Dictionary<Transform, PoseSnapshot> before)
+    private static List<AnimatedSkeletonMoveRecord> MeasureMovement(
+        Transform[] transforms,
+        Dictionary<Transform, AnimatedSkeletonPoseSnapshot> before)
     {
-        List<MoveRecord> movers = new List<MoveRecord>();
+        List<AnimatedSkeletonMoveRecord> movers = new List<AnimatedSkeletonMoveRecord>();
 
         for (int i = 0; i < transforms.Length; i++)
         {
             Transform transform = transforms[i];
-            if (transform == null || !before.TryGetValue(transform, out PoseSnapshot start))
+            if (transform == null || !before.TryGetValue(transform, out AnimatedSkeletonPoseSnapshot start))
             {
                 continue;
             }
@@ -362,7 +365,7 @@ public static class AnimatedSkeletonBindingProof
                 continue;
             }
 
-            movers.Add(new MoveRecord(transform.name, positionDelta, rotationDelta));
+            movers.Add(new AnimatedSkeletonMoveRecord(transform.name, positionDelta, rotationDelta));
         }
 
         movers.Sort((a, b) => (b.positionDelta + b.rotationDelta * 0.01f)
@@ -371,7 +374,7 @@ public static class AnimatedSkeletonBindingProof
         return movers;
     }
 
-    private static string BuildTopMovedString(List<MoveRecord> movers, int maxCount)
+    private static string BuildTopMovedString(List<AnimatedSkeletonMoveRecord> movers, int maxCount)
     {
         if (movers.Count == 0)
         {
@@ -388,7 +391,7 @@ public static class AnimatedSkeletonBindingProof
                 builder.Append(" | ");
             }
 
-            MoveRecord record = movers[i];
+            AnimatedSkeletonMoveRecord record = movers[i];
             builder.Append(record.name)
                 .Append("(p=")
                 .Append(record.positionDelta.ToString("F4"))
@@ -423,30 +426,30 @@ public static class AnimatedSkeletonBindingProof
 
         return stateInfo.shortNameHash.ToString();
     }
+}
 
-    private readonly struct PoseSnapshot
+internal struct AnimatedSkeletonPoseSnapshot
+{
+    public readonly Vector3 localPosition;
+    public readonly Quaternion localRotation;
+
+    public AnimatedSkeletonPoseSnapshot(Vector3 localPosition, Quaternion localRotation)
     {
-        public readonly Vector3 localPosition;
-        public readonly Quaternion localRotation;
-
-        public PoseSnapshot(Vector3 localPosition, Quaternion localRotation)
-        {
-            this.localPosition = localPosition;
-            this.localRotation = localRotation;
-        }
+        this.localPosition = localPosition;
+        this.localRotation = localRotation;
     }
+}
 
-    private readonly struct MoveRecord
+internal struct AnimatedSkeletonMoveRecord
+{
+    public readonly string name;
+    public readonly float positionDelta;
+    public readonly float rotationDelta;
+
+    public AnimatedSkeletonMoveRecord(string name, float positionDelta, float rotationDelta)
     {
-        public readonly string name;
-        public readonly float positionDelta;
-        public readonly float rotationDelta;
-
-        public MoveRecord(string name, float positionDelta, float rotationDelta)
-        {
-            this.name = name;
-            this.positionDelta = positionDelta;
-            this.rotationDelta = rotationDelta;
-        }
+        this.name = name;
+        this.positionDelta = positionDelta;
+        this.rotationDelta = rotationDelta;
     }
 }
