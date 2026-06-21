@@ -33,8 +33,10 @@ public static class AnimatedSkeletonBindingProof
         if (runMoved == 0 && attackMoved == 0)
         {
             summary.AppendLine("[AnimatedSkeletonBindingProof] VERDICT: Clip kemikleri hareket ettirmiyor. Sorun Tank prefab degil; import/clip binding.");
-            summary.AppendLine("[AnimatedSkeletonBindingProof] Run Tools/BonkSurvivor/Fix Tank Skeleton Playback, then prove again.");
+            summary.AppendLine("[AnimatedSkeletonBindingProof] Running sample root variation test...");
             Debug.Log(summary.ToString());
+            RunSampleRootVariationProof();
+            Debug.Log("[AnimatedSkeletonBindingProof] Run Tools/BonkSurvivor/Audit Animated Skeleton Curve Bindings for full curve/path/import report.");
             return;
         }
 
@@ -42,6 +44,52 @@ public static class AnimatedSkeletonBindingProof
         Debug.Log(summary.ToString());
 
         ProveRawAnimatorPlayback();
+    }
+
+    public static void RunSampleRootVariationProof()
+    {
+        AnimatedSkeletonCurveBindingAuditContextHolder.LastSampleRootMoved = 0;
+
+        GameObject source = AssetDatabase.LoadAssetAtPath<GameObject>(SkeletonPath);
+        AnimationClip runClip = FindClip(MatchRunClip);
+        AnimationClip attackClip = FindClip(MatchAttackClip);
+
+        if (source == null)
+        {
+            Debug.LogError("[AnimatedSkeletonBindingProof] Sample root proof missing skeleton.fbx source.");
+            return;
+        }
+
+        GameObject instance = UnityEngine.Object.Instantiate(source);
+        instance.hideFlags = HideFlags.HideAndDontSave;
+        instance.name = "AnimatedSkeletonBindingProof_SampleRoot";
+
+        try
+        {
+            List<SampleRootCandidate> sampleRoots = CollectSampleRoots(instance);
+            for (int i = 0; i < sampleRoots.Count; i++)
+            {
+                SampleRootCandidate candidate = sampleRoots[i];
+                if (candidate.Root == null)
+                {
+                    continue;
+                }
+
+                if (runClip != null)
+                {
+                    ProveClipSampleOnRoot(candidate.Root, instance.transform, "RUN", runClip, 0.35f, candidate.Label);
+                }
+
+                if (attackClip != null)
+                {
+                    ProveClipSampleOnRoot(candidate.Root, instance.transform, "ATTACK", attackClip, 0.45f, candidate.Label);
+                }
+            }
+        }
+        finally
+        {
+            UnityEngine.Object.DestroyImmediate(instance);
+        }
     }
 
     public static void RepairTankSkeletonPrefabBinding()
@@ -78,31 +126,124 @@ public static class AnimatedSkeletonBindingProof
 
         try
         {
-            Transform[] transforms = instance.GetComponentsInChildren<Transform>(true);
-            Dictionary<Transform, AnimatedSkeletonPoseSnapshot> before = CapturePoses(transforms);
-
-            float sampleTime = clip.length > 0.01f ? clip.length * sampleRatio : sampleRatio;
-            clip.SampleAnimation(instance, sampleTime);
-
-            List<AnimatedSkeletonMoveRecord> movers = MeasureMovement(transforms, before);
-            string topMoved = BuildTopMovedString(movers, 10);
+            int moved = ProveClipSampleOnRoot(instance, instance.transform, label, clip, sampleRatio, "instanceRoot");
 
             Debug.Log("[AnimatedSkeletonBindingProof] clip=" + label
                 + " name='" + clip.name
                 + "' length=" + clip.length.ToString("F3")
-                + " movedTransforms=" + movers.Count
-                + " topMoved=" + topMoved);
+                + " movedTransforms=" + moved);
 
             summary.AppendLine("[AnimatedSkeletonBindingProof] clip=" + label
                 + " length=" + clip.length.ToString("F3")
-                + " movedTransforms=" + movers.Count);
+                + " movedTransforms=" + moved);
 
-            return movers.Count;
+            return moved;
         }
         finally
         {
             UnityEngine.Object.DestroyImmediate(instance);
         }
+    }
+
+    private static int ProveClipSampleOnRoot(
+        GameObject sampleRoot,
+        Transform instanceRoot,
+        string label,
+        AnimationClip clip,
+        float sampleRatio,
+        string sampleRootLabel)
+    {
+        Transform[] transforms = sampleRoot.GetComponentsInChildren<Transform>(true);
+        Dictionary<Transform, AnimatedSkeletonPoseSnapshot> before = CapturePoses(transforms);
+
+        float sampleTime = clip.length > 0.01f ? clip.length * sampleRatio : sampleRatio;
+        clip.SampleAnimation(sampleRoot, sampleTime);
+
+        List<AnimatedSkeletonMoveRecord> movers = MeasureMovement(transforms, before);
+        string sampleRootPath = GetRelativePath(instanceRoot, sampleRoot.transform);
+
+        Debug.Log("[AnimatedSkeletonBindingProof] sampleRoot='" + sampleRootPath
+            + "' sampleRootName='" + sampleRoot.name
+            + "' sampleRootKind='" + sampleRootLabel
+            + "' clip=" + label
+            + " movedTransforms=" + movers.Count
+            + " topMoved=" + BuildTopMovedString(movers, 5));
+
+        if (movers.Count > 0)
+        {
+            AnimatedSkeletonCurveBindingAuditContextHolder.LastSampleRootMoved = Mathf.Max(
+                AnimatedSkeletonCurveBindingAuditContextHolder.LastSampleRootMoved,
+                movers.Count);
+        }
+
+        return movers.Count;
+    }
+
+    private static List<SampleRootCandidate> CollectSampleRoots(GameObject instance)
+    {
+        List<SampleRootCandidate> candidates = new List<SampleRootCandidate>(8);
+        HashSet<int> seenInstanceIds = new HashSet<int>();
+
+        AddSampleRootCandidate(candidates, seenInstanceIds, instance, "instanceRoot");
+        AddSampleRootCandidate(candidates, seenInstanceIds, FindChildByName(instance.transform, "Armature")?.gameObject, "armature");
+        AddSampleRootCandidate(candidates, seenInstanceIds, FindChildByName(instance.transform, "armature")?.gameObject, "armatureLower");
+        AddSampleRootCandidate(candidates, seenInstanceIds, FindChildByName(instance.transform, "RootNode")?.gameObject, "rootNode");
+
+        Animator animator = instance.GetComponent<Animator>() ?? instance.GetComponentInChildren<Animator>(true);
+        if (animator != null)
+        {
+            AddSampleRootCandidate(candidates, seenInstanceIds, animator.gameObject, "animatorObject");
+        }
+
+        SkinnedMeshRenderer[] renderers = instance.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+        if (renderers.Length > 0 && renderers[0] != null && renderers[0].rootBone != null)
+        {
+            AddSampleRootCandidate(candidates, seenInstanceIds, renderers[0].rootBone.gameObject, "skinnedRootBone");
+            if (renderers[0].rootBone.parent != null)
+            {
+                AddSampleRootCandidate(candidates, seenInstanceIds, renderers[0].rootBone.parent.gameObject, "skinnedRootBoneParent");
+            }
+        }
+
+        return candidates;
+    }
+
+    private static void AddSampleRootCandidate(
+        List<SampleRootCandidate> candidates,
+        HashSet<int> seenInstanceIds,
+        GameObject root,
+        string label)
+    {
+        if (root == null || !seenInstanceIds.Add(root.GetInstanceID()))
+        {
+            return;
+        }
+
+        candidates.Add(new SampleRootCandidate(root, label));
+    }
+
+    private static string GetRelativePath(Transform root, Transform target)
+    {
+        if (target == null)
+        {
+            return "null";
+        }
+
+        if (target == root)
+        {
+            return root.name;
+        }
+
+        List<string> parts = new List<string>(8);
+        Transform current = target;
+        while (current != null && current != root)
+        {
+            parts.Add(current.name);
+            current = current.parent;
+        }
+
+        parts.Reverse();
+        return root.name + "/" + string.Join("/", parts);
     }
 
     private static void ProveRawAnimatorPlayback()
@@ -451,6 +592,18 @@ public static class AnimatedSkeletonBindingProof
             Path = path;
             PositionDelta = positionDelta;
             RotationDelta = rotationDelta;
+        }
+    }
+
+    private readonly struct SampleRootCandidate
+    {
+        public readonly GameObject Root;
+        public readonly string Label;
+
+        public SampleRootCandidate(GameObject root, string label)
+        {
+            Root = root;
+            Label = label;
         }
     }
 }

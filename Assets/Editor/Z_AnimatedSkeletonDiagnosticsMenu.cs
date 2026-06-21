@@ -3,10 +3,17 @@ using UnityEngine;
 
 public static class Z_AnimatedSkeletonDiagnosticsMenu
 {
-    [MenuItem("Tools/BonkSurvivor/ZZ Diagnostic Menu Ping", false, 9990)]
+    [MenuItem("Tools/BonkSurvivor/ZZ Diagnostic Menu Ping", false, 9989)]
     public static void Ping()
     {
         Debug.Log("[Z_AnimatedSkeletonDiagnosticsMenu] Ping OK - menu registered.");
+    }
+
+    [MenuItem("Tools/BonkSurvivor/Audit Animated Skeleton Curve Bindings", false, 9990)]
+    public static void AuditAnimatedSkeletonCurveBindings()
+    {
+        Debug.Log("[Z_AnimatedSkeletonDiagnosticsMenu] Curve binding audit menu clicked.");
+        AnimatedSkeletonCurveBindingAudit.RunCurveBindingAudit();
     }
 
     [MenuItem("Tools/BonkSurvivor/Prove Animated Skeleton Clip Binding", false, 9991)]
