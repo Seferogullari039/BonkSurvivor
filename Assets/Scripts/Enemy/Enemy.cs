@@ -42,7 +42,14 @@ public class Enemy : MonoBehaviour
 
     public EnemyType Type => enemyType;
     public bool IsElite { get; private set; }
+    public EliteMutationType EliteMutation { get; private set; } = EliteMutationType.None;
     public BossAbilityType BossAbility => bossAbility;
+
+    // Default off: single short elite-spawn log, opt-in only. No gameplay effect.
+    public static bool LogEliteMutationDebug = false;
+
+    private int eliteXpOrbCount = 2;
+    private int eliteCoinCount = 1;
 
     public void SetMovementLocked(bool locked)
     {
@@ -160,9 +167,10 @@ public class Enemy : MonoBehaviour
         }
 
         IsElite = true;
-        maxHealth = Mathf.Max(1, maxHealth * 2);
-        currentHealth = maxHealth;
         enemyType = EnemyType.Elite;
+
+        EliteMutation = PickRandomEliteMutation();
+        ApplyEliteMutationStats(EliteMutation);
 
         if (enemyRenderer != null)
         {
@@ -174,6 +182,81 @@ public class Enemy : MonoBehaviour
 
         EnsureVisualController();
         visualController?.RefreshVisual(enemyType, eliteColor, baseVisualSmoothness, baseVisualGlow);
+
+        if (LogEliteMutationDebug)
+        {
+            Debug.Log("[EliteMutation] Spawned " + EliteMutation + " Elite | hp x"
+                + GetMutationHpMultiplier(EliteMutation).ToString("0.00")
+                + " | speed x" + GetMutationSpeedMultiplier(EliteMutation).ToString("0.00"));
+        }
+    }
+
+    private void ApplyEliteMutationStats(EliteMutationType mutation)
+    {
+        // HP multiplier is applied to the pre-elite base health (replaces the legacy flat 2x).
+        maxHealth = Mathf.Max(1, Mathf.RoundToInt(maxHealth * GetMutationHpMultiplier(mutation)));
+        currentHealth = maxHealth;
+        moveSpeed *= GetMutationSpeedMultiplier(mutation);
+
+        switch (mutation)
+        {
+            case EliteMutationType.Armored:
+                eliteXpOrbCount = 2;
+                eliteCoinCount = 2;
+                break;
+            case EliteMutationType.Swift:
+                eliteXpOrbCount = 2;
+                eliteCoinCount = 2;
+                break;
+            case EliteMutationType.Frenzied:
+                eliteXpOrbCount = 3;
+                eliteCoinCount = 2;
+                break;
+            case EliteMutationType.Treasure:
+                eliteXpOrbCount = 2;
+                eliteCoinCount = 4;
+                break;
+            default:
+                eliteXpOrbCount = 2;
+                eliteCoinCount = 1;
+                break;
+        }
+    }
+
+    private static EliteMutationType PickRandomEliteMutation()
+    {
+        int roll = Random.Range(0, 4);
+        return roll switch
+        {
+            0 => EliteMutationType.Armored,
+            1 => EliteMutationType.Swift,
+            2 => EliteMutationType.Frenzied,
+            _ => EliteMutationType.Treasure
+        };
+    }
+
+    private static float GetMutationHpMultiplier(EliteMutationType mutation)
+    {
+        return mutation switch
+        {
+            EliteMutationType.Armored => 2.6f,
+            EliteMutationType.Swift => 1.7f,
+            EliteMutationType.Frenzied => 2.0f,
+            EliteMutationType.Treasure => 1.8f,
+            _ => 2.0f
+        };
+    }
+
+    private static float GetMutationSpeedMultiplier(EliteMutationType mutation)
+    {
+        return mutation switch
+        {
+            EliteMutationType.Armored => 0.95f,
+            EliteMutationType.Swift => 1.18f,
+            EliteMutationType.Frenzied => 1.08f,
+            EliteMutationType.Treasure => 1.0f,
+            _ => 1.0f
+        };
     }
 
     private void Update()
@@ -486,43 +569,34 @@ public class Enemy : MonoBehaviour
 
     private void DropEliteRewards(Vector3 dropPosition)
     {
-        if (xpOrbPrefab != null && LootLimits.CanSpawnXPOrb())
+        // Mutation drives orb/coin counts. Reward types (XP orb, coin, chest) are unchanged.
+        int xpOrbs = Mathf.Max(1, eliteXpOrbCount);
+
+        for (int i = 0; i < xpOrbs; i++)
         {
-            Instantiate(
-                xpOrbPrefab,
-                dropPosition,
-                Quaternion.identity
-            );
+            if (xpOrbPrefab == null || !LootLimits.CanSpawnXPOrb())
+            {
+                break;
+            }
+
+            Vector3 xpOffset = i == 0
+                ? Vector3.zero
+                : new Vector3(Random.Range(-0.5f, 0.5f), 0f, Random.Range(-0.5f, 0.5f));
+
+            Instantiate(xpOrbPrefab, dropPosition + xpOffset, Quaternion.identity);
         }
 
-        if (Random.value < 0.5f && xpOrbPrefab != null && LootLimits.CanSpawnXPOrb())
+        int coins = Mathf.Max(1, eliteCoinCount);
+
+        for (int i = 0; i < coins; i++)
         {
-            Vector3 bonusXpOffset = new Vector3(
-                Random.Range(-0.5f, 0.5f),
-                0f,
-                Random.Range(-0.5f, 0.5f)
-            );
+            if (coinPrefab == null || !LootLimits.CanSpawnCoin())
+            {
+                break;
+            }
 
-            Instantiate(
-                xpOrbPrefab,
-                dropPosition + bonusXpOffset,
-                Quaternion.identity
-            );
-        }
-
-        if (coinPrefab != null && LootLimits.CanSpawnCoin())
-        {
-            Vector3 coinOffset = new Vector3(
-                Random.Range(-0.5f, 0.5f),
-                0f,
-                Random.Range(-0.5f, 0.5f)
-            );
-
-            Instantiate(
-                coinPrefab,
-                dropPosition + coinOffset,
-                Quaternion.identity
-            );
+            Vector3 coinOffset = new Vector3(Random.Range(-0.5f, 0.5f), 0f, Random.Range(-0.5f, 0.5f));
+            Instantiate(coinPrefab, dropPosition + coinOffset, Quaternion.identity);
         }
 
         TryDropChest();
