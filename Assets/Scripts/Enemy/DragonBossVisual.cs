@@ -17,8 +17,12 @@ public class DragonBossVisual : MonoBehaviour
     // The boss root (DragonBossController) already yaws toward the player, so the model only needs
     // to stand upright with its face on +Z (root forward). These do NOT touch gameplay/collider/root.
     [SerializeField] private float modelFacingYaw = 0f;
+    // Extra visual-only yaw to flip the imported model's front toward the player when its native
+    // forward is the back side. Final yaw = modelFacingYaw + visualYawCorrection. Visual only.
+    [SerializeField] private float visualYawCorrection = 180f;
     [SerializeField] private float modelGroundLocalY = -0.456f;
     [SerializeField] private float mouthHeightFactor = 0.72f;
+    [SerializeField] private bool debugLogOrientation = true;
 
     private Transform mouthFirePoint;
 
@@ -87,6 +91,44 @@ public class DragonBossVisual : MonoBehaviour
             innerRoot = viewInstance.transform;
         }
 
+        Transform model = ResolveVisibleModelRoot(innerRoot);
+
+        if (model == null)
+        {
+            return;
+        }
+
+        float effectiveYaw = modelFacingYaw + visualYawCorrection;
+        Vector3 beforeEuler = model.localEulerAngles;
+
+        // Stand the dragon upright (no pitch/roll) and face the boss root forward (+Z toward player).
+        model.localRotation = Quaternion.Euler(0f, effectiveYaw, 0f);
+
+        Bounds localBounds = CalculateLocalBounds(innerRoot, model);
+        float groundShift = modelGroundLocalY - localBounds.min.y;
+        model.localPosition += new Vector3(0f, groundShift, 0f);
+
+        if (debugLogOrientation)
+        {
+            int rendererCount = model.GetComponentsInChildren<Renderer>(true).Length;
+            Debug.Log("[DragonBossVisual] Orientation root=" + model.name
+                + " yaw=" + effectiveYaw.ToString("F1")
+                + " before=" + beforeEuler
+                + " after=" + model.localEulerAngles
+                + " renderers=" + rendererCount);
+        }
+    }
+
+    // Returns the transform that actually parents the visible meshes so the yaw correction is applied
+    // to the rendered model rather than an empty pivot. Prefers the "Model" child when it carries
+    // renderers, otherwise falls back to the common ancestor of all renderers under the view root.
+    private static Transform ResolveVisibleModelRoot(Transform innerRoot)
+    {
+        if (innerRoot == null)
+        {
+            return null;
+        }
+
         Transform model = innerRoot.Find("Model");
 
         if (model == null)
@@ -94,17 +136,67 @@ public class DragonBossVisual : MonoBehaviour
             model = FindDeepChild(innerRoot, "Model");
         }
 
-        if (model == null)
+        if (model != null && model.GetComponentInChildren<Renderer>(true) != null)
         {
-            return;
+            return model;
         }
 
-        // Stand the dragon upright (no pitch/roll) and face +Z, which is the boss root forward.
-        model.localRotation = Quaternion.Euler(0f, modelFacingYaw, 0f);
+        Renderer[] renderers = innerRoot.GetComponentsInChildren<Renderer>(true);
 
-        Bounds localBounds = CalculateLocalBounds(innerRoot, model);
-        float groundShift = modelGroundLocalY - localBounds.min.y;
-        model.localPosition += new Vector3(0f, groundShift, 0f);
+        if (renderers.Length == 0)
+        {
+            return model;
+        }
+
+        // Find the highest direct child of innerRoot that contains all renderers, so we rotate the
+        // whole visible model in one place without touching MouthFirePoint (a sibling pivot).
+        Transform candidate = null;
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer == null)
+            {
+                continue;
+            }
+
+            Transform topChild = GetTopChildUnder(innerRoot, renderer.transform);
+
+            if (topChild == null)
+            {
+                continue;
+            }
+
+            if (candidate == null)
+            {
+                candidate = topChild;
+            }
+            else if (candidate != topChild)
+            {
+                // Renderers live under multiple direct children, rotate them together via innerRoot.
+                return innerRoot;
+            }
+        }
+
+        return candidate != null ? candidate : model;
+    }
+
+    private static Transform GetTopChildUnder(Transform ancestor, Transform descendant)
+    {
+        if (ancestor == null || descendant == null)
+        {
+            return null;
+        }
+
+        Transform current = descendant;
+
+        while (current.parent != null && current.parent != ancestor)
+        {
+            current = current.parent;
+        }
+
+        return current.parent == ancestor ? current : null;
     }
 
     private void RepositionMouthFirePoint(Transform viewRoot, Transform mouth)
@@ -121,12 +213,7 @@ public class DragonBossVisual : MonoBehaviour
             innerRoot = viewRoot;
         }
 
-        Transform model = innerRoot.Find("Model");
-
-        if (model == null)
-        {
-            model = FindDeepChild(innerRoot, "Model");
-        }
+        Transform model = ResolveVisibleModelRoot(innerRoot);
 
         if (model == null || mouth.parent != innerRoot)
         {
