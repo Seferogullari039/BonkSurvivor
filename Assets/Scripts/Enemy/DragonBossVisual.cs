@@ -13,6 +13,13 @@ public class DragonBossVisual : MonoBehaviour
 
     [SerializeField] private bool buildOnAwake = true;
 
+    // Visual-only orientation fix for the imported Dragon view prefab.
+    // The boss root (DragonBossController) already yaws toward the player, so the model only needs
+    // to stand upright with its face on +Z (root forward). These do NOT touch gameplay/collider/root.
+    [SerializeField] private float modelFacingYaw = 180f;
+    [SerializeField] private float modelGroundLocalY = -0.456f;
+    [SerializeField] private float mouthHeightFactor = 0.72f;
+
     private Transform mouthFirePoint;
 
     public Transform MouthFirePoint => mouthFirePoint;
@@ -60,8 +67,131 @@ public class DragonBossVisual : MonoBehaviour
 
         viewInstance.name = viewPrefab.name + "_View";
         SanitizeVisualInstance(viewInstance);
+        NormalizeViewOrientation(viewInstance);
         mouthFirePoint = ResolveMouthFirePoint(viewInstance.transform, visualRoot);
+        RepositionMouthFirePoint(viewInstance.transform, mouthFirePoint);
         return true;
+    }
+
+    private void NormalizeViewOrientation(GameObject viewInstance)
+    {
+        if (viewInstance == null)
+        {
+            return;
+        }
+
+        Transform innerRoot = viewInstance.transform.Find("VisualRoot");
+
+        if (innerRoot == null)
+        {
+            innerRoot = viewInstance.transform;
+        }
+
+        Transform model = innerRoot.Find("Model");
+
+        if (model == null)
+        {
+            model = FindDeepChild(innerRoot, "Model");
+        }
+
+        if (model == null)
+        {
+            return;
+        }
+
+        // Stand the dragon upright (no pitch/roll) and face +Z, which is the boss root forward.
+        model.localRotation = Quaternion.Euler(0f, modelFacingYaw, 0f);
+
+        Bounds localBounds = CalculateLocalBounds(innerRoot, model);
+        float groundShift = modelGroundLocalY - localBounds.min.y;
+        model.localPosition += new Vector3(0f, groundShift, 0f);
+    }
+
+    private void RepositionMouthFirePoint(Transform viewRoot, Transform mouth)
+    {
+        if (viewRoot == null || mouth == null)
+        {
+            return;
+        }
+
+        Transform innerRoot = viewRoot.Find("VisualRoot");
+
+        if (innerRoot == null)
+        {
+            innerRoot = viewRoot;
+        }
+
+        Transform model = innerRoot.Find("Model");
+
+        if (model == null)
+        {
+            model = FindDeepChild(innerRoot, "Model");
+        }
+
+        if (model == null || mouth.parent != innerRoot)
+        {
+            return;
+        }
+
+        Bounds localBounds = CalculateLocalBounds(innerRoot, model);
+        float mouthY = localBounds.min.y + localBounds.size.y * mouthHeightFactor;
+        float mouthZ = localBounds.max.z + localBounds.size.z * 0.04f;
+        mouth.localPosition = new Vector3(localBounds.center.x, mouthY, mouthZ);
+        mouth.localRotation = Quaternion.identity;
+    }
+
+    private static Bounds CalculateLocalBounds(Transform space, Transform modelRoot)
+    {
+        Renderer[] renderers = modelRoot.GetComponentsInChildren<Renderer>(true);
+        bool hasBounds = false;
+        Bounds localBounds = new Bounds(Vector3.zero, Vector3.zero);
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer == null || !renderer.enabled)
+            {
+                continue;
+            }
+
+            Bounds worldBounds = renderer.bounds;
+            Vector3 min = worldBounds.min;
+            Vector3 max = worldBounds.max;
+
+            for (int cornerX = 0; cornerX < 2; cornerX++)
+            {
+                for (int cornerY = 0; cornerY < 2; cornerY++)
+                {
+                    for (int cornerZ = 0; cornerZ < 2; cornerZ++)
+                    {
+                        Vector3 corner = new Vector3(
+                            cornerX == 0 ? min.x : max.x,
+                            cornerY == 0 ? min.y : max.y,
+                            cornerZ == 0 ? min.z : max.z);
+
+                        Vector3 localCorner = space.InverseTransformPoint(corner);
+
+                        if (!hasBounds)
+                        {
+                            localBounds = new Bounds(localCorner, Vector3.zero);
+                            hasBounds = true;
+                        }
+                        else
+                        {
+                            localBounds.Encapsulate(localCorner);
+                        }
+                    }
+                }
+            }
+        }
+
+        if (!hasBounds)
+        {
+            localBounds = new Bounds(Vector3.zero, Vector3.one);
+        }
+
+        return localBounds;
     }
 
     private void BuildProceduralVisual()
