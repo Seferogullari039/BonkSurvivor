@@ -86,6 +86,20 @@ public class PlayerStats : MonoBehaviour
             return result;
         }
     }
+
+    // Target-aware damage. Sharp Fang (EffectiveDamage) applies first; Hunter Mark adds an
+    // elite-only bonus on top. Non-elite targets (incl. mini/dragon bosses) get base EffectiveDamage.
+    public int GetEffectiveDamageAgainst(Enemy target)
+    {
+        int baseDamage = EffectiveDamage;
+
+        if (target != null && target.IsElite)
+        {
+            return Mathf.Max(1, Mathf.RoundToInt(baseDamage * RelicManager.EliteDamageMultiplier));
+        }
+
+        return baseDamage;
+    }
     public bool SpreadShotUnlocked => spreadShotUnlocked;
     public int SpreadShotLevel => spreadShotLevel;
     public float SpreadAngle => spreadAngle;

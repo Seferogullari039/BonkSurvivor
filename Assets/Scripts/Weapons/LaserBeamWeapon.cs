@@ -90,7 +90,7 @@ public class LaserBeamWeapon : WeaponBase
 
         if (hitEnemy != null)
         {
-            hitEnemy.TakeDamage(playerStats.EffectiveDamage);
+            hitEnemy.TakeDamage(playerStats.GetEffectiveDamageAgainst(hitEnemy));
         }
 
         Vector3 visualStart = GetLaserVisualStart();

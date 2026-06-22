@@ -67,7 +67,7 @@ public class OrbitOrb : MonoBehaviour
         }
 
         lastHitTimes[enemy] = now;
-        enemy.TakeDamage(playerStats.EffectiveDamage);
+        enemy.TakeDamage(playerStats.GetEffectiveDamageAgainst(enemy));
     }
 
     private void CleanupDestroyedEnemies()

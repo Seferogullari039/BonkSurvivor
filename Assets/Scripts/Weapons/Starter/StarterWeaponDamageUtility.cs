@@ -330,6 +330,15 @@ public static class StarterWeaponDamageUtility
     {
         if (enemy == null || damage <= 0) return;
 
+        // Hunter Mark: elite-only bonus applied once at this terminal funnel.
+        // damage already includes Sharp Fang (EffectiveDamage), so no double-dip.
+        int finalDamage = damage;
+
+        if (enemy.IsElite)
+        {
+            finalDamage = Mathf.Max(1, Mathf.RoundToInt(damage * RelicManager.EliteDamageMultiplier));
+        }
+
         MethodInfo takeDamageInt = typeof(Enemy).GetMethod(
             "TakeDamage",
             BindingFlags.Instance | BindingFlags.Public,
@@ -339,7 +348,7 @@ public static class StarterWeaponDamageUtility
 
         if (takeDamageInt != null)
         {
-            takeDamageInt.Invoke(enemy, new object[] { damage });
+            takeDamageInt.Invoke(enemy, new object[] { finalDamage });
             return;
         }
 
@@ -352,7 +361,7 @@ public static class StarterWeaponDamageUtility
 
         if (takeDamageFloat != null)
         {
-            takeDamageFloat.Invoke(enemy, new object[] { (float)damage });
+            takeDamageFloat.Invoke(enemy, new object[] { (float)finalDamage });
         }
     }
 }

@@ -202,7 +202,8 @@ public class RocketProjectile : MonoBehaviour
             if (enemy == null || damagedEnemies.Contains(enemy)) continue;
 
             damagedEnemies.Add(enemy);
-            enemy.TakeDamage(damageAmount);
+            int enemyDamage = playerStats != null ? playerStats.GetEffectiveDamageAgainst(enemy) : damageAmount;
+            enemy.TakeDamage(enemyDamage);
         }
 
         PlayRocketExplosionSound(center);
