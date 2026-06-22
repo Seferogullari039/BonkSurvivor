@@ -318,7 +318,10 @@ public class PlayerStats : MonoBehaviour
     {
         if (!MainMenuManager.IsRunActive) return;
 
-        coins += amount;
+        int finalAmount = amount > 0
+            ? Mathf.Max(1, Mathf.RoundToInt(amount * RelicManager.CoinGainMultiplier))
+            : amount;
+        coins += finalAmount;
 
         if (HUDManager.Instance != null)
         {

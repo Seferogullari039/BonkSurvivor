@@ -164,6 +164,12 @@ public class DevAdminPanel : MonoBehaviour
         CreateButton(scrollContent, "Trigger Void Portal", TriggerVoidPortal);
         CreateButton(scrollContent, "Spawn Shrine Event", SpawnShrine);
         CreateButton(scrollContent, "Scan Large Visuals (F8)", ScanLargeVisuals);
+        CreateHeaderLabel(scrollContent, "Relics", SubtitleFontSize, FontStyles.Bold);
+        CreateButton(scrollContent, "Add Relic: Sharp Fang", AddRelicSharpFang);
+        CreateButton(scrollContent, "Add Relic: Swift Boots", AddRelicSwiftBoots);
+        CreateButton(scrollContent, "Add Relic: Golden Charm", AddRelicGoldenCharm);
+        CreateButton(scrollContent, "Clear Relics", ClearRelics);
+        CreateHeaderLabel(scrollContent, "Weapons", SubtitleFontSize, FontStyles.Bold);
         CreateButton(scrollContent, "Give Rocket Launcher", GiveRocketLauncher);
         CreateButton(scrollContent, "Give Laser Beam", GiveLaserBeam);
         CreateButton(scrollContent, "Give Chain Lightning", GiveChainLightning);
@@ -460,6 +466,69 @@ public class DevAdminPanel : MonoBehaviour
         }
 
         manager?.DevTriggerVoidPortal();
+    }
+
+    private void AddRelicSharpFang()
+    {
+        AddRelic(RelicType.SharpFang);
+    }
+
+    private void AddRelicSwiftBoots()
+    {
+        AddRelic(RelicType.SwiftBoots);
+    }
+
+    private void AddRelicGoldenCharm()
+    {
+        AddRelic(RelicType.GoldenCharm);
+    }
+
+    private void AddRelic(RelicType relic)
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[DevAdminPanel] Add Relic requires Play Mode.");
+            return;
+        }
+
+        RelicManager manager = RelicManager.Instance;
+
+        if (manager == null)
+        {
+            manager = FindFirstObjectByType<RelicManager>();
+        }
+
+        if (manager == null)
+        {
+            Debug.LogWarning("[DevAdminPanel] RelicManager not found.");
+            return;
+        }
+
+        manager.AddRelic(relic);
+    }
+
+    private void ClearRelics()
+    {
+        if (!Application.isPlaying)
+        {
+            Debug.LogWarning("[DevAdminPanel] Clear Relics requires Play Mode.");
+            return;
+        }
+
+        RelicManager manager = RelicManager.Instance;
+
+        if (manager == null)
+        {
+            manager = FindFirstObjectByType<RelicManager>();
+        }
+
+        if (manager == null)
+        {
+            Debug.LogWarning("[DevAdminPanel] RelicManager not found.");
+            return;
+        }
+
+        manager.ClearRelics();
     }
 
     private void ScanLargeVisuals()
