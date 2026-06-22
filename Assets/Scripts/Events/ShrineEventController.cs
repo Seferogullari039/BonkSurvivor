@@ -29,6 +29,11 @@ public class ShrineEventController : MonoBehaviour
     private const float InnerFillInsideAlpha = 0.085f;
     private const float OuterRingOutsideAlpha = 0.3f;
     private const float OuterRingInsideAlpha = 0.4f;
+    private const float BeaconHeight = 11f;
+    private const float BeaconRadius = 0.18f;
+    private const float BeaconBaseAlpha = 0.22f;
+    private const float BeaconPulseAlpha = 0.05f;
+    private const float BeaconNearFadeMultiplier = 0.55f;
 
     private static readonly Color BaseStoneColor = new Color(0.42f, 0.44f, 0.4f);
     private static readonly Color AccentColor = new Color(0.18f, 0.52f, 0.46f);
@@ -38,6 +43,7 @@ public class ShrineEventController : MonoBehaviour
     private static readonly Color OuterRingTeal = new Color(0.2f, 0.72f, 0.64f, 1f);
     private static readonly Color BurstGoldColor = new Color(0.92f, 0.78f, 0.28f);
     private static readonly Color BurstTealColor = new Color(0.28f, 0.82f, 0.68f);
+    private static readonly Color BeaconTeal = new Color(0.22f, 0.78f, 0.7f, 1f);
 
     private ShrineEventManager eventManager;
     private Transform playerTransform;
@@ -48,6 +54,9 @@ public class ShrineEventController : MonoBehaviour
     private readonly List<Renderer> outerRingRenderers = new List<Renderer>(OuterRingSegmentCount);
     private TextMeshPro promptText;
     private SphereCollider triggerCollider;
+    private Transform beaconRoot;
+    private Renderer beaconRenderer;
+    private Material beaconMaterial;
     private Light completionLight;
     private float holdProgress;
     private bool isCompleted;
@@ -66,6 +75,7 @@ public class ShrineEventController : MonoBehaviour
         CachePlayer();
         BuildVisual();
         BuildRadiusVisual();
+        BuildBeacon();
         BuildPromptText();
         BuildTrigger();
     }
@@ -81,6 +91,7 @@ public class ShrineEventController : MonoBehaviour
         {
             UpdatePrompt(false, 0f);
             UpdateRadiusVisual(false);
+            UpdateBeacon(false);
             DecayProgress();
             return;
         }
@@ -112,6 +123,7 @@ public class ShrineEventController : MonoBehaviour
 
         UpdatePrompt(showPrompt, holdProgress / HoldDurationSeconds);
         UpdateRadiusVisual(playerInsideRadius);
+        UpdateBeacon(playerInsideRadius);
         UpdateGlowPulse();
     }
 
@@ -565,7 +577,17 @@ public class ShrineEventController : MonoBehaviour
                 completionLight.intensity = burst * 2.4f;
             }
 
+            if (beaconRenderer != null && beaconMaterial != null)
+            {
+                SetBeaconAlpha(Mathf.Max(0f, BeaconBaseAlpha * (1f - t)));
+            }
+
             yield return null;
+        }
+
+        if (beaconRoot != null)
+        {
+            Destroy(beaconRoot.gameObject);
         }
 
         eventManager?.NotifyShrineResolved(this);
@@ -608,6 +630,82 @@ public class ShrineEventController : MonoBehaviour
         CreatePart(visualRoot, "ShrinePillar_BackR", PrimitiveType.Cube, new Vector3(0.28f, 0.52f, 0.28f), new Vector3(0.14f, 0.52f, 0.14f), AccentColor, 0.34f, false, 0.08f);
         CreatePart(visualRoot, "ShrineTop", PrimitiveType.Cylinder, new Vector3(0f, 0.82f, 0f), new Vector3(0.72f, 0.05f, 0.72f), AccentColor, 0.38f, true, 0.18f);
         CreatePart(visualRoot, "ShrineGlow", PrimitiveType.Sphere, new Vector3(0f, 0.95f, 0f), new Vector3(0.22f, 0.22f, 0.22f), GlowColor, 0.62f, true, 0.45f);
+    }
+
+    private void BuildBeacon()
+    {
+        GameObject rootObject = new GameObject("ShrineBeacon");
+        rootObject.transform.SetParent(transform, false);
+        rootObject.transform.localPosition = Vector3.zero;
+        rootObject.transform.localRotation = Quaternion.identity;
+        rootObject.transform.localScale = Vector3.one;
+        beaconRoot = rootObject.transform;
+
+        GameObject columnObject = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        columnObject.name = "ShrineBeaconColumn";
+        columnObject.transform.SetParent(beaconRoot, false);
+        // Default cylinder is 2 units tall (center origin); scale.y = height / 2 lifts the top to BeaconHeight.
+        columnObject.transform.localPosition = new Vector3(0f, BeaconHeight * 0.5f, 0f);
+        columnObject.transform.localRotation = Quaternion.identity;
+        columnObject.transform.localScale = new Vector3(BeaconRadius * 2f, BeaconHeight * 0.5f, BeaconRadius * 2f);
+        DestroyCollider(columnObject);
+
+        beaconRenderer = columnObject.GetComponent<Renderer>();
+
+        if (beaconRenderer != null)
+        {
+            Material template = CreateRadiusTransparentMaterial();
+            beaconMaterial = template != null ? new Material(template) : beaconRenderer.material;
+            beaconRenderer.material = beaconMaterial;
+            beaconRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            beaconRenderer.receiveShadows = false;
+            SetBeaconAlpha(BeaconBaseAlpha);
+        }
+    }
+
+    private void UpdateBeacon(bool playerInside)
+    {
+        if (beaconRenderer == null || beaconMaterial == null)
+        {
+            return;
+        }
+
+        float pulse = Mathf.Sin(Time.time * 2.1f) * BeaconPulseAlpha;
+        float alpha = BeaconBaseAlpha + pulse;
+
+        if (playerInside)
+        {
+            alpha *= BeaconNearFadeMultiplier;
+        }
+
+        SetBeaconAlpha(Mathf.Max(0f, alpha));
+    }
+
+    private void SetBeaconAlpha(float alpha)
+    {
+        if (beaconMaterial == null)
+        {
+            return;
+        }
+
+        Color color = BeaconTeal;
+        color.a = alpha;
+
+        if (beaconMaterial.HasProperty("_BaseColor"))
+        {
+            beaconMaterial.SetColor("_BaseColor", color);
+        }
+
+        if (beaconMaterial.HasProperty("_Color"))
+        {
+            beaconMaterial.SetColor("_Color", color);
+        }
+
+        if (beaconMaterial.HasProperty("_EmissionColor"))
+        {
+            beaconMaterial.EnableKeyword("_EMISSION");
+            beaconMaterial.SetColor("_EmissionColor", new Color(BeaconTeal.r, BeaconTeal.g, BeaconTeal.b, 1f) * (alpha * 0.6f));
+        }
     }
 
     private void BuildRadiusVisual()
