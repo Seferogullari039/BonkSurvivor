@@ -16,7 +16,7 @@ public class DragonBossVisual : MonoBehaviour
     // Visual-only orientation fix for the imported Dragon view prefab.
     // The boss root (DragonBossController) already yaws toward the player, so the model only needs
     // to stand upright with its face on +Z (root forward). These do NOT touch gameplay/collider/root.
-    [SerializeField] private float modelFacingYaw = 180f;
+    [SerializeField] private float modelFacingYaw = 0f;
     [SerializeField] private float modelGroundLocalY = -0.456f;
     [SerializeField] private float mouthHeightFactor = 0.72f;
 
