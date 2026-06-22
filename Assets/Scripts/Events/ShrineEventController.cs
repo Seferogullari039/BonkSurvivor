@@ -63,6 +63,7 @@ public class ShrineEventController : MonoBehaviour
     private bool isFadingOut;
     private bool playerInsideRadiusLastFrame;
     private PlayerStats cachedPlayerStats;
+    private int lastShrineCoinGain;
     private EnemySpawner cachedSpawner;
     private int cachedWaveBannerWave = -1;
     private float waveBannerEndTime;
@@ -141,7 +142,8 @@ public class ShrineEventController : MonoBehaviour
         isCompleted = true;
         bool bonusChestGranted = GrantRewards();
         UpdatePrompt(false, 1f);
-        ShrineRewardPopup.Show(CoinReward, XpReward, bonusChestGranted);
+        int displayedCoins = lastShrineCoinGain > 0 ? lastShrineCoinGain : CoinReward;
+        ShrineRewardPopup.Show(displayedCoins, XpReward, bonusChestGranted);
         VisualBugInspector.ReportLargeRenderersNearOnce(
             transform.position,
             10f,
@@ -160,7 +162,9 @@ public class ShrineEventController : MonoBehaviour
 
         if (cachedPlayerStats == null) return false;
 
+        int coinsBefore = cachedPlayerStats.Coins;
         cachedPlayerStats.AddCoins(CoinReward);
+        lastShrineCoinGain = Mathf.Max(0, cachedPlayerStats.Coins - coinsBefore);
         cachedPlayerStats.AddXP(XpReward);
 
         bool bonusChestGranted = false;

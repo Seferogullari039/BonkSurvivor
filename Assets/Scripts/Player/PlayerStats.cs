@@ -314,14 +314,25 @@ public class PlayerStats : MonoBehaviour
         }
     }
 
+    public static bool LogCoinGain = false;
+
     public void AddCoins(int amount)
     {
         if (!MainMenuManager.IsRunActive) return;
 
+        float multiplier = RelicManager.CoinGainMultiplier;
         int finalAmount = amount > 0
-            ? Mathf.Max(1, Mathf.RoundToInt(amount * RelicManager.CoinGainMultiplier))
+            ? Mathf.Max(1, Mathf.RoundToInt(amount * multiplier))
             : amount;
         coins += finalAmount;
+
+        if (LogCoinGain)
+        {
+            Debug.Log("[PlayerStats] AddCoins base=" + amount
+                + " multiplier=" + multiplier.ToString("0.00")
+                + " final=" + finalAmount
+                + " total=" + coins);
+        }
 
         if (HUDManager.Instance != null)
         {

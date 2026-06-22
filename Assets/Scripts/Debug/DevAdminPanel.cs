@@ -505,6 +505,7 @@ public class DevAdminPanel : MonoBehaviour
         }
 
         manager.AddRelic(relic);
+        LogRelicState(manager);
     }
 
     private void ClearRelics()
@@ -529,6 +530,20 @@ public class DevAdminPanel : MonoBehaviour
         }
 
         manager.ClearRelics();
+        LogRelicState(manager);
+    }
+
+    private static void LogRelicState(RelicManager manager)
+    {
+        if (manager == null)
+        {
+            return;
+        }
+
+        Debug.Log("[DevAdminPanel] Relics: SharpFang=" + manager.HasRelic(RelicType.SharpFang)
+            + " SwiftBoots=" + manager.HasRelic(RelicType.SwiftBoots)
+            + " GoldenCharm=" + manager.HasRelic(RelicType.GoldenCharm)
+            + " | " + manager.BuildMultiplierSummary());
     }
 
     private void ScanLargeVisuals()

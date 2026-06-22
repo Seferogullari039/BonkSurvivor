@@ -72,7 +72,7 @@ public class RelicManager : MonoBehaviour
         }
 
         ownedRelics.Add(relic);
-        Debug.Log("[RelicManager] Added relic: " + GetRelicName(relic));
+        Debug.Log("[RelicManager] Added relic: " + GetRelicName(relic) + " | " + BuildMultiplierSummary());
         return true;
     }
 
@@ -85,7 +85,14 @@ public class RelicManager : MonoBehaviour
         }
 
         ownedRelics.Clear();
-        Debug.Log("[RelicManager] Cleared all relics.");
+        Debug.Log("[RelicManager] Cleared all relics | " + BuildMultiplierSummary());
+    }
+
+    public string BuildMultiplierSummary()
+    {
+        return "Damage x" + GetDamageMultiplier().ToString("0.00")
+            + " | MoveSpeed x" + GetMoveSpeedMultiplier().ToString("0.00")
+            + " | Coin x" + GetCoinGainMultiplier().ToString("0.00");
     }
 
     public float GetDamageMultiplier()
