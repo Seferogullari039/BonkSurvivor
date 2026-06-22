@@ -22,6 +22,13 @@ public class RelicManager : MonoBehaviour
 
     public static RelicManager Instance { get; private set; }
 
+    private static readonly RelicType[] AllRelics =
+    {
+        RelicType.SharpFang,
+        RelicType.SwiftBoots,
+        RelicType.GoldenCharm
+    };
+
     private readonly HashSet<RelicType> ownedRelics = new HashSet<RelicType>();
 
     public static float DamageMultiplier => Instance != null ? Instance.GetDamageMultiplier() : 1f;
@@ -76,6 +83,39 @@ public class RelicManager : MonoBehaviour
         return true;
     }
 
+    public List<RelicType> GetUnownedRelics()
+    {
+        List<RelicType> unowned = new List<RelicType>();
+
+        for (int i = 0; i < AllRelics.Length; i++)
+        {
+            if (!ownedRelics.Contains(AllRelics[i]))
+            {
+                unowned.Add(AllRelics[i]);
+            }
+        }
+
+        return unowned;
+    }
+
+    public bool TryGrantRandomRelic(out RelicType grantedRelic)
+    {
+        grantedRelic = default;
+
+        List<RelicType> unowned = GetUnownedRelics();
+
+        if (unowned.Count == 0)
+        {
+            Debug.Log("[RelicManager] No unowned relics available.");
+            return false;
+        }
+
+        grantedRelic = unowned[Random.Range(0, unowned.Count)];
+        ownedRelics.Add(grantedRelic);
+        Debug.Log("[RelicManager] Granted random relic: " + GetDisplayName(grantedRelic) + " | " + BuildMultiplierSummary());
+        return true;
+    }
+
     public void ClearRelics()
     {
         if (ownedRelics.Count == 0)
@@ -108,6 +148,11 @@ public class RelicManager : MonoBehaviour
     public float GetCoinGainMultiplier()
     {
         return ownedRelics.Contains(RelicType.GoldenCharm) ? 1f + GoldenCharmCoinBonus : 1f;
+    }
+
+    public static string GetDisplayName(RelicType relic)
+    {
+        return GetRelicName(relic);
     }
 
     public static string GetRelicName(RelicType relic)

@@ -13,6 +13,7 @@ public class ShrineEventController : MonoBehaviour
     private const float ProgressFillPerSecond = 1f;
     private const float ProgressDecayPerSecond = 1.5f;
     private const float BonusChestChance = 0.35f;
+    private const float RelicRewardChance = 0.20f;
     private const int CoinReward = 25;
     private const int XpReward = 3;
     private const float CompletionDuration = 0.62f;
@@ -64,6 +65,8 @@ public class ShrineEventController : MonoBehaviour
     private bool playerInsideRadiusLastFrame;
     private PlayerStats cachedPlayerStats;
     private int lastShrineCoinGain;
+    private bool lastRelicGranted;
+    private RelicType lastGrantedRelic;
     private EnemySpawner cachedSpawner;
     private int cachedWaveBannerWave = -1;
     private float waveBannerEndTime;
@@ -143,7 +146,8 @@ public class ShrineEventController : MonoBehaviour
         bool bonusChestGranted = GrantRewards();
         UpdatePrompt(false, 1f);
         int displayedCoins = lastShrineCoinGain > 0 ? lastShrineCoinGain : CoinReward;
-        ShrineRewardPopup.Show(displayedCoins, XpReward, bonusChestGranted);
+        string relicName = lastRelicGranted ? RelicManager.GetDisplayName(lastGrantedRelic) : null;
+        ShrineRewardPopup.Show(displayedCoins, XpReward, bonusChestGranted, relicName);
         VisualBugInspector.ReportLargeRenderersNearOnce(
             transform.position,
             10f,
@@ -172,6 +176,17 @@ public class ShrineEventController : MonoBehaviour
         if (Random.value <= BonusChestChance)
         {
             bonusChestGranted = TrySpawnBonusChest(transform.position);
+        }
+
+        lastRelicGranted = false;
+
+        if (Random.value <= RelicRewardChance && RelicManager.Instance != null)
+        {
+            if (RelicManager.Instance.TryGrantRandomRelic(out RelicType grantedRelic))
+            {
+                lastRelicGranted = true;
+                lastGrantedRelic = grantedRelic;
+            }
         }
 
         return bonusChestGranted;
@@ -1180,10 +1195,10 @@ internal static class ShrineRewardPopup
     internal static readonly Color RewardColor = new Color(0.88f, 0.94f, 0.92f, 1f);
     internal static readonly Color BonusColor = new Color(0.92f, 0.82f, 0.38f, 1f);
 
-    public static void Show(int coins, int xp, bool bonusChest)
+    public static void Show(int coins, int xp, bool bonusChest, string relicName = null)
     {
         ShrineRewardPopupHost host = new GameObject("ShrineRewardPopupHost").AddComponent<ShrineRewardPopupHost>();
-        host.Begin(coins, xp, bonusChest);
+        host.Begin(coins, xp, bonusChest, relicName);
     }
 }
 
@@ -1195,9 +1210,9 @@ internal sealed class ShrineRewardPopupHost : MonoBehaviour
     private Image panelImage;
     private float elapsed;
 
-    public void Begin(int coins, int xp, bool bonusChest)
+    public void Begin(int coins, int xp, bool bonusChest, string relicName)
     {
-        BuildPopup(coins, xp, bonusChest);
+        BuildPopup(coins, xp, bonusChest, relicName);
     }
 
     private void Update()
@@ -1225,8 +1240,10 @@ internal sealed class ShrineRewardPopupHost : MonoBehaviour
         }
     }
 
-    private void BuildPopup(int coins, int xp, bool bonusChest)
+    private void BuildPopup(int coins, int xp, bool bonusChest, string relicName)
     {
+        bool hasRelic = !string.IsNullOrEmpty(relicName);
+
         GameObject canvasObject = new GameObject("ShrineRewardPopupCanvas");
         canvasObject.transform.SetParent(transform, false);
 
@@ -1245,7 +1262,8 @@ internal sealed class ShrineRewardPopupHost : MonoBehaviour
         panelObject.transform.SetParent(canvasObject.transform, false);
 
         RectTransform panelRect = panelObject.AddComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(panelRect, new Vector2(0f, -40f), new Vector2(420f, bonusChest ? 150f : 118f));
+        float panelHeight = 118f + (bonusChest ? 32f : 0f) + (hasRelic ? 32f : 0f);
+        UiLayoutUtility.SetAnchorCenter(panelRect, new Vector2(0f, -40f), new Vector2(420f, panelHeight));
 
         panelImage = panelObject.AddComponent<Image>();
         panelImage.color = ShrineRewardPopup.PanelColor;
@@ -1268,6 +1286,11 @@ internal sealed class ShrineRewardPopupHost : MonoBehaviour
         popupText.raycastTarget = false;
         popupText.text = "SHRINE COMPLETED\n+" + coins + " Coins\n+" + xp + " XP";
         popupText.color = ShrineRewardPopup.RewardColor;
+
+        if (hasRelic)
+        {
+            popupText.text += "\nNEW RELIC: " + relicName.ToUpperInvariant();
+        }
 
         if (bonusChest)
         {
