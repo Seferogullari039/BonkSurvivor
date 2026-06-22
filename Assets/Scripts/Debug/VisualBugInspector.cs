@@ -17,6 +17,10 @@ public static class VisualBugInspector
 
     private static bool loggedOnceThisSession;
 
+    // Default off: automatic post-event scans (e.g. shrine completion) are opt-in.
+    // F8 / Admin Panel manual scans always run regardless of this flag.
+    public static bool AutoScanEnabled = false;
+
     public static bool ShouldRun()
     {
 #if UNITY_EDITOR
@@ -49,7 +53,7 @@ public static class VisualBugInspector
 
     public static void ReportLargeRenderersNearOnce(Vector3 center, float radius, string context)
     {
-        if (loggedOnceThisSession)
+        if (!AutoScanEnabled || loggedOnceThisSession)
         {
             return;
         }

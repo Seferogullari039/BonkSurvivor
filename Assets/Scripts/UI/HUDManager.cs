@@ -7,6 +7,9 @@ public class HUDManager : MonoBehaviour
 {
     public static HUDManager Instance { get; private set; }
 
+    // Default off: [Recovery] HUD diagnostic logs are opt-in only. Does not affect HUD visibility/recovery behavior.
+    public static bool LogRecoveryDiagnostics = false;
+
     [SerializeField] private TMP_Text hpText;
     [SerializeField] private TMP_Text xpText;
     [SerializeField] private TMP_Text levelText;
@@ -364,7 +367,10 @@ public class HUDManager : MonoBehaviour
         gameObject.SetActive(true);
         SetGameplayHUDVisible(true);
 
-        Debug.Log("[Recovery] HUD visible");
+        if (LogRecoveryDiagnostics)
+        {
+            Debug.Log("[Recovery] HUD visible");
+        }
     }
 
     public void OnGameplayStarted()
@@ -447,10 +453,13 @@ public class HUDManager : MonoBehaviour
 
         BringHudElementsToFront(canvasTransform);
 
-        Debug.Log("[Recovery] Gameplay HUD forced visible after PlayGame");
-        LogRectDiagnostic("HP", hpBarBackground);
-        LogRectDiagnostic("XP", xpBarBackground);
-        LogHudPanelDiagnostic(canvasTransform);
+        if (LogRecoveryDiagnostics)
+        {
+            Debug.Log("[Recovery] Gameplay HUD forced visible after PlayGame");
+            LogRectDiagnostic("HP", hpBarBackground);
+            LogRectDiagnostic("XP", xpBarBackground);
+            LogHudPanelDiagnostic(canvasTransform);
+        }
     }
 
     private static void NeutralizeOverlayPanel(Transform canvasTransform, string panelName)

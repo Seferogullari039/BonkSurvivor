@@ -64,6 +64,7 @@ public class ProceduralGrassArena : MonoBehaviour
 
     [Header("Run Debug")]
     [SerializeField] private bool debugLargeSpawnLogs = false;
+    [SerializeField] private bool debugArenaLogs = false;
     [SerializeField] private int currentRunSeed;
     [SerializeField] private Vector3 selectedPlayerSpawn;
 
@@ -216,7 +217,10 @@ public class ProceduralGrassArena : MonoBehaviour
             rigidbody.angularVelocity = Vector3.zero;
         }
 
-        Debug.Log("[ProceduralGrassArena] Player moved to procedural spawn " + spawn);
+        if (debugArenaLogs)
+        {
+            Debug.Log("[ProceduralGrassArena] Player moved to procedural spawn " + spawn);
+        }
     }
 
     public bool IsPositionBlocked(Vector3 position, float radius)
@@ -585,6 +589,11 @@ public class ProceduralGrassArena : MonoBehaviour
 
     private void LogArenaDebug(string context)
     {
+        if (!debugArenaLogs)
+        {
+            return;
+        }
+
         Bounds bounds = GetArenaBounds();
         Debug.Log(
             "[ProceduralGrassArena] " + context

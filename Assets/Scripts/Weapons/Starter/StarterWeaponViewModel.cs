@@ -923,9 +923,12 @@ public class StarterWeaponViewModel : MonoBehaviour
         return !anyInFront;
     }
 
+    // Default off: [WeaponVisual] diagnostics are opt-in (set true to inspect weapon visual setup).
+    public static bool LogWeaponVisual = false;
+
     private void LogWeaponVisualDiagnostics(Transform visualTransform, Renderer[] renderers)
     {
-        if (visualTransform == null || weaponVisualDiagnosticsLogged)
+        if (!LogWeaponVisual || visualTransform == null || weaponVisualDiagnosticsLogged)
         {
             return;
         }
@@ -1003,7 +1006,7 @@ public class StarterWeaponViewModel : MonoBehaviour
 
     private void LogRecoveryWeaponVisual()
     {
-        if (activeVisualRoot == null)
+        if (!LogWeaponVisual || activeVisualRoot == null)
         {
             return;
         }

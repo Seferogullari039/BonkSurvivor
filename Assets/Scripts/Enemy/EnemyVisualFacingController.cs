@@ -11,7 +11,7 @@ public class EnemyVisualFacingController : MonoBehaviour
     [SerializeField] private Vector3 localEulerOffset = Vector3.zero;
     [SerializeField] private bool lockPitchRoll = true;
     [SerializeField] private float minDirectionMagnitude = 0.02f;
-    [SerializeField] private bool debugFacing = true;
+    [SerializeField] private bool debugFacing = false;
 
     private const float TargetSearchInterval = 1f;
     private const float DebugLogInterval = 3f;

@@ -15,6 +15,9 @@ public sealed class EnemyVisualAudit : MonoBehaviour
 
     private float nextAuditTime;
 
+    // Default off: the interval audit log is opt-in only (set true to diagnose enemy visuals).
+    public static bool LoggingEnabled = false;
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
@@ -55,7 +58,7 @@ public sealed class EnemyVisualAudit : MonoBehaviour
 
     private void Update()
     {
-        if (!ShouldRun() || Time.unscaledTime < nextAuditTime)
+        if (!ShouldRun() || !LoggingEnabled || Time.unscaledTime < nextAuditTime)
         {
             return;
         }
