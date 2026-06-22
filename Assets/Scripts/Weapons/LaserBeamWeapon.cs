@@ -39,7 +39,7 @@ public class LaserBeamWeapon : WeaponBase
     {
         if (playerStats == null || !playerStats.LaserBeamUnlocked) return;
 
-        damage = playerStats.damage;
+        damage = playerStats.EffectiveDamage;
         damageTimer += Time.deltaTime;
 
         if (damageTimer < DamageInterval) return;
@@ -90,7 +90,7 @@ public class LaserBeamWeapon : WeaponBase
 
         if (hitEnemy != null)
         {
-            hitEnemy.TakeDamage(playerStats.damage);
+            hitEnemy.TakeDamage(playerStats.EffectiveDamage);
         }
 
         Vector3 visualStart = GetLaserVisualStart();

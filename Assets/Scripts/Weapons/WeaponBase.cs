@@ -12,14 +12,14 @@ public abstract class WeaponBase
     public virtual void Init(PlayerStats stats)
     {
         playerStats = stats;
-        damage = stats != null ? stats.damage : 1f;
+        damage = stats != null ? stats.EffectiveDamage : 1f;
     }
 
     public virtual void Tick()
     {
         if (playerStats == null) return;
 
-        damage = playerStats.damage;
+        damage = playerStats.EffectiveDamage;
 
         timer += Time.deltaTime;
 

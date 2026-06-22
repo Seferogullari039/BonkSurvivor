@@ -29,7 +29,7 @@ public static class StarterWeaponDamageUtility
     {
         if (stats == null) return fallbackDamage;
 
-        return Mathf.Max(1, stats.damage);
+        return Mathf.Max(1, stats.EffectiveDamage);
     }
 
     public static void DamageEnemy(Enemy enemy, int damage)

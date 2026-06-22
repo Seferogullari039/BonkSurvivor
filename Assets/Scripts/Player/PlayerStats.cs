@@ -50,6 +50,28 @@ public class PlayerStats : MonoBehaviour
 
     public int CurrentLevel => currentLevel;
     public int Coins => coins;
+
+    public static bool LogEffectiveDamage = false;
+
+    // Runtime final player-to-enemy damage. Relic-aware; relic yoksa multiplier 1.0 -> base damage ayni.
+    // damage field meta/upgrade/UI/save tarafindan oldugu gibi kullanilmaya devam eder.
+    public int EffectiveDamage
+    {
+        get
+        {
+            float multiplier = RelicManager.DamageMultiplier;
+            int result = Mathf.Max(1, Mathf.RoundToInt(damage * multiplier));
+
+            if (LogEffectiveDamage)
+            {
+                Debug.Log("[PlayerStats] EffectiveDamage base=" + damage
+                    + " multiplier=" + multiplier.ToString("0.00")
+                    + " final=" + result);
+            }
+
+            return result;
+        }
+    }
     public bool SpreadShotUnlocked => spreadShotUnlocked;
     public int SpreadShotLevel => spreadShotLevel;
     public float SpreadAngle => spreadAngle;

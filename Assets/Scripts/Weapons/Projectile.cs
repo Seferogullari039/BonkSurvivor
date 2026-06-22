@@ -96,7 +96,7 @@ public class Projectile : MonoBehaviour
 
         GameObject player = GameObject.FindGameObjectWithTag("Player");
         PlayerStats playerStats = player != null ? player.GetComponent<PlayerStats>() : null;
-        int damageAmount = playerStats != null ? playerStats.damage : damage;
+        int damageAmount = playerStats != null ? playerStats.EffectiveDamage : damage;
 
         enemy.TakeDamage(damageAmount);
 

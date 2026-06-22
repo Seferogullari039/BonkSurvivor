@@ -183,7 +183,7 @@ public class RocketProjectile : MonoBehaviour
         transform.position = explosionPoint;
         Vector3 center = explosionPoint;
         float explosionRadius = playerStats != null ? playerStats.RocketAoERadius : DefaultExplosionRadius;
-        int damageAmount = playerStats != null ? playerStats.damage : 1;
+        int damageAmount = playerStats != null ? playerStats.EffectiveDamage : 1;
 
         Collider[] hits = Physics.OverlapSphere(center, explosionRadius);
         HashSet<Enemy> damagedEnemies = new HashSet<Enemy>();

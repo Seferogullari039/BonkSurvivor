@@ -24,7 +24,7 @@ public class OrbitWeapon : WeaponBase
     {
         if (playerStats == null || orbitCenter == null) return;
 
-        damage = playerStats.damage;
+        damage = playerStats.EffectiveDamage;
 
         if (activeOrbs.Count != playerStats.OrbitOrbCount)
         {
