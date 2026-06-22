@@ -211,8 +211,16 @@ public static class StarterWeaponDamageUtility
         return true;
     }
 
+    // Default off: [Combat] LMB diagnostics are opt-in only. Damage/targeting logic is unaffected.
+    public static bool LogCombatDebug = false;
+
     public static void LogLmbCombat(Enemy enemy, int damage, int candidateCount)
     {
+        if (!LogCombatDebug)
+        {
+            return;
+        }
+
         string enemyName = enemy != null ? enemy.name : "none";
         Debug.Log("[Combat] LMB target=" + enemyName + " damage=" + damage);
 

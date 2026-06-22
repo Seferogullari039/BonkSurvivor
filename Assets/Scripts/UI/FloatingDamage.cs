@@ -3,6 +3,9 @@ using UnityEngine;
 
 public class FloatingDamage : MonoBehaviour
 {
+    // Default off: [DamageNumber] diagnostic is opt-in only. FaceCamera behavior is unaffected.
+    public static bool LogDamageNumberDebug = false;
+
     private static bool faceCameraLogShown;
 
     [SerializeField] private TMP_Text textMesh;
@@ -28,7 +31,7 @@ public class FloatingDamage : MonoBehaviour
 
         FaceCamera();
 
-        if (!faceCameraLogShown)
+        if (LogDamageNumberDebug && !faceCameraLogShown)
         {
             faceCameraLogShown = true;
             Debug.Log("[DamageNumber] faceCamera ok");

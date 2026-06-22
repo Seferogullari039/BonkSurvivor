@@ -401,8 +401,17 @@ public class EnemyVisualFacingController : MonoBehaviour
         return null;
     }
 
+    // Hard gate: overrides any stale serialized debugFacing=true on old prefab/scene instances.
+    // Normal Play Mode keeps this false so facing logs never spam. Facing behavior is unaffected.
+    public static bool GlobalDebugFacingLogs = false;
+
     private void MaybeLogDebug(bool targetFound, Vector3 direction, float pivotYaw, float targetYaw)
     {
+        if (!GlobalDebugFacingLogs)
+        {
+            return;
+        }
+
         if (!ShouldDebugLog())
         {
             return;

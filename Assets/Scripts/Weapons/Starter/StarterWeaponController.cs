@@ -41,7 +41,8 @@ public class StarterWeaponController : MonoBehaviour
     [SerializeField] private float whirlwindRadius = 3.25f;
 
 #if UNITY_EDITOR
-    private const bool LogStarterWeaponDebug = true;
+    // Default off: [StarterWeapon] skill diagnostics are opt-in only. Weapon/skill logic is unaffected.
+    public static bool LogStarterWeaponDebug = false;
 #endif
 
     private PlayerStats playerStats;

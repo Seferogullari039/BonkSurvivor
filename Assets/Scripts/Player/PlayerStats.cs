@@ -52,6 +52,7 @@ public class PlayerStats : MonoBehaviour
     public int Coins => coins;
 
     public static bool LogEffectiveDamage = false;
+    public static bool LogLevelUpDebug = false;
 
     // Runtime final player-to-enemy damage. Relic-aware; relic yoksa multiplier 1.0 -> base damage ayni.
     // damage field meta/upgrade/UI/save tarafindan oldugu gibi kullanilmaya devam eder.
@@ -310,7 +311,11 @@ public class PlayerStats : MonoBehaviour
             currentXP = 0;
             xpToNextLevel += 5;
 
-            Debug.Log("LEVEL UP");
+            if (LogLevelUpDebug)
+            {
+                Debug.Log("LEVEL UP");
+            }
+
             AudioManager.Instance?.PlayLevelUp();
             if (JuiceManager.Instance != null)
             {
