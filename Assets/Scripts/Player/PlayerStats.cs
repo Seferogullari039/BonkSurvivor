@@ -54,6 +54,19 @@ public class PlayerStats : MonoBehaviour
     public static bool LogEffectiveDamage = false;
     public static bool LogLevelUpDebug = false;
 
+    // Tracks the relic max-HP bonus already folded into currentHealth so mid-run grants apply once.
+    private int lastRelicMaxHealthBonus;
+
+    // Runtime final max HP. Relic-aware; relic yoksa MaxHealthBonus 0 -> base maxHealth ayni.
+    // maxHealth field meta/upgrade/UI/save tarafindan oldugu gibi kullanilmaya devam eder.
+    public int EffectiveMaxHealth
+    {
+        get
+        {
+            return Mathf.Max(1, maxHealth + RelicManager.MaxHealthBonus);
+        }
+    }
+
     // Runtime final player-to-enemy damage. Relic-aware; relic yoksa multiplier 1.0 -> base damage ayni.
     // damage field meta/upgrade/UI/save tarafindan oldugu gibi kullanilmaya devam eder.
     public int EffectiveDamage
@@ -256,6 +269,40 @@ public class PlayerStats : MonoBehaviour
         RefreshHUD();
     }
 
+    private void Update()
+    {
+        RefreshRelicHealthBonus();
+    }
+
+    // Applies Vital Core (or future max-HP relics) the moment the bonus changes.
+    // Gaining the bonus heals by the delta (clamped); losing it only clamps currentHealth down.
+    private void RefreshRelicHealthBonus()
+    {
+        int bonus = RelicManager.MaxHealthBonus;
+
+        if (bonus == lastRelicMaxHealthBonus)
+        {
+            return;
+        }
+
+        int delta = bonus - lastRelicMaxHealthBonus;
+        lastRelicMaxHealthBonus = bonus;
+
+        if (delta > 0)
+        {
+            currentHealth = Mathf.Min(currentHealth + delta, EffectiveMaxHealth);
+        }
+        else
+        {
+            currentHealth = Mathf.Min(currentHealth, EffectiveMaxHealth);
+        }
+
+        if (HUDManager.Instance != null)
+        {
+            HUDManager.Instance.UpdateHP(currentHealth, EffectiveMaxHealth);
+        }
+    }
+
     public void TakeDamage(int damage)
     {
         if (isGodMode) return;
@@ -265,7 +312,7 @@ public class PlayerStats : MonoBehaviour
 
         if (HUDManager.Instance != null)
         {
-            HUDManager.Instance.UpdateHP(currentHealth, maxHealth);
+            HUDManager.Instance.UpdateHP(currentHealth, EffectiveMaxHealth);
         }
 
         // FPSScreenShake.Shake(0.025f, 0.12f);
@@ -412,12 +459,12 @@ public class PlayerStats : MonoBehaviour
 
     public void DevHealFull()
     {
-        currentHealth = maxHealth;
+        currentHealth = EffectiveMaxHealth;
         isDead = false;
 
         if (HUDManager.Instance != null)
         {
-            HUDManager.Instance.UpdateHP(currentHealth, maxHealth);
+            HUDManager.Instance.UpdateHP(currentHealth, EffectiveMaxHealth);
         }
     }
 
@@ -458,7 +505,7 @@ public class PlayerStats : MonoBehaviour
     {
         if (HUDManager.Instance == null) return;
 
-        HUDManager.Instance.UpdateHP(currentHealth, maxHealth);
+        HUDManager.Instance.UpdateHP(currentHealth, EffectiveMaxHealth);
         HUDManager.Instance.UpdateXP(currentXP, xpToNextLevel);
         HUDManager.Instance.UpdateLevel(currentLevel);
         HUDManager.Instance.UpdateXPBar(currentXP, xpToNextLevel);
