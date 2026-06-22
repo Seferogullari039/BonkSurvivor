@@ -212,10 +212,10 @@ public class StarterWeaponController : MonoBehaviour
     {
         if (playerStats == null)
         {
-            return baseCooldown;
+            return baseCooldown * RelicManager.CooldownMultiplier;
         }
 
-        return baseCooldown * playerStats.StarterWeaponCooldownMultiplier;
+        return baseCooldown * playerStats.StarterWeaponCooldownMultiplier * RelicManager.CooldownMultiplier;
     }
 
     private float GetMegaMeteorCooldown(float baseCooldown)

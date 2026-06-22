@@ -5,7 +5,11 @@ public enum RelicType
 {
     SharpFang,
     SwiftBoots,
-    GoldenCharm
+    GoldenCharm,
+    MagnetStone,
+    VitalCore,
+    HunterMark,
+    QuickHands
 }
 
 /// <summary>
@@ -19,6 +23,10 @@ public class RelicManager : MonoBehaviour
     private const float SharpFangDamageBonus = 0.10f;
     private const float SwiftBootsMoveSpeedBonus = 0.08f;
     private const float GoldenCharmCoinBonus = 0.15f;
+    private const float MagnetStonePickupBonus = 0.25f;
+    private const int VitalCoreMaxHealthBonus = 20;
+    private const float HunterMarkEliteDamageBonus = 0.15f;
+    private const float QuickHandsCooldownReduction = 0.08f;
 
     public static RelicManager Instance { get; private set; }
 
@@ -26,7 +34,11 @@ public class RelicManager : MonoBehaviour
     {
         RelicType.SharpFang,
         RelicType.SwiftBoots,
-        RelicType.GoldenCharm
+        RelicType.GoldenCharm,
+        RelicType.MagnetStone,
+        RelicType.VitalCore,
+        RelicType.HunterMark,
+        RelicType.QuickHands
     };
 
     private readonly HashSet<RelicType> ownedRelics = new HashSet<RelicType>();
@@ -34,6 +46,10 @@ public class RelicManager : MonoBehaviour
     public static float DamageMultiplier => Instance != null ? Instance.GetDamageMultiplier() : 1f;
     public static float MoveSpeedMultiplier => Instance != null ? Instance.GetMoveSpeedMultiplier() : 1f;
     public static float CoinGainMultiplier => Instance != null ? Instance.GetCoinGainMultiplier() : 1f;
+    public static float PickupRangeMultiplier => Instance != null ? Instance.GetPickupRangeMultiplier() : 1f;
+    public static int MaxHealthBonus => Instance != null ? Instance.GetMaxHealthBonus() : 0;
+    public static float EliteDamageMultiplier => Instance != null ? Instance.GetEliteDamageMultiplier() : 1f;
+    public static float CooldownMultiplier => Instance != null ? Instance.GetCooldownMultiplier() : 1f;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -132,7 +148,11 @@ public class RelicManager : MonoBehaviour
     {
         return "Damage x" + GetDamageMultiplier().ToString("0.00")
             + " | MoveSpeed x" + GetMoveSpeedMultiplier().ToString("0.00")
-            + " | Coin x" + GetCoinGainMultiplier().ToString("0.00");
+            + " | Coin x" + GetCoinGainMultiplier().ToString("0.00")
+            + " | Pickup x" + GetPickupRangeMultiplier().ToString("0.00")
+            + " | HP +" + GetMaxHealthBonus()
+            + " | EliteDmg x" + GetEliteDamageMultiplier().ToString("0.00")
+            + " | Cooldown x" + GetCooldownMultiplier().ToString("0.00");
     }
 
     public float GetDamageMultiplier()
@@ -150,6 +170,26 @@ public class RelicManager : MonoBehaviour
         return ownedRelics.Contains(RelicType.GoldenCharm) ? 1f + GoldenCharmCoinBonus : 1f;
     }
 
+    public float GetPickupRangeMultiplier()
+    {
+        return ownedRelics.Contains(RelicType.MagnetStone) ? 1f + MagnetStonePickupBonus : 1f;
+    }
+
+    public int GetMaxHealthBonus()
+    {
+        return ownedRelics.Contains(RelicType.VitalCore) ? VitalCoreMaxHealthBonus : 0;
+    }
+
+    public float GetEliteDamageMultiplier()
+    {
+        return ownedRelics.Contains(RelicType.HunterMark) ? 1f + HunterMarkEliteDamageBonus : 1f;
+    }
+
+    public float GetCooldownMultiplier()
+    {
+        return ownedRelics.Contains(RelicType.QuickHands) ? 1f - QuickHandsCooldownReduction : 1f;
+    }
+
     public static string GetDisplayName(RelicType relic)
     {
         return GetRelicName(relic);
@@ -165,6 +205,14 @@ public class RelicManager : MonoBehaviour
                 return "Swift Boots";
             case RelicType.GoldenCharm:
                 return "Golden Charm";
+            case RelicType.MagnetStone:
+                return "Magnet Stone";
+            case RelicType.VitalCore:
+                return "Vital Core";
+            case RelicType.HunterMark:
+                return "Hunter Mark";
+            case RelicType.QuickHands:
+                return "Quick Hands";
             default:
                 return relic.ToString();
         }

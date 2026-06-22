@@ -39,6 +39,8 @@ public class XPOrb : MonoBehaviour
             finalAttractionRange *= UpgradeManager.Instance.XPAttractionMultiplier;
         }
 
+        finalAttractionRange *= RelicManager.PickupRangeMultiplier;
+
         if (distance <= finalAttractionRange)
         {
             transform.position = Vector3.MoveTowards(

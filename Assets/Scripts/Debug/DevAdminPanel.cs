@@ -168,6 +168,10 @@ public class DevAdminPanel : MonoBehaviour
         CreateButton(scrollContent, "Add Relic: Sharp Fang", AddRelicSharpFang);
         CreateButton(scrollContent, "Add Relic: Swift Boots", AddRelicSwiftBoots);
         CreateButton(scrollContent, "Add Relic: Golden Charm", AddRelicGoldenCharm);
+        CreateButton(scrollContent, "Add Relic: Magnet Stone", AddRelicMagnetStone);
+        CreateButton(scrollContent, "Add Relic: Vital Core", AddRelicVitalCore);
+        CreateButton(scrollContent, "Add Relic: Hunter Mark", AddRelicHunterMark);
+        CreateButton(scrollContent, "Add Relic: Quick Hands", AddRelicQuickHands);
         CreateButton(scrollContent, "Clear Relics", ClearRelics);
         CreateHeaderLabel(scrollContent, "Weapons", SubtitleFontSize, FontStyles.Bold);
         CreateButton(scrollContent, "Give Rocket Launcher", GiveRocketLauncher);
@@ -483,6 +487,26 @@ public class DevAdminPanel : MonoBehaviour
         AddRelic(RelicType.GoldenCharm);
     }
 
+    private void AddRelicMagnetStone()
+    {
+        AddRelic(RelicType.MagnetStone);
+    }
+
+    private void AddRelicVitalCore()
+    {
+        AddRelic(RelicType.VitalCore);
+    }
+
+    private void AddRelicHunterMark()
+    {
+        AddRelic(RelicType.HunterMark);
+    }
+
+    private void AddRelicQuickHands()
+    {
+        AddRelic(RelicType.QuickHands);
+    }
+
     private void AddRelic(RelicType relic)
     {
         if (!Application.isPlaying)
@@ -543,6 +567,10 @@ public class DevAdminPanel : MonoBehaviour
         Debug.Log("[DevAdminPanel] Relics: SharpFang=" + manager.HasRelic(RelicType.SharpFang)
             + " SwiftBoots=" + manager.HasRelic(RelicType.SwiftBoots)
             + " GoldenCharm=" + manager.HasRelic(RelicType.GoldenCharm)
+            + " MagnetStone=" + manager.HasRelic(RelicType.MagnetStone)
+            + " VitalCore=" + manager.HasRelic(RelicType.VitalCore)
+            + " HunterMark=" + manager.HasRelic(RelicType.HunterMark)
+            + " QuickHands=" + manager.HasRelic(RelicType.QuickHands)
             + " | " + manager.BuildMultiplierSummary());
     }
 
