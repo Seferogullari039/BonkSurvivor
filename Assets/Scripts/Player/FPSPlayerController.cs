@@ -105,6 +105,7 @@ public class FPSPlayerController : MonoBehaviour
 
         if (Time.timeScale <= 0f) return;
 
+        RefreshMoveSpeed();
         HandleMouseLook();
 
         if (HandleDash())
@@ -222,7 +223,10 @@ public class FPSPlayerController : MonoBehaviour
 
     private void RefreshMoveSpeed()
     {
-        moveSpeed = baseMoveSpeed * (1f + 0.05f * MetaProgressionData.UpgradeLevelSpeed);
+        // Always recomputed from baseMoveSpeed so relic add/clear never permanently stacks.
+        moveSpeed = baseMoveSpeed
+            * (1f + 0.05f * MetaProgressionData.UpgradeLevelSpeed)
+            * RelicManager.MoveSpeedMultiplier;
     }
 
     private void UpdateCursorState()
