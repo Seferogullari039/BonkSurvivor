@@ -65,8 +65,8 @@ public class DragonBossVisual : MonoBehaviour
         }
 
         Transform visualRoot = CreateVisualRoot();
-        Transform visiblePivot = CreateVisibleYawPivot(visualRoot);
-        GameObject viewInstance = Instantiate(viewPrefab, visiblePivot, false);
+        Transform flipPivot = CreateVisibleFlipPivot(visualRoot);
+        GameObject viewInstance = Instantiate(viewPrefab, flipPivot, false);
 
         if (viewInstance == null)
         {
@@ -75,28 +75,35 @@ public class DragonBossVisual : MonoBehaviour
         }
 
         viewInstance.name = viewPrefab.name + "_View";
+        viewInstance.transform.localPosition = Vector3.zero;
+        viewInstance.transform.localRotation = Quaternion.identity;
+
         SanitizeVisualInstance(viewInstance);
         NormalizeViewOrientation(viewInstance);
         mouthFirePoint = ResolveMouthFirePoint(viewInstance.transform, visualRoot);
         RepositionMouthFirePoint(viewInstance.transform, mouthFirePoint);
+
+        // FINAL guaranteed visible flip. Applied last so no normalize/grounding/mouth helper can
+        // overwrite the rendered dragon's facing. Visual only (does not touch boss root/collider).
+        flipPivot.localRotation = Quaternion.Euler(0f, visiblePivotYaw, 0f);
+
+        if (debugLogOrientation)
+        {
+            Debug.Log("[DragonBossVisual] Applied DragonVisibleFlipPivot y=" + visiblePivotYaw.ToString("F1"));
+        }
+
         return true;
     }
 
     // Wraps the visible DragonBoss_View instance so a single yaw flip turns the entire rendered
     // dragon toward the player. The boss root (DragonBossController) still owns movement/facing.
-    private Transform CreateVisibleYawPivot(Transform visualRoot)
+    private Transform CreateVisibleFlipPivot(Transform visualRoot)
     {
-        GameObject pivotObject = new GameObject("VisibleYawPivot");
+        GameObject pivotObject = new GameObject("DragonVisibleFlipPivot");
         pivotObject.transform.SetParent(visualRoot, false);
         pivotObject.transform.localPosition = Vector3.zero;
         pivotObject.transform.localRotation = Quaternion.Euler(0f, visiblePivotYaw, 0f);
         pivotObject.transform.localScale = Vector3.one;
-
-        if (debugLogOrientation)
-        {
-            Debug.Log("[DragonBossVisual] Applied VisibleYawPivot flip y=" + visiblePivotYaw.ToString("F1"));
-        }
-
         return pivotObject.transform;
     }
 
