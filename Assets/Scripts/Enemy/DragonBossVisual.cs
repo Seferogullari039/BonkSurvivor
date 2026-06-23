@@ -27,9 +27,9 @@ public class DragonBossVisual : MonoBehaviour
     [SerializeField] private float modelGroundLocalY = -0.456f;
     [SerializeField] private float mouthHeightFactor = 0.72f;
     [SerializeField] private bool debugLogOrientation = true;
-    // Use the proven procedural dragon (same +Z-facing shape as the working Golden Dragon) instead of
-    // the problematic imported FBX view. Default false => always build the readable procedural dragon.
-    [SerializeField] private bool usePrefabVisual = false;
+    // Use the real imported FBX dragon view as the main visual. Procedural primitive dragon is only a
+    // fallback when the prefab fails to load. Default true => real FBX dragon is the boss visual.
+    [SerializeField] private bool usePrefabVisual = true;
     // Boss-size multiplier for the procedural dragon so it reads as a large boss without becoming a blob.
     [SerializeField] private float proceduralVisualScale = 1.6f;
 
