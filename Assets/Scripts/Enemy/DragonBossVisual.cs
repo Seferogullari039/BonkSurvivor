@@ -27,9 +27,11 @@ public class DragonBossVisual : MonoBehaviour
     [SerializeField] private float modelGroundLocalY = -0.456f;
     [SerializeField] private float mouthHeightFactor = 0.72f;
     [SerializeField] private bool debugLogOrientation = true;
-    // Use the real imported FBX dragon view as the main visual. Procedural primitive dragon is only a
-    // fallback when the prefab fails to load. Default true => real FBX dragon is the boss visual.
-    [SerializeField] private bool usePrefabVisual = true;
+    // Direct reference to the real DragonBoss_View FBX prefab. Most reliable load path; tried first.
+    [SerializeField] private GameObject dragonBossViewPrefab;
+    // When false (default for this real-visual test) the procedural primitive dragon is NEVER used as
+    // the main visual; a missing prefab logs a clear error instead of silently showing primitives.
+    [SerializeField] private bool allowProceduralFallback = false;
     // Boss-size multiplier for the procedural dragon so it reads as a large boss without becoming a blob.
     [SerializeField] private float proceduralVisualScale = 1.6f;
 
@@ -53,8 +55,17 @@ public class DragonBossVisual : MonoBehaviour
         ClearExistingVisualRoot();
         HideRootRenderer();
 
-        if (usePrefabVisual && TryBuildPrefabVisual())
+        // Always force the real FBX prefab visual first so a stale/false flag can never silently
+        // drop us to the procedural primitive dragon.
+        if (TryBuildPrefabVisual())
         {
+            return;
+        }
+
+        if (!allowProceduralFallback)
+        {
+            Debug.LogError("[DragonBossVisual] ERROR: DragonBoss_View prefab could not be loaded. "
+                + "Procedural fallback disabled for real visual test.");
             return;
         }
 
@@ -90,7 +101,7 @@ public class DragonBossVisual : MonoBehaviour
         RepositionMouthFirePoint(viewInstance.transform, mouthFirePoint);
 
         ApplyForcedVisibleYaw();
-        LogActiveVisualMode("Prefab", visibleRoot);
+        LogActiveVisualMode("Prefab", visibleRoot, viewPrefab.name);
         return true;
     }
 
@@ -116,7 +127,7 @@ public class DragonBossVisual : MonoBehaviour
         }
     }
 
-    private void LogActiveVisualMode(string mode, Transform visibleRoot)
+    private void LogActiveVisualMode(string mode, Transform visibleRoot, string prefabName = "")
     {
         if (!debugLogOrientation || visibleRoot == null)
         {
@@ -125,6 +136,7 @@ public class DragonBossVisual : MonoBehaviour
 
         int rendererCount = visibleRoot.GetComponentsInChildren<Renderer>(true).Length;
         Debug.Log("[DragonBossVisual] ActiveVisualMode=" + mode
+            + " | Prefab=" + (string.IsNullOrEmpty(prefabName) ? "(none)" : prefabName)
             + " | VisibleRoot=" + visibleRoot.name
             + " | RendererCount=" + rendererCount
             + " | ForcedYaw=" + forcedVisibleYaw.ToString("F1"));
@@ -391,8 +403,13 @@ public class DragonBossVisual : MonoBehaviour
         visibleRoot.localPosition += new Vector3(0f, groundShift, 0f);
     }
 
-    private static GameObject ResolveViewPrefab()
+    private GameObject ResolveViewPrefab()
     {
+        if (dragonBossViewPrefab != null)
+        {
+            return dragonBossViewPrefab;
+        }
+
 #if UNITY_EDITOR
         GameObject editorPrefab = LoadEditorPrefab(ViewPrefabPath);
 

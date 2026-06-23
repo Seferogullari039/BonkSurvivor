@@ -1275,6 +1275,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DragonBossVisual
   buildOnAwake: 1
+  dragonBossViewPrefab: {fileID: 1037278676511036437, guid: dbbe370b0daac1e4eb4c8dd3b65902cc, type: 3}
 --- !u!114 &813441816529437449
 MonoBehaviour:
   m_ObjectHideFlags: 0
