@@ -17,9 +17,13 @@ public class DragonBossVisual : MonoBehaviour
     // The boss root (DragonBossController) already yaws toward the player, so the model only needs
     // to stand upright with its face on +Z (root forward). These do NOT touch gameplay/collider/root.
     [SerializeField] private float modelFacingYaw = 0f;
-    // Extra visual-only yaw to flip the imported model's front toward the player when its native
-    // forward is the back side. Final yaw = modelFacingYaw + visualYawCorrection. Visual only.
-    [SerializeField] private float visualYawCorrection = 180f;
+    // Extra visual-only yaw applied at the Model level (kept for grounding/upright only). The real
+    // visible flip is handled by VisibleYawPivot below so it works regardless of baked child rotation.
+    [SerializeField] private float visualYawCorrection = 0f;
+    // Visual-only flip of the WHOLE rendered DragonBoss_View instance. Wrapping the instance in a
+    // pivot guarantees the entire visible dragon turns toward the player, no matter the child
+    // baked rotation. This does NOT touch gameplay/root/collider/scale.
+    [SerializeField] private float visiblePivotYaw = 180f;
     [SerializeField] private float modelGroundLocalY = -0.456f;
     [SerializeField] private float mouthHeightFactor = 0.72f;
     [SerializeField] private bool debugLogOrientation = true;
@@ -61,7 +65,8 @@ public class DragonBossVisual : MonoBehaviour
         }
 
         Transform visualRoot = CreateVisualRoot();
-        GameObject viewInstance = Instantiate(viewPrefab, visualRoot, false);
+        Transform visiblePivot = CreateVisibleYawPivot(visualRoot);
+        GameObject viewInstance = Instantiate(viewPrefab, visiblePivot, false);
 
         if (viewInstance == null)
         {
@@ -75,6 +80,24 @@ public class DragonBossVisual : MonoBehaviour
         mouthFirePoint = ResolveMouthFirePoint(viewInstance.transform, visualRoot);
         RepositionMouthFirePoint(viewInstance.transform, mouthFirePoint);
         return true;
+    }
+
+    // Wraps the visible DragonBoss_View instance so a single yaw flip turns the entire rendered
+    // dragon toward the player. The boss root (DragonBossController) still owns movement/facing.
+    private Transform CreateVisibleYawPivot(Transform visualRoot)
+    {
+        GameObject pivotObject = new GameObject("VisibleYawPivot");
+        pivotObject.transform.SetParent(visualRoot, false);
+        pivotObject.transform.localPosition = Vector3.zero;
+        pivotObject.transform.localRotation = Quaternion.Euler(0f, visiblePivotYaw, 0f);
+        pivotObject.transform.localScale = Vector3.one;
+
+        if (debugLogOrientation)
+        {
+            Debug.Log("[DragonBossVisual] Applied VisibleYawPivot flip y=" + visiblePivotYaw.ToString("F1"));
+        }
+
+        return pivotObject.transform;
     }
 
     private void NormalizeViewOrientation(GameObject viewInstance)
