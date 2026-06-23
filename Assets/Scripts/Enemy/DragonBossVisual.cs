@@ -17,18 +17,19 @@ public class DragonBossVisual : MonoBehaviour
     // The boss root (DragonBossController) already yaws toward the player, so the model only needs
     // to stand upright with its face on +Z (root forward). These do NOT touch gameplay/collider/root.
     [SerializeField] private float modelFacingYaw = 0f;
-    // Extra visual-only yaw applied at the Model level (kept for grounding/upright only). The real
-    // visible flip is handled by VisibleYawPivot below so it works regardless of baked child rotation.
+    // Kept for grounding/upright at the Model level only (default 0). The real visible flip is owned
+    // by DragonActualVisibleRoot below so it works regardless of branch (prefab or procedural).
     [SerializeField] private float visualYawCorrection = 0f;
-    // Visual-only flip of the WHOLE rendered DragonBoss_View instance. Wrapping the instance in a
-    // pivot guarantees the entire visible dragon turns toward the player, no matter the child
-    // baked rotation. This does NOT touch gameplay/root/collider/scale.
-    [SerializeField] private float visiblePivotYaw = 180f;
+    // FINAL visual-only yaw applied to the active visible root that parents EVERY rendered child
+    // (prefab instance OR procedural body/wings/head). This is the single source of truth for the
+    // rendered dragon facing. It does NOT touch gameplay/root/collider/scale. Only test 180 <-> 0.
+    [SerializeField] private float forcedVisibleYaw = 180f;
     [SerializeField] private float modelGroundLocalY = -0.456f;
     [SerializeField] private float mouthHeightFactor = 0.72f;
     [SerializeField] private bool debugLogOrientation = true;
 
     private Transform mouthFirePoint;
+    private Transform actualVisibleRoot;
 
     public Transform MouthFirePoint => mouthFirePoint;
 
@@ -65,8 +66,8 @@ public class DragonBossVisual : MonoBehaviour
         }
 
         Transform visualRoot = CreateVisualRoot();
-        Transform flipPivot = CreateVisibleFlipPivot(visualRoot);
-        GameObject viewInstance = Instantiate(viewPrefab, flipPivot, false);
+        Transform visibleRoot = CreateActualVisibleRoot(visualRoot);
+        GameObject viewInstance = Instantiate(viewPrefab, visibleRoot, false);
 
         if (viewInstance == null)
         {
@@ -80,31 +81,58 @@ public class DragonBossVisual : MonoBehaviour
 
         SanitizeVisualInstance(viewInstance);
         NormalizeViewOrientation(viewInstance);
-        mouthFirePoint = ResolveMouthFirePoint(viewInstance.transform, visualRoot);
+        mouthFirePoint = ResolveMouthFirePoint(viewInstance.transform, visibleRoot);
         RepositionMouthFirePoint(viewInstance.transform, mouthFirePoint);
 
-        // FINAL guaranteed visible flip. Applied last so no normalize/grounding/mouth helper can
-        // overwrite the rendered dragon's facing. Visual only (does not touch boss root/collider).
-        flipPivot.localRotation = Quaternion.Euler(0f, visiblePivotYaw, 0f);
-
-        if (debugLogOrientation)
-        {
-            Debug.Log("[DragonBossVisual] Applied DragonVisibleFlipPivot y=" + visiblePivotYaw.ToString("F1"));
-        }
-
+        ApplyForcedVisibleYaw();
+        LogActiveVisualMode("Prefab", visibleRoot);
         return true;
     }
 
-    // Wraps the visible DragonBoss_View instance so a single yaw flip turns the entire rendered
-    // dragon toward the player. The boss root (DragonBossController) still owns movement/facing.
-    private Transform CreateVisibleFlipPivot(Transform visualRoot)
+    // Single visible parent that wraps EVERY rendered child (prefab instance or procedural parts).
+    // Rotating this root is the final authority over the rendered dragon facing; the boss root
+    // (DragonBossController) still owns movement/facing and is untouched.
+    private Transform CreateActualVisibleRoot(Transform visualRoot)
     {
-        GameObject pivotObject = new GameObject("DragonVisibleFlipPivot");
-        pivotObject.transform.SetParent(visualRoot, false);
-        pivotObject.transform.localPosition = Vector3.zero;
-        pivotObject.transform.localRotation = Quaternion.Euler(0f, visiblePivotYaw, 0f);
-        pivotObject.transform.localScale = Vector3.one;
-        return pivotObject.transform;
+        GameObject rootObject = new GameObject("DragonActualVisibleRoot");
+        rootObject.transform.SetParent(visualRoot, false);
+        rootObject.transform.localPosition = Vector3.zero;
+        rootObject.transform.localRotation = Quaternion.Euler(0f, forcedVisibleYaw, 0f);
+        rootObject.transform.localScale = Vector3.one;
+        actualVisibleRoot = rootObject.transform;
+        return rootObject.transform;
+    }
+
+    private void ApplyForcedVisibleYaw()
+    {
+        if (actualVisibleRoot != null)
+        {
+            actualVisibleRoot.localRotation = Quaternion.Euler(0f, forcedVisibleYaw, 0f);
+        }
+    }
+
+    private void LogActiveVisualMode(string mode, Transform visibleRoot)
+    {
+        if (!debugLogOrientation || visibleRoot == null)
+        {
+            return;
+        }
+
+        int rendererCount = visibleRoot.GetComponentsInChildren<Renderer>(true).Length;
+        Debug.Log("[DragonBossVisual] ActiveVisualMode=" + mode
+            + " | VisibleRoot=" + visibleRoot.name
+            + " | RendererCount=" + rendererCount
+            + " | ForcedYaw=" + forcedVisibleYaw.ToString("F1"));
+    }
+
+    private void LateUpdate()
+    {
+        // Visual-only safety net: keep the rendered dragon facing locked even if another helper or
+        // frame writes to it. Only the visible child root is touched, never the boss root/collider.
+        if (actualVisibleRoot != null)
+        {
+            actualVisibleRoot.localRotation = Quaternion.Euler(0f, forcedVisibleYaw, 0f);
+        }
     }
 
     private void NormalizeViewOrientation(GameObject viewInstance)
@@ -314,28 +342,32 @@ public class DragonBossVisual : MonoBehaviour
     private void BuildProceduralVisual()
     {
         Transform visualRoot = CreateVisualRoot();
+        Transform visibleRoot = CreateActualVisibleRoot(visualRoot);
         Color bodyColor = GameVisualPalette.DragonBoss;
         Color wingColor = new Color(0.22f, 0.05f, 0.1f);
         Color hornColor = new Color(0.82f, 0.28f, 0.42f);
         Color eyeColor = new Color(1f, 0.88f, 0.18f);
         Color chestGlowColor = new Color(1f, 0.42f, 0.18f);
 
-        CreatePart(visualRoot, "Body", PrimitiveType.Capsule, new Vector3(0f, 1.2f, 0f), new Vector3(2.4f, 1.6f, 2.2f), bodyColor, 0.44f, true, 0.18f);
-        CreatePart(visualRoot, "Neck", PrimitiveType.Capsule, new Vector3(0f, 2.1f, 0.55f), new Vector3(0.9f, 0.55f, 0.9f), bodyColor, 0.42f, false);
-        CreatePart(visualRoot, "Head", PrimitiveType.Sphere, new Vector3(0f, 2.55f, 1.15f), new Vector3(1.35f, 1.15f, 1.35f), bodyColor, 0.46f, true, 0.12f);
-        CreatePart(visualRoot, "ChestGlow", PrimitiveType.Sphere, new Vector3(0f, 1.55f, 0.72f), new Vector3(0.72f, 0.72f, 0.72f), chestGlowColor, 0.72f, true, 0.72f);
-        CreatePart(visualRoot, "Wing_L", PrimitiveType.Cube, new Vector3(-2.1f, 1.8f, 0.1f), new Vector3(2.8f, 0.12f, 1.8f), wingColor, 0.35f, false);
-        CreatePart(visualRoot, "Wing_R", PrimitiveType.Cube, new Vector3(2.1f, 1.8f, 0.1f), new Vector3(2.8f, 0.12f, 1.8f), wingColor, 0.35f, false);
-        CreatePart(visualRoot, "Horn_L", PrimitiveType.Cylinder, new Vector3(-0.35f, 3.05f, 1.35f), new Vector3(0.18f, 0.35f, 0.18f), hornColor, 0.58f, true, 0.55f);
-        CreatePart(visualRoot, "Horn_R", PrimitiveType.Cylinder, new Vector3(0.35f, 3.05f, 1.35f), new Vector3(0.18f, 0.35f, 0.18f), hornColor, 0.58f, true, 0.55f);
-        CreatePart(visualRoot, "Eye_L", PrimitiveType.Sphere, new Vector3(-0.28f, 2.75f, 1.72f), new Vector3(0.2f, 0.2f, 0.2f), eyeColor, 0.24f, true, 0.82f);
-        CreatePart(visualRoot, "Eye_R", PrimitiveType.Sphere, new Vector3(0.28f, 2.75f, 1.72f), new Vector3(0.2f, 0.2f, 0.2f), eyeColor, 0.24f, true, 0.82f);
+        CreatePart(visibleRoot, "Body", PrimitiveType.Capsule, new Vector3(0f, 1.2f, 0f), new Vector3(2.4f, 1.6f, 2.2f), bodyColor, 0.44f, true, 0.18f);
+        CreatePart(visibleRoot, "Neck", PrimitiveType.Capsule, new Vector3(0f, 2.1f, 0.55f), new Vector3(0.9f, 0.55f, 0.9f), bodyColor, 0.42f, false);
+        CreatePart(visibleRoot, "Head", PrimitiveType.Sphere, new Vector3(0f, 2.55f, 1.15f), new Vector3(1.35f, 1.15f, 1.35f), bodyColor, 0.46f, true, 0.12f);
+        CreatePart(visibleRoot, "ChestGlow", PrimitiveType.Sphere, new Vector3(0f, 1.55f, 0.72f), new Vector3(0.72f, 0.72f, 0.72f), chestGlowColor, 0.72f, true, 0.72f);
+        CreatePart(visibleRoot, "Wing_L", PrimitiveType.Cube, new Vector3(-2.1f, 1.8f, 0.1f), new Vector3(2.8f, 0.12f, 1.8f), wingColor, 0.35f, false);
+        CreatePart(visibleRoot, "Wing_R", PrimitiveType.Cube, new Vector3(2.1f, 1.8f, 0.1f), new Vector3(2.8f, 0.12f, 1.8f), wingColor, 0.35f, false);
+        CreatePart(visibleRoot, "Horn_L", PrimitiveType.Cylinder, new Vector3(-0.35f, 3.05f, 1.35f), new Vector3(0.18f, 0.35f, 0.18f), hornColor, 0.58f, true, 0.55f);
+        CreatePart(visibleRoot, "Horn_R", PrimitiveType.Cylinder, new Vector3(0.35f, 3.05f, 1.35f), new Vector3(0.18f, 0.35f, 0.18f), hornColor, 0.58f, true, 0.55f);
+        CreatePart(visibleRoot, "Eye_L", PrimitiveType.Sphere, new Vector3(-0.28f, 2.75f, 1.72f), new Vector3(0.2f, 0.2f, 0.2f), eyeColor, 0.24f, true, 0.82f);
+        CreatePart(visibleRoot, "Eye_R", PrimitiveType.Sphere, new Vector3(0.28f, 2.75f, 1.72f), new Vector3(0.2f, 0.2f, 0.2f), eyeColor, 0.24f, true, 0.82f);
 
-        CreatePart(visualRoot, "Tail_1", PrimitiveType.Capsule, new Vector3(0f, 1.05f, -1.1f), new Vector3(0.55f, 0.35f, 0.55f), bodyColor, 0.38f, false);
-        CreatePart(visualRoot, "Tail_2", PrimitiveType.Capsule, new Vector3(0f, 0.95f, -1.75f), new Vector3(0.45f, 0.28f, 0.45f), bodyColor, 0.38f, false);
-        CreatePart(visualRoot, "Tail_3", PrimitiveType.Sphere, new Vector3(0f, 0.85f, -2.25f), new Vector3(0.38f, 0.38f, 0.38f), hornColor, 0.5f, true, 0.25f);
+        CreatePart(visibleRoot, "Tail_1", PrimitiveType.Capsule, new Vector3(0f, 1.05f, -1.1f), new Vector3(0.55f, 0.35f, 0.55f), bodyColor, 0.38f, false);
+        CreatePart(visibleRoot, "Tail_2", PrimitiveType.Capsule, new Vector3(0f, 0.95f, -1.75f), new Vector3(0.45f, 0.28f, 0.45f), bodyColor, 0.38f, false);
+        CreatePart(visibleRoot, "Tail_3", PrimitiveType.Sphere, new Vector3(0f, 0.85f, -2.25f), new Vector3(0.38f, 0.38f, 0.38f), hornColor, 0.5f, true, 0.25f);
 
-        mouthFirePoint = CreateFallbackMouthFirePoint(visualRoot);
+        mouthFirePoint = CreateFallbackMouthFirePoint(visibleRoot);
+
+        ApplyForcedVisibleYaw();
+        LogActiveVisualMode("Procedural", visibleRoot);
     }
 
     private static GameObject ResolveViewPrefab()
@@ -488,6 +520,7 @@ public class DragonBossVisual : MonoBehaviour
         }
 
         mouthFirePoint = null;
+        actualVisibleRoot = null;
     }
 
     private void HideRootRenderer()
