@@ -23,7 +23,7 @@ public class DragonBossVisual : MonoBehaviour
     // FINAL visual-only yaw applied to the active visible root that parents EVERY rendered child
     // (prefab instance OR procedural body/wings/head). This is the single source of truth for the
     // rendered dragon facing. It does NOT touch gameplay/root/collider/scale. Only test 180 <-> 0.
-    [SerializeField] private float forcedVisibleYaw = 180f;
+    [SerializeField] private float forcedVisibleYaw = 0f;
     [SerializeField] private float modelGroundLocalY = -0.456f;
     [SerializeField] private float mouthHeightFactor = 0.72f;
     [SerializeField] private bool debugLogOrientation = true;
