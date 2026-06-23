@@ -27,6 +27,11 @@ public class DragonBossVisual : MonoBehaviour
     [SerializeField] private float modelGroundLocalY = -0.456f;
     [SerializeField] private float mouthHeightFactor = 0.72f;
     [SerializeField] private bool debugLogOrientation = true;
+    // Use the proven procedural dragon (same +Z-facing shape as the working Golden Dragon) instead of
+    // the problematic imported FBX view. Default false => always build the readable procedural dragon.
+    [SerializeField] private bool usePrefabVisual = false;
+    // Boss-size multiplier for the procedural dragon so it reads as a large boss without becoming a blob.
+    [SerializeField] private float proceduralVisualScale = 1.6f;
 
     private Transform mouthFirePoint;
     private Transform actualVisibleRoot;
@@ -48,7 +53,7 @@ public class DragonBossVisual : MonoBehaviour
         ClearExistingVisualRoot();
         HideRootRenderer();
 
-        if (TryBuildPrefabVisual())
+        if (usePrefabVisual && TryBuildPrefabVisual())
         {
             return;
         }
@@ -343,6 +348,7 @@ public class DragonBossVisual : MonoBehaviour
     {
         Transform visualRoot = CreateVisualRoot();
         Transform visibleRoot = CreateActualVisibleRoot(visualRoot);
+        visibleRoot.localScale = Vector3.one * Mathf.Max(0.1f, proceduralVisualScale);
         Color bodyColor = GameVisualPalette.DragonBoss;
         Color wingColor = new Color(0.22f, 0.05f, 0.1f);
         Color hornColor = new Color(0.82f, 0.28f, 0.42f);
@@ -366,8 +372,23 @@ public class DragonBossVisual : MonoBehaviour
 
         mouthFirePoint = CreateFallbackMouthFirePoint(visibleRoot);
 
+        GroundVisibleRoot(visualRoot, visibleRoot);
         ApplyForcedVisibleYaw();
         LogActiveVisualMode("Procedural", visibleRoot);
+    }
+
+    // Keeps the procedural dragon's feet near the boss root base so it neither sinks into the ground
+    // nor floats. Visual only; does not touch the boss root/collider.
+    private void GroundVisibleRoot(Transform visualRoot, Transform visibleRoot)
+    {
+        if (visualRoot == null || visibleRoot == null)
+        {
+            return;
+        }
+
+        Bounds localBounds = CalculateLocalBounds(visualRoot, visibleRoot);
+        float groundShift = modelGroundLocalY - localBounds.min.y;
+        visibleRoot.localPosition += new Vector3(0f, groundShift, 0f);
     }
 
     private static GameObject ResolveViewPrefab()
