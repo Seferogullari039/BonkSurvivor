@@ -140,12 +140,7 @@ public class MerchantShrineUI : MonoBehaviour
         }
 
         ChestRevealPause.End();
-
-        if (MainMenuManager.IsRunActive && Time.timeScale > 0f)
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-        }
+        MerchantShrineTradeGuards.RestoreGameplayCursorAfterTradeClose();
 
         sourceShrine = null;
         playerStats = null;
@@ -163,39 +158,17 @@ public class MerchantShrineUI : MonoBehaviour
             return true;
         }
 
+        if (MerchantShrineTradeGuards.IsRewardFlowBlockingTrade())
+        {
+            return true;
+        }
+
         return false;
     }
 
     private static bool ShouldBlockOpen()
     {
-        if (!MainMenuManager.IsRunActive)
-        {
-            return true;
-        }
-
-        if (GameOverManager.Instance != null && GameOverManager.Instance.IsGameOverActive)
-        {
-            return true;
-        }
-
-        if (PauseMenuManager.IsGameplayPaused)
-        {
-            return true;
-        }
-
-        if (ChestRevealPause.IsPaused)
-        {
-            return true;
-        }
-
-        LevelUpManager levelUpManager = LevelUpManager.Instance;
-
-        if (levelUpManager != null && levelUpManager.BlocksGameplayPause)
-        {
-            return true;
-        }
-
-        return false;
+        return !MerchantShrineTradeGuards.CanOpenTrade();
     }
 
     private void RefreshDisplay()
@@ -472,6 +445,110 @@ public class MerchantShrineUI : MonoBehaviour
         }
 
         return button;
+    }
+}
+
+internal static class MerchantShrineTradeGuards
+{
+    public static bool CanOpenTrade()
+    {
+        if (!MainMenuManager.IsRunActive)
+        {
+            return false;
+        }
+
+        if (MerchantShrineUI.IsOpen)
+        {
+            return false;
+        }
+
+        if (IsRewardFlowBlockingTrade())
+        {
+            return false;
+        }
+
+        if (PauseMenuManager.IsGameplayPaused)
+        {
+            return false;
+        }
+
+        if (GameOverManager.Instance != null && GameOverManager.Instance.IsGameOverActive)
+        {
+            return false;
+        }
+
+        if (DevAdminPanel.IsOpen)
+        {
+            return false;
+        }
+
+        if (ChestRevealPause.IsPaused)
+        {
+            return false;
+        }
+
+        if (Time.timeScale <= 0f)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    public static bool IsRewardFlowBlockingTrade()
+    {
+        LevelUpManager levelUpManager = LevelUpManager.Instance;
+
+        if (levelUpManager != null && levelUpManager.BlocksMerchantTrade)
+        {
+            return true;
+        }
+
+        HUDManager hudManager = HUDManager.Instance;
+
+        if (hudManager != null && hudManager.IsLevelUpFeedbackVisible)
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    public static void RestoreGameplayCursorAfterTradeClose()
+    {
+        if (!MainMenuManager.IsRunActive)
+        {
+            return;
+        }
+
+        if (IsRewardFlowBlockingTrade())
+        {
+            Time.timeScale = 0f;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
+        if (ChestRevealPause.IsPaused)
+        {
+            Time.timeScale = 0f;
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
+        if (PauseMenuManager.IsGameplayPaused)
+        {
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            return;
+        }
+
+        if (Time.timeScale > 0f)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
     }
 }
 

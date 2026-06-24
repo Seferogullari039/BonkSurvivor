@@ -391,6 +391,8 @@ public class LevelUpManager : MonoBehaviour
 
     public void OnPlayerLevelUp(int newLevel)
     {
+        MerchantShrineUI.ForceClose();
+
         menuPlayerLevel = newLevel;
         isChestUpgradeMenu = false;
         useChestSingleCardReveal = false;
@@ -506,6 +508,8 @@ public class LevelUpManager : MonoBehaviour
             return false;
         }
     }
+
+    public bool BlocksMerchantTrade => BlocksGameplayPause;
 
     public bool IsAwaitingChestRewardCollect()
     {

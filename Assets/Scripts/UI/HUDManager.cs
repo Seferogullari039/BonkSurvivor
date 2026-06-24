@@ -33,6 +33,9 @@ public class HUDManager : MonoBehaviour
     private bool gameplayHudVisible = true;
     private static Sprite coinCircleSprite;
     private static Texture2D uiKnobFallbackTexture;
+
+    public bool IsLevelUpFeedbackVisible =>
+        levelUpFeedbackText != null && levelUpFeedbackText.gameObject.activeInHierarchy;
     private static Sprite uiKnobFallbackSprite;
 
     private static readonly Color LevelBadgeBackground = new Color(0.05f, 0.07f, 0.12f, 0.84f);

@@ -95,39 +95,7 @@ public class MerchantShrineController : MonoBehaviour
 
     private bool CanInteract()
     {
-        if (!MainMenuManager.IsRunActive || Time.timeScale <= 0f)
-        {
-            return false;
-        }
-
-        if (MerchantShrineUI.IsOpen)
-        {
-            return false;
-        }
-
-        if (PauseMenuManager.IsGameplayPaused)
-        {
-            return false;
-        }
-
-        if (ChestRevealPause.IsPaused)
-        {
-            return false;
-        }
-
-        LevelUpManager levelUpManager = LevelUpManager.Instance;
-
-        if (levelUpManager != null && levelUpManager.BlocksGameplayPause)
-        {
-            return false;
-        }
-
-        if (GameOverManager.Instance != null && GameOverManager.Instance.IsGameOverActive)
-        {
-            return false;
-        }
-
-        if (DevAdminPanel.IsOpen)
+        if (!MerchantShrineTradeGuards.CanOpenTrade())
         {
             return false;
         }
