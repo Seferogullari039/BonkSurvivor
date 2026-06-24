@@ -775,7 +775,10 @@ public class LevelUpManager : MonoBehaviour
 
         if (!TryAssignBuildAwareOption(0, availableIndices, activeBuild, RewardCategory.Skill))
         {
-            AssignWeightedOption(0, availableIndices, unpurchasedWeapons);
+            if (!TryAssignBuildAwareOption(0, availableIndices, WeaponBuildType.General, RewardCategory.Passive))
+            {
+                AssignWeightedOption(0, availableIndices, unpurchasedWeapons);
+            }
         }
 
         if (!TryAssignBuildAwareOption(1, availableIndices, WeaponBuildType.General, RewardCategory.Passive))
@@ -847,32 +850,97 @@ public class LevelUpManager : MonoBehaviour
             tracker = RunBuildTracker.GetOrCreate();
         }
 
+        List<int> primary = FilterBuildLockCandidates(candidates, tracker, tracker.CanOfferUpgrade);
+
+        if (primary.Count > 0)
+        {
+            return primary;
+        }
+
+        List<int> buildLockFallback = FilterBuildLockCandidates(
+            candidates,
+            tracker,
+            index => PassesBuildLockFallback(tracker, index));
+
+        if (buildLockFallback.Count > 0)
+        {
+            return buildLockFallback;
+        }
+
+        List<int> freeSlotFallback = FilterBuildLockCandidates(
+            candidates,
+            tracker,
+            index => PassesFreeSlotNotMaxed(tracker, index));
+
+        if (freeSlotFallback.Count > 0)
+        {
+            return freeSlotFallback;
+        }
+
+        List<int> trackedNotMaxed = FilterBuildLockCandidates(
+            candidates,
+            tracker,
+            index => !tracker.IsMaxed(index) && tracker.IsTrackedUpgrade(index));
+
+        if (trackedNotMaxed.Count > 0)
+        {
+            return trackedNotMaxed;
+        }
+
+        LogBuildRewardEmergencyFallback();
+        return candidates;
+    }
+
+    private static List<int> FilterBuildLockCandidates(
+        List<int> candidates,
+        RunBuildTracker tracker,
+        System.Func<int, bool> predicate)
+    {
         List<int> filtered = new List<int>(candidates.Count);
 
         for (int i = 0; i < candidates.Count; i++)
         {
-            if (tracker.CanOfferUpgrade(candidates[i]))
+            if (predicate(candidates[i]))
             {
                 filtered.Add(candidates[i]);
             }
         }
 
-        if (filtered.Count > 0)
+        return filtered;
+    }
+
+    private static bool PassesBuildLockFallback(RunBuildTracker tracker, int upgradeIndex)
+    {
+        if (tracker.IsMaxed(upgradeIndex))
         {
-            return filtered;
+            return false;
         }
 
-        List<int> notMaxed = new List<int>(candidates.Count);
-
-        for (int i = 0; i < candidates.Count; i++)
+        if (tracker.IsTrackedUpgrade(upgradeIndex))
         {
-            if (!tracker.IsMaxed(candidates[i]))
-            {
-                notMaxed.Add(candidates[i]);
-            }
+            return true;
         }
 
-        return notMaxed.Count > 0 ? notMaxed : candidates;
+        RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
+        return tracker.HasFreeSlot(category);
+    }
+
+    private static bool PassesFreeSlotNotMaxed(RunBuildTracker tracker, int upgradeIndex)
+    {
+        if (tracker.IsMaxed(upgradeIndex))
+        {
+            return false;
+        }
+
+        RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
+        return tracker.HasFreeSlot(category);
+    }
+
+    private static void LogBuildRewardEmergencyFallback()
+    {
+#if UNITY_EDITOR
+        Debug.Log("[LevelUpManager] Build reward emergency fallback used.");
+#endif
     }
 
     private int PickWeightedUpgradeIndex(List<int> candidates, List<int> unpurchasedWeapons, int slotIndex)

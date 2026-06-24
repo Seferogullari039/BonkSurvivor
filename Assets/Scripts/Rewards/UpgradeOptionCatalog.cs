@@ -55,7 +55,7 @@ public static class UpgradeOptionCatalog
 
     private static readonly OptionMetadata[] Options =
     {
-        new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Common, WeaponBuildType.General),     // 0 Rapid Mechanism
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Common, WeaponBuildType.General),     // 0 Rapid Mechanism
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Common, WeaponBuildType.Bow),           // 1 Swift Projectiles
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Common, WeaponBuildType.General),   // 2 Magnet Sense
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Common, WeaponBuildType.General),   // 3 Sharp Instinct
