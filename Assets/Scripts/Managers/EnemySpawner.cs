@@ -82,6 +82,7 @@ public class EnemySpawner : MonoBehaviour
         if (enemy == null) return;
 
         ApplyEnemyType(enemy, enemyObject.transform, Enemy.EnemyType.Normal);
+        enemy.ApplyDifficultyScaling(Mathf.Max(1, currentWave));
         ApplyEliteMutation(enemy, enemyObject.transform);
     }
 
@@ -110,6 +111,7 @@ public class EnemySpawner : MonoBehaviour
         if (enemy == null) return false;
 
         ApplyEnemyType(enemy, enemyObject.transform, Enemy.EnemyType.Normal);
+        enemy.ApplyDifficultyScaling(Mathf.Max(1, currentWave));
         return true;
     }
 
@@ -569,6 +571,7 @@ public class EnemySpawner : MonoBehaviour
 
         Enemy.EnemyType enemyType = GetRandomEnemyType(fpsSpawnZone);
         ApplyEnemyType(enemy, enemyObject.transform, enemyType);
+        enemy.ApplyDifficultyScaling(Mathf.Max(1, currentWave));
 
         if (ShouldSpawnElite() && !IsBlockedEliteSpawn(fpsSpawnZone))
         {

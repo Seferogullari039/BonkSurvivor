@@ -39,6 +39,7 @@ public class Enemy : MonoBehaviour
     private MimicChestController mimicChestOwner;
     private GoldenDragonController goldenDragonOwner;
     private EnemyVisualController visualController;
+    private bool difficultyScalingApplied;
 
     public EnemyType Type => enemyType;
     public bool IsElite { get; private set; }
@@ -122,6 +123,28 @@ public class Enemy : MonoBehaviour
         EnsureVisualController();
         visualController?.Initialize(type, enemyColor, baseVisualSmoothness, baseVisualGlow);
         EnsureSeparationController();
+    }
+
+    public void ApplyDifficultyScaling(int wave)
+    {
+        if (difficultyScalingApplied)
+        {
+            return;
+        }
+
+        if (enemyType == EnemyType.MiniBoss || enemyType == EnemyType.DragonBoss)
+        {
+            return;
+        }
+
+        difficultyScalingApplied = true;
+
+        EnemyDifficultyMultipliers multipliers = EnemyDifficultyScaler.GetMultipliersForWave(wave);
+
+        maxHealth = Mathf.Max(1, Mathf.RoundToInt(maxHealth * multipliers.Health));
+        currentHealth = maxHealth;
+        contactDamage = Mathf.Max(1, Mathf.RoundToInt(contactDamage * multipliers.Damage));
+        moveSpeed *= multipliers.Speed;
     }
 
     private void EnsureSeparationController()
