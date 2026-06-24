@@ -27,6 +27,7 @@ public class MainMenuManager : MonoBehaviour
         }
 
         BuildMenuUI();
+        MetaProgressionManager.GetOrCreate();
     }
 
     private void Start()
@@ -286,15 +287,15 @@ public class MainMenuManager : MonoBehaviour
         if (upgradesPanel == null)
         {
             upgradesPanel = CreatePanel(canvas.transform, "UpgradesPanel");
-            CreateText(upgradesPanel.transform, "UpgradeTitleText", "META UPGRADES", 40, new Vector2(0f, 220f));
+            CreateText(upgradesPanel.transform, "UpgradeTitleText", "UPGRADES", 40, new Vector2(0f, 220f));
             upgradesCoinsText = CreateText(upgradesPanel.transform, "TotalCoinsText", "", 26, new Vector2(0f, 160f));
 
             string[] upgradeNames =
             {
-                "Max HP +1",
-                "Damage +1",
-                "Move Speed +5%",
-                "XP Gain +10%"
+                "Vital Training",
+                "Sharp Training",
+                "Swift Training",
+                "Magnet Training"
             };
 
             for (int i = 0; i < upgradeNames.Length; i++)
@@ -306,17 +307,17 @@ public class MainMenuManager : MonoBehaviour
                     upgradesPanel.transform,
                     "UpgradeText" + i,
                     upgradeNames[i],
-                    22,
-                    new Vector2(-120f, y),
-                    new Vector2(420f, 50f),
+                    20,
+                    new Vector2(-40f, y),
+                    new Vector2(520f, 72f),
                     TextAlignmentOptions.MidlineLeft
                 );
 
                 buyButtons[i] = CreateMenuButton(
                     upgradesPanel.transform,
                     "BuyButton" + i,
-                    "Buy",
-                    new Vector2(260f, y),
+                    "BUY",
+                    new Vector2(300f, y),
                     () => OnBuyUpgradeClicked(index)
                 ).GetComponent<Button>();
             }
@@ -383,8 +384,8 @@ public class MainMenuManager : MonoBehaviour
         for (int i = 0; i < 4; i++)
         {
             float y = 80f - i * 80f;
-            LayoutCenteredText(panel, "UpgradeText" + i, new Vector2(-120f, y), new Vector2(420f, 50f), 22f);
-            LayoutCenteredButton(panel, "BuyButton" + i, new Vector2(260f, y), new Vector2(120f, 46f));
+            LayoutCenteredText(panel, "UpgradeText" + i, new Vector2(-40f, y), new Vector2(520f, 72f), 20f);
+            LayoutCenteredButton(panel, "BuyButton" + i, new Vector2(300f, y), new Vector2(120f, 46f));
         }
     }
 
@@ -527,56 +528,94 @@ public class MainMenuManager : MonoBehaviour
 
     private void RefreshMainMenuCoinsText()
     {
+        MetaProgressionManager manager = MetaProgressionManager.GetOrCreate();
+
         if (mainMenuCoinsText != null)
         {
-            mainMenuCoinsText.text = "Total Coins: " + MetaProgressionData.TotalCoins;
+            mainMenuCoinsText.text = "Total Coins: " + manager.TotalCoins;
         }
     }
 
     private void RefreshUpgradePanel()
     {
+        MetaProgressionManager manager = MetaProgressionManager.GetOrCreate();
+
         if (upgradesCoinsText != null)
         {
-            upgradesCoinsText.text = "Total Coins: " + MetaProgressionData.TotalCoins;
+            upgradesCoinsText.text = "Total Coins: " + manager.TotalCoins;
         }
 
-        SetUpgradeRow(0, MetaProgressionData.UpgradeLevelHP, MetaProgressionData.MaxHPUpgradeLevel, MetaProgressionData.GetNextHPCost(), "Max HP +1");
-        SetUpgradeRow(1, MetaProgressionData.UpgradeLevelDamage, MetaProgressionData.MaxDamageUpgradeLevel, MetaProgressionData.GetNextDamageCost(), "Damage +1");
-        SetUpgradeRow(2, MetaProgressionData.UpgradeLevelSpeed, MetaProgressionData.MaxSpeedUpgradeLevel, MetaProgressionData.GetNextSpeedCost(), "Move Speed +5%");
-        SetUpgradeRow(3, MetaProgressionData.UpgradeLevelXP, MetaProgressionData.MaxXPUpgradeLevel, MetaProgressionData.GetNextXPCost(), "XP Gain +10%");
+        Transform titleTransform = upgradesPanel != null ? upgradesPanel.transform.Find("UpgradeTitleText") : null;
+
+        if (titleTransform != null)
+        {
+            TMP_Text titleText = titleTransform.GetComponent<TMP_Text>();
+
+            if (titleText != null)
+            {
+                titleText.text = "UPGRADES";
+            }
+        }
+
+        SetUpgradeRow(0, MetaUpgradeType.MaxHealth, manager);
+        SetUpgradeRow(1, MetaUpgradeType.Damage, manager);
+        SetUpgradeRow(2, MetaUpgradeType.MoveSpeed, manager);
+        SetUpgradeRow(3, MetaUpgradeType.PickupRange, manager);
     }
 
-    private void SetUpgradeRow(int index, int level, int maxLevel, int nextCost, string label)
+    private void SetUpgradeRow(int index, MetaUpgradeType type, MetaProgressionManager manager)
     {
-        if (upgradeDescriptionTexts[index] == null) return;
+        if (upgradeDescriptionTexts[index] == null)
+        {
+            return;
+        }
+
+        int level = manager.GetUpgradeLevel(type);
+        int maxLevel = manager.GetMaxUpgradeLevel();
+        int nextCost = manager.GetUpgradeCost(type);
+        string displayName = MetaProgressionManager.GetUpgradeDisplayName(type);
+        string bonusSummary = manager.GetUpgradeBonusSummary(type);
 
         if (level >= maxLevel)
         {
-            upgradeDescriptionTexts[index].text = label + "  |  MAX";
+            upgradeDescriptionTexts[index].text = displayName + " Lv." + level + "/" + maxLevel + "\n"
+                + bonusSummary + "\nMAX";
         }
         else
         {
-            upgradeDescriptionTexts[index].text = label + "  |  Lv " + level + "  |  Cost " + nextCost;
+            upgradeDescriptionTexts[index].text = displayName + " Lv." + level + "/" + maxLevel + "\n"
+                + bonusSummary + "\nCost: " + nextCost;
         }
 
         if (buyButtons[index] != null)
         {
-            buyButtons[index].interactable = level < maxLevel && nextCost >= 0 && MetaProgressionData.TotalCoins >= nextCost;
+            bool canBuy = manager.CanBuyUpgrade(type);
+            buyButtons[index].interactable = canBuy;
+
+            TMP_Text buttonLabel = buyButtons[index].transform.Find("Label")?.GetComponent<TMP_Text>();
+
+            if (buttonLabel != null)
+            {
+                buttonLabel.text = level >= maxLevel ? "MAX" : "BUY";
+            }
         }
     }
 
     private void OnBuyUpgradeClicked(int index)
     {
-        bool purchased = index switch
+        MetaUpgradeType type = index switch
         {
-            0 => MetaProgressionData.TryPurchaseHPUpgrade(),
-            1 => MetaProgressionData.TryPurchaseDamageUpgrade(),
-            2 => MetaProgressionData.TryPurchaseSpeedUpgrade(),
-            3 => MetaProgressionData.TryPurchaseXPUpgrade(),
-            _ => false
+            0 => MetaUpgradeType.MaxHealth,
+            1 => MetaUpgradeType.Damage,
+            2 => MetaUpgradeType.MoveSpeed,
+            3 => MetaUpgradeType.PickupRange,
+            _ => MetaUpgradeType.MaxHealth
         };
 
-        if (!purchased) return;
+        if (!MetaProgressionManager.GetOrCreate().TryBuyUpgrade(type))
+        {
+            return;
+        }
 
         RefreshUpgradePanel();
         RefreshMainMenuCoinsText();

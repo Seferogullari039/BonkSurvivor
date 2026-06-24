@@ -233,7 +233,7 @@ public class FPSPlayerController : MonoBehaviour
 
         // Always recomputed from baseMoveSpeed so relic add/clear never permanently stacks.
         moveSpeed = baseMoveSpeed
-            * (1f + 0.05f * MetaProgressionData.UpgradeLevelSpeed)
+            * (1f + MetaProgressionManager.GetOrCreate().GetMoveSpeedBonusPercent())
             * RelicManager.MoveSpeedMultiplier
             * chestMoveSpeedMultiplier;
     }

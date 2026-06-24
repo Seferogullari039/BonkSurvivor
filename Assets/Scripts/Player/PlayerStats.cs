@@ -193,16 +193,29 @@ public class PlayerStats : MonoBehaviour
         laserBeamLevel++;
     }
 
-    public void ApplyMetaRunBonuses(int hpBonus, int damageBonus)
+    public void ApplyMetaProgressionBonuses()
     {
-        maxHealth += hpBonus;
-        currentHealth = maxHealth;
-        damage += damageBonus;
-    }
+        MetaProgressionManager manager = MetaProgressionManager.GetOrCreate();
 
-    public void SetMetaXpGainMultiplier(float multiplier)
-    {
-        metaXpGainMultiplier = Mathf.Max(1f, multiplier);
+        maxHealth = Mathf.Max(1, Mathf.RoundToInt(10f * (1f + manager.GetMaxHealthBonusPercent())));
+        currentHealth = maxHealth;
+        damage = Mathf.Max(1, Mathf.RoundToInt(1f * (1f + manager.GetDamageBonusPercent())));
+        metaXpGainMultiplier = 1f;
+
+        PlayerController playerController = GetComponent<PlayerController>();
+
+        if (playerController != null)
+        {
+            playerController.ApplyMetaMoveSpeedBonus(manager.GetMoveSpeedBonusPercent());
+        }
+
+        FPSPlayerController fpsPlayerController = GetComponent<FPSPlayerController>();
+        fpsPlayerController?.RefreshMoveSpeedFromStats();
+
+        UpgradeManager upgradeManager = UpgradeManager.GetOrCreateInstance();
+        upgradeManager.ApplyMetaPickupRangeBonus(manager.GetPickupRangeBonusPercent());
+
+        RefreshHUD();
     }
 
     public void IncreaseStarterWeaponFireRate(float percent)
@@ -244,10 +257,9 @@ public class PlayerStats : MonoBehaviour
         swordRmbDamageMultiplier = Mathf.Clamp(swordRmbDamageMultiplier * (1f + percent), 1f, 5f);
     }
 
-    public void ApplyMetaProgressionBonuses()
+    public void SetMetaXpGainMultiplier(float multiplier)
     {
-        MetaProgressionData.ApplyRunBonuses(this, GetComponent<PlayerController>());
-        RefreshHUD();
+        metaXpGainMultiplier = Mathf.Max(1f, multiplier);
     }
 
     public void ResetRunState()
@@ -398,7 +410,7 @@ public class PlayerStats : MonoBehaviour
             isDead = true;
             Debug.Log("GAME OVER");
 
-            MetaProgressionData.AddRunCoinsToTotal(coins);
+            MetaProgressionManager.GetOrCreate().AddMetaCoins(coins);
 
             if (GameOverManager.Instance != null)
             {

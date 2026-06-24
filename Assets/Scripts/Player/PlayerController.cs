@@ -18,9 +18,9 @@ public class PlayerController : MonoBehaviour
         moveSpeed = baseMoveSpeed;
     }
 
-    public void ApplyMetaMoveSpeedBonus(int upgradeLevel)
+    public void ApplyMetaMoveSpeedBonus(float bonusPercent)
     {
-        moveSpeed = baseMoveSpeed * (1f + 0.05f * upgradeLevel);
+        moveSpeed = baseMoveSpeed * (1f + Mathf.Max(0f, bonusPercent));
     }
 
     private void FixedUpdate()

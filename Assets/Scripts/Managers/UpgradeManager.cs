@@ -39,6 +39,11 @@ public class UpgradeManager : MonoBehaviour
         PickupRangeMultiplier *= 1f + percent;
     }
 
+    public void ApplyMetaPickupRangeBonus(float bonusPercent)
+    {
+        PickupRangeMultiplier = 1f + Mathf.Max(0f, bonusPercent);
+    }
+
     public void ResetForNewRun()
     {
         ProjectileSpeedMultiplier = 1f;

@@ -89,6 +89,7 @@ public static class RunStatsSummaryFormatter
         builder.AppendLine();
         builder.AppendLine("LOOT");
         builder.AppendLine("Coins: " + FormatNumber(snapshot.CoinsEarned));
+        builder.AppendLine("Added to Total Coins: +" + FormatNumber(snapshot.CoinsEarned));
         builder.AppendLine("XP: " + FormatNumber(snapshot.XpCollected));
         builder.AppendLine("Chests: " + snapshot.ChestsOpened);
         builder.AppendLine("Relics: " + snapshot.RelicsCollected);
