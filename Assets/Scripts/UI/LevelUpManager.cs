@@ -630,7 +630,9 @@ public class LevelUpManager : MonoBehaviour
 
         if (IsBonusReward(upgradeIndex))
         {
-            GetBonusCardContent(upgradeIndex, rarity, out string title, out string description, out string iconKey);
+            string bonusTitle = RewardCardTextFormatter.BuildBonusTitle(upgradeIndex, rarity);
+            string bonusDescription = RewardCardTextFormatter.BuildBonusDescription(upgradeIndex, rarity);
+            string iconKey = upgradeIndex == BonusRewardCoin ? "bonus_coins" : "bonus_heal";
 
             if (card == null)
             {
@@ -641,40 +643,34 @@ public class LevelUpManager : MonoBehaviour
                     _ => optionText3
                 };
 
-                string header = ChestLootSelectionUI.BuildRewardHeaderLabel(
-                    UpgradeOptionCatalog.GetRarityLabel(rarity),
-                    "BONUS",
-                    "GENERAL");
-                SetOptionText(fallbackText, $"{header}\n{title}\n{description}");
+                SetOptionText(fallbackText, RewardCardTextFormatter.BuildLegacyBonusLabel(upgradeIndex, rarity));
                 return;
             }
 
             if (card.RarityText != null)
             {
-                card.RarityText.text = UpgradeOptionCatalog.GetRarityLabel(rarity);
-                card.RarityText.color = UpgradeOptionCatalog.GetRarityColor(rarity);
+                card.RarityText.text = RewardCardTextFormatter.BuildBonusHeader();
+                card.RarityText.color = RewardCardTextFormatter.GetBonusHeaderColor();
             }
 
             if (card.CategoryText != null)
             {
-                card.CategoryText.text = "BONUS";
-                card.CategoryText.color = UpgradeOptionCatalog.GetCategoryColor(RewardCategory.Passive);
+                card.CategoryText.text = string.Empty;
             }
 
             if (card.BuildText != null)
             {
-                card.BuildText.text = "GENERAL";
-                card.BuildText.color = UpgradeOptionCatalog.GetBuildColor(WeaponBuildType.General);
+                card.BuildText.text = string.Empty;
             }
 
             if (card.TitleText != null)
             {
-                card.TitleText.text = title;
+                card.TitleText.text = bonusTitle;
             }
 
             if (card.DescriptionText != null)
             {
-                card.DescriptionText.text = description;
+                card.DescriptionText.text = bonusDescription;
             }
 
             ApplyCardIcon(card, iconKey);
@@ -691,42 +687,55 @@ public class LevelUpManager : MonoBehaviour
                 _ => optionText3
             };
 
-            SetOptionText(fallbackText, BuildLegacyOptionLabel(upgradeIndex, rarity));
+            int multiplier = GetRarityMultiplier(rarity);
+            UpgradeCardContent legacyContent = GetUpgradeCardContent(upgradeIndex, multiplier, null);
+
+            SetOptionText(
+                fallbackText,
+                RewardCardTextFormatter.BuildLegacyCardLabel(
+                    upgradeIndex,
+                    rarity,
+                    RewardCardTextFormatter.GetDisplayTitle(upgradeIndex, legacyContent.Title),
+                    legacyContent.Description));
             return;
         }
 
         int multiplier = GetRarityMultiplier(rarity);
         PlayerStats playerStats = FindPlayerStats();
         UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier, playerStats);
-        RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
-        WeaponBuildType buildType = UpgradeOptionCatalog.GetBuildType(upgradeIndex);
+        string displayTitle = RewardCardTextFormatter.GetDisplayTitle(upgradeIndex, content.Title);
+        string description = content.Description;
+
+        if (RewardCardTextFormatter.TryGetEvolutionRequirementLine(upgradeIndex, out string requirementLine))
+        {
+            description = requirementLine + "\n" + description;
+        }
 
         if (card.RarityText != null)
         {
-            card.RarityText.text = UpgradeOptionCatalog.GetRarityLabel(rarity);
+            card.RarityText.text = RewardCardTextFormatter.BuildHeader(upgradeIndex, rarity);
             card.RarityText.color = UpgradeOptionCatalog.GetRarityColor(rarity);
         }
 
         if (card.CategoryText != null)
         {
-            card.CategoryText.text = UpgradeOptionCatalog.GetCategoryLabel(category);
-            card.CategoryText.color = UpgradeOptionCatalog.GetCategoryColor(category);
+            card.CategoryText.text = RewardCardTextFormatter.BuildLevelLine(upgradeIndex);
+            card.CategoryText.color = RewardCardTextFormatter.GetLevelLineColor();
         }
 
         if (card.BuildText != null)
         {
-            card.BuildText.text = UpgradeOptionCatalog.GetBuildLabel(buildType);
-            card.BuildText.color = UpgradeOptionCatalog.GetBuildColor(buildType);
+            card.BuildText.text = string.Empty;
         }
 
         if (card.TitleText != null)
         {
-            card.TitleText.text = content.Title;
+            card.TitleText.text = displayTitle;
         }
 
         if (card.DescriptionText != null)
         {
-            card.DescriptionText.text = content.Description;
+            card.DescriptionText.text = description;
         }
 
         ApplyCardIcon(card, content.IconKey);
@@ -1117,17 +1126,6 @@ public class LevelUpManager : MonoBehaviour
     private static int GetRarityMultiplier(UpgradeRarity rarity)
     {
         return UpgradeOptionCatalog.GetRarityMultiplier(rarity);
-    }
-
-    private static string BuildLegacyOptionLabel(int upgradeIndex, UpgradeRarity rarity)
-    {
-        int multiplier = GetRarityMultiplier(rarity);
-        UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier, null);
-        string header = ChestLootSelectionUI.BuildRewardHeaderLabel(
-            UpgradeOptionCatalog.GetRarityLabel(rarity),
-            UpgradeOptionCatalog.GetCategoryLabel(UpgradeOptionCatalog.GetCategory(upgradeIndex)),
-            UpgradeOptionCatalog.GetBuildLabel(upgradeIndex));
-        return $"{header}\n{content.Title}\n{content.Description}";
     }
 
     private static UpgradeCardContent MakeContent(string title, string description, string iconKey)
@@ -1682,30 +1680,6 @@ public class LevelUpManager : MonoBehaviour
     private static bool IsBonusReward(int upgradeIndex)
     {
         return upgradeIndex == BonusRewardCoin || upgradeIndex == BonusRewardHeal;
-    }
-
-    private static void GetBonusCardContent(
-        int upgradeIndex,
-        UpgradeRarity rarity,
-        out string title,
-        out string description,
-        out string iconKey)
-    {
-        int multiplier = GetRarityMultiplier(rarity);
-
-        if (upgradeIndex == BonusRewardCoin)
-        {
-            int amount = 25 * multiplier;
-            title = "Coins";
-            description = "Gain +" + amount + " coins.";
-            iconKey = "bonus_coins";
-            return;
-        }
-
-        int healAmount = 25 * multiplier;
-        title = "Heal";
-        description = "Restore " + healAmount + " HP.";
-        iconKey = "bonus_heal";
     }
 
     private void ApplyBonusCoins(UpgradeRarity rarity)
