@@ -10,6 +10,21 @@ public class MerchantShrineUI : MonoBehaviour
     public const int BuildUpgradeCost = 100;
     public const int HealValue = 25;
 
+    private const float PanelWidth = 480f;
+    private const float PanelHeight = 360f;
+    private const float OptionRowWidth = 440f;
+    private const float OptionRowHeight = 50f;
+
+    private static readonly Color PanelBackgroundColor = new Color(0.04f, 0.05f, 0.09f, 0.94f);
+    private static readonly Color OptionRowBackgroundColor = new Color(0.09f, 0.11f, 0.16f, 0.98f);
+    private static readonly Color EnabledLabelColor = new Color(0.93f, 0.95f, 0.98f, 1f);
+    private static readonly Color DisabledLabelColor = new Color(0.74f, 0.78f, 0.84f, 1f);
+    private static readonly Color EnabledCostColor = new Color(0.94f, 0.84f, 0.44f, 1f);
+    private static readonly Color DisabledCostColor = new Color(0.62f, 0.6f, 0.54f, 1f);
+    private static readonly Color EnabledStatusColor = new Color(0.62f, 0.88f, 0.66f, 1f);
+    private static readonly Color DisabledStatusColor = new Color(0.78f, 0.7f, 0.58f, 1f);
+    private static readonly Color UnavailableStatusColor = new Color(0.7f, 0.76f, 0.86f, 1f);
+
     private static MerchantShrineUI instance;
 
     private GameObject panelRoot;
@@ -19,6 +34,7 @@ public class MerchantShrineUI : MonoBehaviour
     private readonly Button[] optionButtons = new Button[3];
     private readonly TMP_Text[] optionLabels = new TMP_Text[3];
     private readonly TMP_Text[] optionCostLabels = new TMP_Text[3];
+    private readonly TMP_Text[] optionStatusLabels = new TMP_Text[3];
     private readonly bool[] purchasedOptions = new bool[3];
 
     private MerchantShrineController sourceShrine;
@@ -187,42 +203,115 @@ public class MerchantShrineUI : MonoBehaviour
             0,
             "Heal +" + HealValue + " HP",
             HealCost,
-            !purchasedOptions[0] && playerStats.CurrentHealth < playerStats.EffectiveMaxHealth);
+            !purchasedOptions[0] && playerStats.CurrentHealth < playerStats.EffectiveMaxHealth,
+            "Full HP");
 
         RefreshOptionButton(
             1,
             "Random Chest Buff",
             ChestBuffCost,
-            !purchasedOptions[1]);
+            !purchasedOptions[1],
+            string.Empty);
 
         bool canUpgradeBuild = MerchantShrineShopUtility.CanUpgradeRandomBuildSlot();
         RefreshOptionButton(
             2,
-            "Upgrade Random Build Slot",
+            "Upgrade Build Slot",
             BuildUpgradeCost,
-            !purchasedOptions[2] && canUpgradeBuild);
+            !purchasedOptions[2] && canUpgradeBuild,
+            GetBuildUpgradeDisabledReason());
     }
 
-    private void RefreshOptionButton(int index, string label, int cost, bool available)
+    private static string GetBuildUpgradeDisabledReason()
+    {
+        RunBuildTracker tracker = RunBuildTracker.Instance;
+
+        if (tracker == null)
+        {
+            return "No build upgrade";
+        }
+
+        bool hasAnyBuild = false;
+        bool hasUpgradable = false;
+
+        for (int slot = 0; slot < RunBuildTracker.MaxSlotsPerCategory; slot++)
+        {
+            RunBuildSlotEntry skillEntry = tracker.GetSkillSlot(slot);
+            RunBuildSlotEntry passiveEntry = tracker.GetPassiveSlot(slot);
+
+            if (skillEntry != null)
+            {
+                hasAnyBuild = true;
+
+                if (!tracker.IsMaxed(skillEntry.UpgradeIndex))
+                {
+                    hasUpgradable = true;
+                }
+            }
+
+            if (passiveEntry != null)
+            {
+                hasAnyBuild = true;
+
+                if (!tracker.IsMaxed(passiveEntry.UpgradeIndex))
+                {
+                    hasUpgradable = true;
+                }
+            }
+        }
+
+        if (!hasAnyBuild)
+        {
+            return "No build upgrade";
+        }
+
+        if (!hasUpgradable)
+        {
+            return "All maxed";
+        }
+
+        return "No build upgrade";
+    }
+
+    private void RefreshOptionButton(int index, string optionName, int cost, bool available, string unavailableReason)
     {
         bool canAfford = playerStats != null && playerStats.Coins >= cost;
-        bool interactable = available && canAfford;
+        bool interactable = available && canAfford && !purchasedOptions[index];
 
         if (optionLabels[index] != null)
         {
-            string suffix = purchasedOptions[index] ? " (sold)" : !available ? " (unavailable)" : !canAfford ? " (need coins)" : string.Empty;
-            optionLabels[index].text = label + suffix;
-            optionLabels[index].color = interactable
-                ? new Color(0.9f, 0.92f, 0.96f, 1f)
-                : new Color(0.55f, 0.58f, 0.64f, 0.9f);
+            optionLabels[index].text = optionName;
+            optionLabels[index].color = interactable ? EnabledLabelColor : DisabledLabelColor;
         }
 
         if (optionCostLabels[index] != null)
         {
             optionCostLabels[index].text = cost.ToString();
-            optionCostLabels[index].color = interactable
-                ? new Color(0.92f, 0.82f, 0.42f, 1f)
-                : new Color(0.5f, 0.48f, 0.4f, 0.85f);
+            optionCostLabels[index].color = interactable ? EnabledCostColor : DisabledCostColor;
+        }
+
+        if (optionStatusLabels[index] != null)
+        {
+            string statusText = string.Empty;
+
+            if (purchasedOptions[index])
+            {
+                statusText = "Sold";
+                optionStatusLabels[index].color = EnabledStatusColor;
+            }
+            else if (!available)
+            {
+                statusText = string.IsNullOrEmpty(unavailableReason) ? "Unavailable" : unavailableReason;
+                optionStatusLabels[index].color = UnavailableStatusColor;
+            }
+            else if (!canAfford)
+            {
+                statusText = "Need " + cost + " coins";
+                optionStatusLabels[index].color = DisabledStatusColor;
+            }
+
+            optionStatusLabels[index].text = statusText;
+            optionStatusLabels[index].gameObject.SetActive(!string.IsNullOrEmpty(statusText));
         }
 
         if (optionButtons[index] != null)
@@ -330,33 +419,54 @@ public class MerchantShrineUI : MonoBehaviour
         panelRoot = panelObject;
 
         RectTransform panelRect = panelObject.AddComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(panelRect, Vector2.zero, new Vector2(460f, 430f));
+        UiLayoutUtility.SetAnchorCenter(panelRect, Vector2.zero, new Vector2(PanelWidth, PanelHeight));
+
+        Image panelBorder = CreatePanelBorder(panelObject.transform);
+        panelBorder.color = new Color(0.14f, 0.16f, 0.22f, 0.98f);
 
         Image panelImage = panelObject.AddComponent<Image>();
-        panelImage.color = new Color(0.05f, 0.06f, 0.1f, 0.92f);
+        panelImage.color = PanelBackgroundColor;
         panelImage.raycastTarget = true;
 
-        titleText = CreateText(panelObject.transform, "Title", new Vector2(0f, 168f), new Vector2(420f, 34f), 24f, FontStyles.Bold);
+        titleText = CreateText(panelObject.transform, "Title", new Vector2(0f, 142f), new Vector2(OptionRowWidth, 34f), 24f, FontStyles.Bold);
         titleText.text = "MYSTIC MERCHANT";
         titleText.color = new Color(0.86f, 0.78f, 0.98f, 1f);
         titleText.alignment = TextAlignmentOptions.Center;
 
-        coinsText = CreateText(panelObject.transform, "Coins", new Vector2(0f, 132f), new Vector2(420f, 26f), 18f, FontStyles.Normal);
+        coinsText = CreateText(panelObject.transform, "Coins", new Vector2(0f, 108f), new Vector2(OptionRowWidth, 26f), 18f, FontStyles.Normal);
         coinsText.alignment = TextAlignmentOptions.Center;
         coinsText.color = new Color(0.92f, 0.84f, 0.48f, 1f);
 
-        CreateOptionRow(panelObject.transform, 0, "Option0", new Vector2(0f, 72f), () => OnOptionClicked(0));
-        CreateOptionRow(panelObject.transform, 1, "Option1", new Vector2(0f, 18f), () => OnOptionClicked(1));
-        CreateOptionRow(panelObject.transform, 2, "Option2", new Vector2(0f, -36f), () => OnOptionClicked(2));
+        CreateOptionRow(panelObject.transform, 0, "Option0", new Vector2(0f, 52f), () => OnOptionClicked(0));
+        CreateOptionRow(panelObject.transform, 1, "Option1", new Vector2(0f, -4f), () => OnOptionClicked(1));
+        CreateOptionRow(panelObject.transform, 2, "Option2", new Vector2(0f, -60f), () => OnOptionClicked(2));
 
-        resultText = CreateText(panelObject.transform, "Result", new Vector2(0f, -92f), new Vector2(420f, 24f), 14f, FontStyles.Italic);
+        resultText = CreateText(panelObject.transform, "Result", new Vector2(0f, -118f), new Vector2(OptionRowWidth, 24f), 14f, FontStyles.Italic);
         resultText.alignment = TextAlignmentOptions.Center;
         resultText.color = new Color(0.72f, 0.9f, 0.74f, 1f);
+        resultText.overflowMode = TextOverflowModes.Overflow;
 
-        Button leaveButton = CreateButton(panelObject.transform, "LeaveButton", new Vector2(0f, -142f), new Vector2(180f, 38f), "Leave", Close);
-        leaveButton.GetComponent<Image>().color = new Color(0.16f, 0.18f, 0.24f, 0.95f);
+        Button leaveButton = CreateButton(panelObject.transform, "LeaveButton", new Vector2(0f, -158f), new Vector2(200f, 40f), "Leave", Close);
+        leaveButton.GetComponent<Image>().color = new Color(0.16f, 0.18f, 0.24f, 1f);
 
         isBuilt = true;
+    }
+
+    private static Image CreatePanelBorder(Transform parent)
+    {
+        GameObject borderObject = new GameObject("PanelBorder");
+        borderObject.transform.SetParent(parent, false);
+        borderObject.transform.SetAsFirstSibling();
+
+        RectTransform borderRect = borderObject.AddComponent<RectTransform>();
+        borderRect.anchorMin = Vector2.zero;
+        borderRect.anchorMax = Vector2.one;
+        borderRect.offsetMin = new Vector2(-2f, -2f);
+        borderRect.offsetMax = new Vector2(2f, 2f);
+
+        Image borderImage = borderObject.AddComponent<Image>();
+        borderImage.raycastTarget = false;
+        return borderImage;
     }
 
     private void CreateOptionRow(Transform parent, int index, string rowName, Vector2 anchoredPosition, UnityEngine.Events.UnityAction onClick)
@@ -365,17 +475,24 @@ public class MerchantShrineUI : MonoBehaviour
         rowObject.transform.SetParent(parent, false);
 
         RectTransform rowRect = rowObject.AddComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(rowRect, anchoredPosition, new Vector2(420f, 42f));
+        UiLayoutUtility.SetAnchorCenter(rowRect, anchoredPosition, new Vector2(OptionRowWidth, OptionRowHeight));
 
-        Button button = CreateButton(rowObject.transform, "Button", Vector2.zero, new Vector2(420f, 42f), string.Empty, onClick);
+        Button button = CreateButton(rowObject.transform, "Button", Vector2.zero, new Vector2(OptionRowWidth, OptionRowHeight), string.Empty, onClick);
         optionButtons[index] = button;
-        button.GetComponent<Image>().color = new Color(0.11f, 0.13f, 0.18f, 0.95f);
+        button.GetComponent<Image>().color = OptionRowBackgroundColor;
 
-        optionLabels[index] = CreateText(rowObject.transform, "Label", new Vector2(-150f, 0f), new Vector2(260f, 34f), 15f, FontStyles.Normal);
+        optionLabels[index] = CreateText(rowObject.transform, "Label", new Vector2(-188f, 8f), new Vector2(300f, 22f), 16f, FontStyles.Bold);
         optionLabels[index].alignment = TextAlignmentOptions.MidlineLeft;
+        optionLabels[index].overflowMode = TextOverflowModes.Overflow;
 
-        optionCostLabels[index] = CreateText(rowObject.transform, "Cost", new Vector2(170f, 0f), new Vector2(60f, 34f), 16f, FontStyles.Bold);
+        optionCostLabels[index] = CreateText(rowObject.transform, "Cost", new Vector2(188f, 8f), new Vector2(72f, 22f), 17f, FontStyles.Bold);
         optionCostLabels[index].alignment = TextAlignmentOptions.MidlineRight;
+        optionCostLabels[index].overflowMode = TextOverflowModes.Overflow;
+
+        optionStatusLabels[index] = CreateText(rowObject.transform, "Status", new Vector2(-188f, -14f), new Vector2(360f, 18f), 12.5f, FontStyles.Normal);
+        optionStatusLabels[index].alignment = TextAlignmentOptions.MidlineLeft;
+        optionStatusLabels[index].overflowMode = TextOverflowModes.Overflow;
+        optionStatusLabels[index].gameObject.SetActive(false);
     }
 
     private static TMP_Text CreateText(
