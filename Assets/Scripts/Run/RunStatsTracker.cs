@@ -71,49 +71,42 @@ public static class RunStatsSummaryFormatter
 {
     public static string Format(RunStatsSnapshot snapshot)
     {
+        return FormatLeftColumn(snapshot) + "\n\n" + FormatRightColumn(snapshot);
+    }
+
+    public static string FormatLeftColumn(RunStatsSnapshot snapshot)
+    {
         StringBuilder builder = new StringBuilder();
-
-        builder.AppendLine("Time Survived: " + FormatTime(snapshot.TimeSurvived));
-        builder.AppendLine("Wave Reached: " + snapshot.WaveReached);
-        builder.AppendLine("Level Reached: " + snapshot.LevelReached);
-        builder.AppendLine("Enemies Killed: " + snapshot.EnemiesKilled);
-        builder.AppendLine("Elites Killed: " + snapshot.ElitesKilled);
-        builder.AppendLine("Bosses Killed: " + snapshot.BossesKilled);
+        builder.AppendLine("RUN");
+        builder.AppendLine("Time: " + FormatTime(snapshot.TimeSurvived));
+        builder.AppendLine("Wave: " + snapshot.WaveReached);
+        builder.AppendLine("Level: " + snapshot.LevelReached);
         builder.AppendLine();
-        builder.AppendLine("Coins Earned: " + FormatNumber(snapshot.CoinsEarned));
-        builder.AppendLine("XP Collected: " + FormatNumber(snapshot.XpCollected));
-        builder.AppendLine("Chests Opened: " + snapshot.ChestsOpened);
-        builder.AppendLine("Relics Collected: " + snapshot.RelicsCollected);
-
-        if (snapshot.EvolutionNames != null && snapshot.EvolutionNames.Count > 0)
-        {
-            builder.Append("Evolutions: ");
-
-            for (int i = 0; i < snapshot.EvolutionNames.Count; i++)
-            {
-                if (i > 0)
-                {
-                    builder.Append(", ");
-                }
-
-                builder.Append(snapshot.EvolutionNames[i]);
-            }
-
-            builder.AppendLine();
-        }
-        else
-        {
-            builder.AppendLine("Evolutions: None");
-        }
-
+        builder.AppendLine("KILLS");
+        builder.AppendLine("Enemies: " + snapshot.EnemiesKilled);
+        builder.AppendLine("Elites: " + snapshot.ElitesKilled);
+        builder.AppendLine("Bosses: " + snapshot.BossesKilled);
         builder.AppendLine();
+        builder.AppendLine("LOOT");
+        builder.AppendLine("Coins: " + FormatNumber(snapshot.CoinsEarned));
+        builder.AppendLine("XP: " + FormatNumber(snapshot.XpCollected));
+        builder.AppendLine("Chests: " + snapshot.ChestsOpened);
+        builder.AppendLine("Relics: " + snapshot.RelicsCollected);
+        builder.AppendLine("Evolutions: " + FormatEvolutionList(snapshot.EvolutionNames));
+        return builder.ToString().TrimEnd();
+    }
+
+    public static string FormatRightColumn(RunStatsSnapshot snapshot)
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.AppendLine("COMBAT");
         builder.AppendLine("Damage Dealt: " + FormatNumber(Mathf.RoundToInt(snapshot.DamageDealt)));
         builder.AppendLine("Damage Taken: " + FormatNumber(Mathf.RoundToInt(snapshot.DamageTaken)));
 
         if (snapshot.TopDamageSources != null && snapshot.TopDamageSources.Count > 0)
         {
             builder.AppendLine();
-            builder.AppendLine("Top Damage");
+            builder.AppendLine("TOP DAMAGE");
 
             for (int i = 0; i < snapshot.TopDamageSources.Count; i++)
             {
@@ -125,18 +118,28 @@ public static class RunStatsSummaryFormatter
         if (!string.IsNullOrEmpty(snapshot.BuildSummary))
         {
             builder.AppendLine();
-            builder.AppendLine("Build");
+            builder.AppendLine("BUILD");
             builder.AppendLine(snapshot.BuildSummary);
         }
 
         if (!string.IsNullOrEmpty(snapshot.ChestBuffSummary))
         {
             builder.AppendLine();
-            builder.AppendLine("Chest Buffs");
+            builder.AppendLine("CHEST BUFFS");
             builder.AppendLine(snapshot.ChestBuffSummary);
         }
 
         return builder.ToString().TrimEnd();
+    }
+
+    private static string FormatEvolutionList(IReadOnlyList<string> evolutionNames)
+    {
+        if (evolutionNames == null || evolutionNames.Count == 0)
+        {
+            return "None";
+        }
+
+        return string.Join(", ", evolutionNames);
     }
 
     public static string FormatTime(float seconds)
@@ -160,6 +163,7 @@ public class RunStatsTracker : MonoBehaviour
     private const int TopDamageSourceCount = 3;
 
     private float runStartTime;
+    private float cachedTimeSurvived;
     private bool runActive;
 
     private int enemiesKilled;
@@ -223,7 +227,8 @@ public class RunStatsTracker : MonoBehaviour
     {
         ClearRun();
         runActive = true;
-        runStartTime = Time.time;
+        runStartTime = Time.unscaledTime;
+        cachedTimeSurvived = 0f;
         levelReached = 1;
         waveReached = 1;
         SubscribeEvolutions();
@@ -231,6 +236,11 @@ public class RunStatsTracker : MonoBehaviour
 
     public void EndRun()
     {
+        if (runActive && runStartTime > 0f)
+        {
+            cachedTimeSurvived = Mathf.Max(0f, Time.unscaledTime - runStartTime);
+        }
+
         runActive = false;
         UnsubscribeEvolutions();
     }
@@ -355,7 +365,12 @@ public class RunStatsTracker : MonoBehaviour
 
     public RunStatsSnapshot CreateSnapshot()
     {
-        float timeSurvived = runActive ? Mathf.Max(0f, Time.time - runStartTime) : 0f;
+        float timeSurvived = cachedTimeSurvived;
+
+        if (timeSurvived <= 0f && runStartTime > 0f)
+        {
+            timeSurvived = Mathf.Max(0f, Time.unscaledTime - runStartTime);
+        }
 
         BuildEvolutionNameCache();
         BuildTopDamageCache();
@@ -384,6 +399,7 @@ public class RunStatsTracker : MonoBehaviour
     {
         runActive = false;
         runStartTime = 0f;
+        cachedTimeSurvived = 0f;
         enemiesKilled = 0;
         elitesKilled = 0;
         bossesKilled = 0;

@@ -53,7 +53,7 @@ public class PlayerStats : MonoBehaviour
     public bool IsDead => isDead;
 
     public int CurrentLevel => currentLevel;
-    public int CurrentHealth => currentHealth;
+    public int CurrentHealth => Mathf.Max(0, currentHealth);
     public int CurrentXP => currentXP;
     public int XPToNextLevel => xpToNextLevel;
     public int Coins => coins;
@@ -371,7 +371,7 @@ public class PlayerStats : MonoBehaviour
 
         if (HUDManager.Instance != null)
         {
-            HUDManager.Instance.UpdateHP(currentHealth, EffectiveMaxHealth);
+            HUDManager.Instance.UpdateHP(CurrentHealth, EffectiveMaxHealth);
         }
     }
 
@@ -386,7 +386,7 @@ public class PlayerStats : MonoBehaviour
 
         if (HUDManager.Instance != null)
         {
-            HUDManager.Instance.UpdateHP(currentHealth, EffectiveMaxHealth);
+            HUDManager.Instance.UpdateHP(CurrentHealth, EffectiveMaxHealth);
         }
 
         // FPSScreenShake.Shake(0.025f, 0.12f);
@@ -541,7 +541,7 @@ public class PlayerStats : MonoBehaviour
 
         if (HUDManager.Instance != null)
         {
-            HUDManager.Instance.UpdateHP(currentHealth, EffectiveMaxHealth);
+            HUDManager.Instance.UpdateHP(CurrentHealth, EffectiveMaxHealth);
         }
     }
 
@@ -582,7 +582,7 @@ public class PlayerStats : MonoBehaviour
     {
         if (HUDManager.Instance == null) return;
 
-        HUDManager.Instance.UpdateHP(currentHealth, EffectiveMaxHealth);
+        HUDManager.Instance.UpdateHP(CurrentHealth, EffectiveMaxHealth);
         HUDManager.Instance.UpdateXP(currentXP, xpToNextLevel);
         HUDManager.Instance.UpdateLevel(currentLevel);
         HUDManager.Instance.UpdateXPBar(currentXP, xpToNextLevel);
