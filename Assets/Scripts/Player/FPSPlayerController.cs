@@ -15,6 +15,15 @@ public class FPSPlayerController : MonoBehaviour
     private const float AirControlMultiplier = 0.55f;
     private const float MaxAirSpeed = 9f;
     private const float DashMomentumRetention = 0.72f;
+    private const float CrouchCameraOffset = -0.35f;
+    private const float CrouchHeightMultiplier = 0.62f;
+    private const float CrouchSpeedMultiplier = 0.65f;
+    private const float CrouchSmoothSpeed = 10f;
+    private const float SlideDuration = 0.45f;
+    private const float SlideCooldown = 0.9f;
+    private const float SlideSpeedMultiplier = 1.35f;
+    private const float MinSlideInputThreshold = 0.2f;
+    private const float SlideEndSpeedRetention = 0.85f;
 
     [SerializeField] private float moveSpeed = 5f;
     [SerializeField] private float mouseSensitivity = 2f;
@@ -41,6 +50,14 @@ public class FPSPlayerController : MonoBehaviour
     private float verticalVelocity;
     private Vector3 horizontalVelocity;
     private float dashSpeed;
+    private float standingHeight;
+    private float standingCenterY;
+    private float standingEyeHeight;
+    private float stanceBlend;
+    private bool isSliding;
+    private float slideTimer;
+    private float slideCooldownTimer;
+    private Vector3 slideDirection;
 
     private Transform savedCameraParent;
     private Vector3 savedCameraWorldPosition;
@@ -69,6 +86,10 @@ public class FPSPlayerController : MonoBehaviour
         characterController.radius = 0.4f;
         characterController.center = new Vector3(0f, 0.9f, 0f);
         characterController.enabled = false;
+
+        standingHeight = characterController.height;
+        standingCenterY = characterController.center.y;
+        standingEyeHeight = eyeHeight;
 
         if (cameraTransform == null && Camera.main != null)
         {
@@ -110,10 +131,50 @@ public class FPSPlayerController : MonoBehaviour
 
         if (HandleDash())
         {
+            UpdateStance();
             return;
         }
 
+        if (HandleSlide())
+        {
+            UpdateStance();
+            return;
+        }
+
+        UpdateStance();
         HandleMovement();
+    }
+
+    private static bool ShouldBlockMovementInput()
+    {
+        if (DevAdminPanel.IsOpen)
+        {
+            return true;
+        }
+
+        if (GameOverManager.Instance != null && GameOverManager.Instance.IsGameOverActive)
+        {
+            return true;
+        }
+
+        if (PauseMenuManager.IsGameplayPaused)
+        {
+            return true;
+        }
+
+        if (ChestRevealPause.IsPaused)
+        {
+            return true;
+        }
+
+        LevelUpManager levelUpManager = LevelUpManager.Instance;
+
+        if (levelUpManager != null && levelUpManager.BlocksGameplayPause)
+        {
+            return true;
+        }
+
+        return false;
     }
 
     private void SetFpsMode(bool active)
@@ -130,6 +191,10 @@ public class FPSPlayerController : MonoBehaviour
             IsInvulnerable = false;
             verticalVelocity = 0f;
             horizontalVelocity = Vector3.zero;
+            isSliding = false;
+            slideTimer = 0f;
+            slideCooldownTimer = 0f;
+            stanceBlend = 0f;
         }
 
         if (topDownController != null)
@@ -174,8 +239,13 @@ public class FPSPlayerController : MonoBehaviour
             RefreshMoveSpeed();
             verticalVelocity = 0f;
             horizontalVelocity = Vector3.zero;
+            stanceBlend = 0f;
+            isSliding = false;
+            slideTimer = 0f;
+            slideCooldownTimer = 0f;
+            ResetStandingCollider();
             cameraTransform.SetParent(transform, false);
-            cameraTransform.localPosition = new Vector3(0f, eyeHeight, 0f);
+            cameraTransform.localPosition = new Vector3(0f, standingEyeHeight, 0f);
             cameraTransform.localRotation = Quaternion.identity;
             pitch = 0f;
         }
@@ -215,7 +285,7 @@ public class FPSPlayerController : MonoBehaviour
         if (cameraTransform.parent != transform)
         {
             cameraTransform.SetParent(transform, false);
-            cameraTransform.localPosition = new Vector3(0f, eyeHeight, 0f);
+            cameraTransform.localPosition = new Vector3(0f, standingEyeHeight + CrouchCameraOffset * stanceBlend, 0f);
             cameraTransform.localRotation = Quaternion.identity;
             pitch = 0f;
         }
@@ -313,7 +383,7 @@ public class FPSPlayerController : MonoBehaviour
             return true;
         }
 
-        if (!Input.GetKeyDown(KeyCode.LeftShift) || dashCooldownTimer > 0f)
+        if (!Input.GetKeyDown(KeyCode.LeftShift) || dashCooldownTimer > 0f || IsCrouchKeyHeld())
         {
             return false;
         }
@@ -370,9 +440,195 @@ public class FPSPlayerController : MonoBehaviour
         return direction.normalized;
     }
 
+    private bool HandleSlide()
+    {
+        if (slideCooldownTimer > 0f)
+        {
+            slideCooldownTimer -= Time.deltaTime;
+        }
+
+        if (isSliding)
+        {
+            slideTimer -= Time.deltaTime;
+            ApplyGravity();
+
+            float slideSpeed = moveSpeed * SlideSpeedMultiplier;
+            Vector3 slideMove = slideDirection * slideSpeed;
+            slideMove.y = verticalVelocity;
+            characterController.Move(slideMove * Time.deltaTime);
+
+            if (slideTimer <= 0f)
+            {
+                EndSlide();
+            }
+
+            return true;
+        }
+
+        TryStartSlide();
+        return false;
+    }
+
+    private void TryStartSlide()
+    {
+        if (ShouldBlockMovementInput()
+            || characterController == null
+            || !characterController.isGrounded
+            || isDashing
+            || slideCooldownTimer > 0f)
+        {
+            return;
+        }
+
+        if (!Input.GetKey(KeyCode.LeftShift) || !IsCrouchKeyHeld())
+        {
+            return;
+        }
+
+        Vector3 inputDirection = GetMoveInputDirection();
+
+        if (inputDirection.sqrMagnitude < MinSlideInputThreshold * MinSlideInputThreshold)
+        {
+            return;
+        }
+
+        bool controlPressed = Input.GetKeyDown(KeyCode.LeftControl) || Input.GetKeyDown(KeyCode.C);
+        bool shiftPressed = Input.GetKeyDown(KeyCode.LeftShift);
+
+        if (!controlPressed && !shiftPressed)
+        {
+            return;
+        }
+
+        slideDirection = inputDirection;
+        isSliding = true;
+        slideTimer = SlideDuration;
+        horizontalVelocity = slideDirection * moveSpeed * SlideSpeedMultiplier;
+    }
+
+    private void EndSlide()
+    {
+        isSliding = false;
+        slideCooldownTimer = SlideCooldown;
+
+        float endSpeed = moveSpeed * SlideEndSpeedRetention;
+        horizontalVelocity = slideDirection * endSpeed;
+
+        if (horizontalVelocity.magnitude > moveSpeed)
+        {
+            horizontalVelocity = horizontalVelocity.normalized * moveSpeed;
+        }
+    }
+
+    private static bool IsCrouchKeyHeld()
+    {
+        return Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.C);
+    }
+
+    private bool WantsCrouch()
+    {
+        if (ShouldBlockMovementInput())
+        {
+            return stanceBlend > 0.5f;
+        }
+
+        if (isSliding)
+        {
+            return true;
+        }
+
+        if (IsCrouchKeyHeld())
+        {
+            return true;
+        }
+
+        return !CanStandUp();
+    }
+
+    private void UpdateStance()
+    {
+        if (characterController == null || cameraTransform == null)
+        {
+            return;
+        }
+
+        float targetBlend = WantsCrouch() ? 1f : 0f;
+        stanceBlend = Mathf.MoveTowards(stanceBlend, targetBlend, CrouchSmoothSpeed * Time.deltaTime);
+
+        float targetHeight = Mathf.Lerp(standingHeight, standingHeight * CrouchHeightMultiplier, stanceBlend);
+        ApplyControllerHeight(targetHeight);
+
+        float targetEyeHeight = standingEyeHeight + CrouchCameraOffset * stanceBlend;
+        Vector3 cameraLocalPosition = cameraTransform.localPosition;
+        cameraLocalPosition.y = Mathf.Lerp(cameraLocalPosition.y, targetEyeHeight, 1f - Mathf.Exp(-CrouchSmoothSpeed * Time.deltaTime));
+        cameraTransform.localPosition = cameraLocalPosition;
+    }
+
+    private void ApplyControllerHeight(float targetHeight)
+    {
+        float previousHeight = characterController.height;
+
+        if (Mathf.Approximately(previousHeight, targetHeight))
+        {
+            return;
+        }
+
+        float bottomY = transform.position.y + characterController.center.y - previousHeight * 0.5f;
+        characterController.height = targetHeight;
+        characterController.center = new Vector3(0f, targetHeight * 0.5f, 0f);
+
+        float newPositionY = bottomY + targetHeight * 0.5f - characterController.center.y;
+        Vector3 position = transform.position;
+        position.y = newPositionY;
+        transform.position = position;
+    }
+
+    private void ResetStandingCollider()
+    {
+        if (characterController == null)
+        {
+            return;
+        }
+
+        characterController.height = standingHeight;
+        characterController.center = new Vector3(0f, standingCenterY, 0f);
+    }
+
+    private bool CanStandUp()
+    {
+        if (characterController == null)
+        {
+            return true;
+        }
+
+        float radius = Mathf.Max(0.05f, characterController.radius - 0.05f);
+        Vector3 sphereOrigin = transform.position + Vector3.up * (standingHeight - radius);
+        return !Physics.CheckSphere(sphereOrigin, radius, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+    }
+
+    private float GetCurrentMoveSpeed()
+    {
+        if (isSliding)
+        {
+            return moveSpeed * SlideSpeedMultiplier;
+        }
+
+        if (stanceBlend > 0.01f || WantsCrouch())
+        {
+            return moveSpeed * CrouchSpeedMultiplier;
+        }
+
+        return moveSpeed;
+    }
+
     private void HandleMovement()
     {
         if (characterController == null) return;
+
+        if (ShouldBlockMovementInput())
+        {
+            return;
+        }
 
         bool isGrounded = characterController.isGrounded;
 
@@ -388,7 +644,8 @@ public class FPSPlayerController : MonoBehaviour
         }
 
         Vector3 inputDirection = GetMoveInputDirection();
-        UpdateHorizontalVelocity(inputDirection, isGrounded);
+        float currentMoveSpeed = GetCurrentMoveSpeed();
+        UpdateHorizontalVelocity(inputDirection, isGrounded, currentMoveSpeed);
         ApplyGravity();
 
         Vector3 move = horizontalVelocity;
@@ -414,13 +671,13 @@ public class FPSPlayerController : MonoBehaviour
         return (transform.right * horizontal + transform.forward * vertical).normalized;
     }
 
-    private void UpdateHorizontalVelocity(Vector3 inputDirection, bool isGrounded)
+    private void UpdateHorizontalVelocity(Vector3 inputDirection, bool isGrounded, float currentMoveSpeed)
     {
         if (isGrounded)
         {
             if (inputDirection.sqrMagnitude > 0.001f)
             {
-                horizontalVelocity = inputDirection * moveSpeed;
+                horizontalVelocity = inputDirection * currentMoveSpeed;
             }
             else
             {
@@ -430,12 +687,12 @@ public class FPSPlayerController : MonoBehaviour
             return;
         }
 
-        Vector3 wishVelocity = inputDirection * moveSpeed;
+        Vector3 wishVelocity = inputDirection * currentMoveSpeed;
         Vector3 currentFlat = new Vector3(horizontalVelocity.x, 0f, horizontalVelocity.z);
         Vector3 nextFlat = Vector3.MoveTowards(
             currentFlat,
             wishVelocity,
-            moveSpeed * AirControlMultiplier * Time.deltaTime * 12f
+            currentMoveSpeed * AirControlMultiplier * Time.deltaTime * 12f
         );
 
         if (nextFlat.magnitude > MaxAirSpeed)
