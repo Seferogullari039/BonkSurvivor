@@ -410,7 +410,9 @@ public class PlayerStats : MonoBehaviour
             isDead = true;
             Debug.Log("GAME OVER");
 
-            MetaProgressionManager.GetOrCreate().AddMetaCoins(coins);
+            int metaCoinsToAdd = Mathf.Max(0, coins);
+            RunStatsTracker.GetOrCreate().RecordMetaCoinsAdded(metaCoinsToAdd);
+            MetaProgressionManager.GetOrCreate().AddMetaCoins(metaCoinsToAdd);
 
             if (GameOverManager.Instance != null)
             {

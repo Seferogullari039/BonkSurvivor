@@ -14,6 +14,7 @@ public readonly struct RunStatsSnapshot
         int bossesKilled,
         int chestsOpened,
         int coinsEarned,
+        int metaCoinsAdded,
         int xpCollected,
         int relicsCollected,
         int evolutionsUnlocked,
@@ -32,6 +33,7 @@ public readonly struct RunStatsSnapshot
         BossesKilled = bossesKilled;
         ChestsOpened = chestsOpened;
         CoinsEarned = coinsEarned;
+        MetaCoinsAdded = metaCoinsAdded;
         XpCollected = xpCollected;
         RelicsCollected = relicsCollected;
         EvolutionsUnlocked = evolutionsUnlocked;
@@ -51,6 +53,7 @@ public readonly struct RunStatsSnapshot
     public int BossesKilled { get; }
     public int ChestsOpened { get; }
     public int CoinsEarned { get; }
+    public int MetaCoinsAdded { get; }
     public int XpCollected { get; }
     public int RelicsCollected { get; }
     public int EvolutionsUnlocked { get; }
@@ -89,7 +92,7 @@ public static class RunStatsSummaryFormatter
         builder.AppendLine();
         builder.AppendLine("LOOT");
         builder.AppendLine("Coins: " + FormatNumber(snapshot.CoinsEarned));
-        builder.AppendLine("Added to Total Coins: +" + FormatNumber(snapshot.CoinsEarned));
+        builder.AppendLine("Added to Total Coins: +" + FormatNumber(GetMetaCoinsAddedForSummary(snapshot)));
         builder.AppendLine("XP: " + FormatNumber(snapshot.XpCollected));
         builder.AppendLine("Chests: " + snapshot.ChestsOpened);
         builder.AppendLine("Relics: " + snapshot.RelicsCollected);
@@ -155,6 +158,16 @@ public static class RunStatsSummaryFormatter
     {
         return value.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
     }
+
+    private static int GetMetaCoinsAddedForSummary(RunStatsSnapshot snapshot)
+    {
+        if (snapshot.MetaCoinsAdded >= 0)
+        {
+            return snapshot.MetaCoinsAdded;
+        }
+
+        return snapshot.CoinsEarned;
+    }
 }
 
 public class RunStatsTracker : MonoBehaviour
@@ -172,6 +185,7 @@ public class RunStatsTracker : MonoBehaviour
     private int bossesKilled;
     private int chestsOpened;
     private int coinsEarned;
+    private int metaCoinsAdded = -1;
     private int xpCollected;
     private int levelReached = 1;
     private int waveReached = 1;
@@ -285,6 +299,11 @@ public class RunStatsTracker : MonoBehaviour
         coinsEarned += amount;
     }
 
+    public void RecordMetaCoinsAdded(int amount)
+    {
+        metaCoinsAdded = Mathf.Max(0, amount);
+    }
+
     public void RecordXpCollected(int amount)
     {
         if (!runActive || amount <= 0)
@@ -385,6 +404,7 @@ public class RunStatsTracker : MonoBehaviour
             bossesKilled,
             chestsOpened,
             coinsEarned,
+            metaCoinsAdded,
             xpCollected,
             relicsCollected,
             unlockedEvolutions.Count,
@@ -406,6 +426,7 @@ public class RunStatsTracker : MonoBehaviour
         bossesKilled = 0;
         chestsOpened = 0;
         coinsEarned = 0;
+        metaCoinsAdded = -1;
         xpCollected = 0;
         levelReached = 1;
         waveReached = 1;
