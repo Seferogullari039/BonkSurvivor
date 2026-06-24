@@ -7,6 +7,15 @@ public static class UpgradeOptionCatalog
     public const int DefaultEvolutionRequiredSkillLevel = 10;
     public const int DefaultEvolutionRequiredPassiveLevel = 5;
 
+    public const int RocketLauncherIndex = 7;
+    public const int LaserBeamIndex = 9;
+    public const int FrostSigilIndex = 15;
+    public const int CryoCoreIndex = 16;
+    public const int ShadowRiftIndex = 17;
+    public const int VoidCatalystIndex = 18;
+
+    public static int OptionCount => Options.Length;
+
     public readonly struct OptionMetadata
     {
         public OptionMetadata(
@@ -69,7 +78,11 @@ public static class UpgradeOptionCatalog
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Epic, WeaponBuildType.Sword),         // 11 Whirlwind Training
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Epic, WeaponBuildType.Bow),           // 12 Arrow Storm
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Epic, WeaponBuildType.FireStaff),     // 13 Inferno Ritual
-        new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Epic, WeaponBuildType.Sword)          // 14 Blade Tempest
+        new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Epic, WeaponBuildType.Sword),         // 14 Blade Tempest
+        new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Rare, WeaponBuildType.General),       // 15 Frost Sigil
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.General, 5), // 16 Cryo Core
+        new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Rare, WeaponBuildType.General),       // 17 Shadow Rift
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.General, 5)   // 18 Void Catalyst
     };
 
     private static readonly EvolutionRequirement[] EvolutionRequirements =
@@ -101,8 +114,38 @@ public static class UpgradeOptionCatalog
             DefaultEvolutionRequiredSkillLevel,
             3,
             DefaultEvolutionRequiredPassiveLevel,
-            "Blade Tempest Evolution")
+            "Blade Tempest Evolution"),
+        new EvolutionRequirement(
+            BuildEvolutionId.GlacialPrison,
+            FrostSigilIndex,
+            DefaultEvolutionRequiredSkillLevel,
+            CryoCoreIndex,
+            DefaultEvolutionRequiredPassiveLevel,
+            "Glacial Prison"),
+        new EvolutionRequirement(
+            BuildEvolutionId.AbyssSingularity,
+            ShadowRiftIndex,
+            DefaultEvolutionRequiredSkillLevel,
+            VoidCatalystIndex,
+            DefaultEvolutionRequiredPassiveLevel,
+            "Abyss Singularity")
     };
+
+    public static bool CanOfferInRewardPool(int upgradeIndex)
+    {
+        // Legacy/disabled for now. Kept for possible future reuse.
+        if (upgradeIndex == RocketLauncherIndex || upgradeIndex == LaserBeamIndex)
+        {
+            return false;
+        }
+
+        if (upgradeIndex < 0 || upgradeIndex >= Options.Length)
+        {
+            return false;
+        }
+
+        return true;
+    }
 
     public static OptionMetadata GetMetadata(int upgradeIndex)
     {
@@ -344,6 +387,10 @@ public static class UpgradeOptionCatalog
         "Whirlwind",
         "Arrow",
         "Inferno",
-        "Blade"
+        "Blade",
+        "Frost Sigil",
+        "Cryo Core",
+        "Shadow Rift",
+        "Void Catalyst"
     };
 }

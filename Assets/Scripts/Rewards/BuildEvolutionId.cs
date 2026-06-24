@@ -4,5 +4,7 @@ public enum BuildEvolutionId
     FlameOrbit,
     CataclysmMeteor,
     StormArrows,
-    BladeTempestEvolution
+    BladeTempestEvolution,
+    GlacialPrison,
+    AbyssSingularity
 }

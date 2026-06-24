@@ -130,6 +130,16 @@ public class WeaponManager : MonoBehaviour
         laserBeamWeapon.SetAudioClip(ResolveLaserFireClipForWeapon(), GetLaserVolumeFromPrefab());
         laserBeamWeapon.Init(playerStats);
         activeWeapons.Add(laserBeamWeapon);
+
+        if (GetComponent<FrostSigilSkill>() == null)
+        {
+            gameObject.AddComponent<FrostSigilSkill>();
+        }
+
+        if (GetComponent<ShadowRiftSkill>() == null)
+        {
+            gameObject.AddComponent<ShadowRiftSkill>();
+        }
     }
 
     private void Update()

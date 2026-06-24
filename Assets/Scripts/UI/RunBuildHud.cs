@@ -280,10 +280,7 @@ public class RunBuildHud : MonoBehaviour
         Color buildColor = UpgradeOptionCatalog.GetBuildColor(entry.BuildType);
         slotView.Background.color = new Color(buildColor.r, buildColor.g, buildColor.b, 0.28f);
         int maxLevel = UpgradeOptionCatalog.GetMaxLevel(entry.UpgradeIndex);
-        bool flameOrbitEvolved = entry.UpgradeIndex == 6
-            && RunBuildTracker.Instance != null
-            && RunBuildTracker.Instance.HasEvolution(BuildEvolutionId.FlameOrbit);
-        string displayName = flameOrbitEvolved ? "Flame Orbit" : entry.DisplayName;
+        string displayName = GetEvolvedDisplayName(entry);
 
         if (entry.Level >= maxLevel)
         {
@@ -296,5 +293,34 @@ public class RunBuildHud : MonoBehaviour
 
         slotView.Label.color = buildColor;
         slotView.Label.fontStyle = FontStyles.Bold;
+    }
+
+    private static string GetEvolvedDisplayName(RunBuildSlotEntry entry)
+    {
+        if (entry == null || RunBuildTracker.Instance == null)
+        {
+            return entry != null ? entry.DisplayName : "empty";
+        }
+
+        RunBuildTracker tracker = RunBuildTracker.Instance;
+
+        if (entry.UpgradeIndex == 6 && tracker.HasEvolution(BuildEvolutionId.FlameOrbit))
+        {
+            return "Flame Orbit";
+        }
+
+        if (entry.UpgradeIndex == UpgradeOptionCatalog.FrostSigilIndex
+            && tracker.HasEvolution(BuildEvolutionId.GlacialPrison))
+        {
+            return "Glacial Prison";
+        }
+
+        if (entry.UpgradeIndex == UpgradeOptionCatalog.ShadowRiftIndex
+            && tracker.HasEvolution(BuildEvolutionId.AbyssSingularity))
+        {
+            return "Abyss Singularity";
+        }
+
+        return entry.DisplayName;
     }
 }

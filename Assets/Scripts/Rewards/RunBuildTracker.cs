@@ -203,6 +203,11 @@ public class RunBuildTracker : MonoBehaviour
 
     public bool CanOfferUpgrade(int upgradeIndex)
     {
+        if (!UpgradeOptionCatalog.CanOfferInRewardPool(upgradeIndex))
+        {
+            return false;
+        }
+
         if (IsMaxed(upgradeIndex))
         {
             return false;

@@ -174,9 +174,13 @@ public class DevAdminPanel : MonoBehaviour
         CreateButton(scrollContent, "Add Relic: Quick Hands", AddRelicQuickHands);
         CreateButton(scrollContent, "Clear Relics", ClearRelics);
         CreateHeaderLabel(scrollContent, "Weapons", SubtitleFontSize, FontStyles.Bold);
-        CreateButton(scrollContent, "Give Rocket Launcher", GiveRocketLauncher);
-        CreateButton(scrollContent, "Give Laser Beam", GiveLaserBeam);
+        CreateButton(scrollContent, "Give Rocket Launcher (Legacy)", GiveRocketLauncher);
+        CreateButton(scrollContent, "Give Laser Beam (Legacy)", GiveLaserBeam);
         CreateButton(scrollContent, "Give Chain Lightning", GiveChainLightning);
+        CreateButton(scrollContent, "Give Frost Sigil", GiveFrostSigil);
+        CreateButton(scrollContent, "Give Cryo Core", GiveCryoCore);
+        CreateButton(scrollContent, "Give Shadow Rift", GiveShadowRift);
+        CreateButton(scrollContent, "Give Void Catalyst", GiveVoidCatalyst);
         CreateButton(scrollContent, "Unlock All Weapons", UnlockAllWeapons);
         CreateButton(scrollContent, "Heal Full", HealFull);
         CreateButton(scrollContent, "Kill All Enemies", KillAllEnemies);
@@ -695,6 +699,26 @@ public class DevAdminPanel : MonoBehaviour
         if (playerStats == null) return;
 
         playerStats.UpgradeChainLightning();
+    }
+
+    private void GiveFrostSigil()
+    {
+        RunBuildTracker.GetOrCreate().RecordUpgrade(UpgradeOptionCatalog.FrostSigilIndex);
+    }
+
+    private void GiveCryoCore()
+    {
+        RunBuildTracker.GetOrCreate().RecordUpgrade(UpgradeOptionCatalog.CryoCoreIndex);
+    }
+
+    private void GiveShadowRift()
+    {
+        RunBuildTracker.GetOrCreate().RecordUpgrade(UpgradeOptionCatalog.ShadowRiftIndex);
+    }
+
+    private void GiveVoidCatalyst()
+    {
+        RunBuildTracker.GetOrCreate().RecordUpgrade(UpgradeOptionCatalog.VoidCatalystIndex);
     }
 
     private void UnlockAllWeapons()

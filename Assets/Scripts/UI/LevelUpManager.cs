@@ -852,7 +852,7 @@ public class LevelUpManager : MonoBehaviour
             return;
         }
 
-        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
+        List<int> availableIndices = BuildAvailableRewardIndices();
         List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
         WeaponBuildType activeBuild = GetPlayerWeaponBuild();
 
@@ -870,6 +870,21 @@ public class LevelUpManager : MonoBehaviour
         }
 
         AssignWeightedOption(2, availableIndices, unpurchasedWeapons);
+    }
+
+    private static List<int> BuildAvailableRewardIndices()
+    {
+        List<int> indices = new List<int>(UpgradeOptionCatalog.OptionCount);
+
+        for (int i = 0; i < UpgradeOptionCatalog.OptionCount; i++)
+        {
+            if (UpgradeOptionCatalog.CanOfferInRewardPool(i))
+            {
+                indices.Add(i);
+            }
+        }
+
+        return indices;
     }
 
     private void AssignBonusFallbackOptions()
@@ -1098,9 +1113,10 @@ public class LevelUpManager : MonoBehaviour
                 }
 
                 break;
-            case 7:
+            case 7: // Legacy/disabled for now. Kept for possible future reuse.
             case 8:
-            case 9:
+            case 15:
+            case 17:
                 weight = earlyGame ? 2 : (midGame ? 3 : 4);
 
                 if (earlyGame && HasAnySupportWeaponOnMenu(slotIndex))
@@ -1112,6 +1128,13 @@ public class LevelUpManager : MonoBehaviour
                     weight = Mathf.Max(1, weight / 2);
                 }
 
+                break;
+            case 9: // Legacy/disabled for now. Kept for possible future reuse.
+                weight = 1;
+                break;
+            case 16:
+            case 18:
+                weight = earlyGame ? 8 : (midGame ? 6 : 5);
                 break;
             case 10:
             case 11:
@@ -1134,13 +1157,20 @@ public class LevelUpManager : MonoBehaviour
         return Mathf.Max(1, weight);
     }
 
+    private static bool IsGeneralSupportSkill(int upgradeIndex)
+    {
+        return upgradeIndex == 8
+            || upgradeIndex == UpgradeOptionCatalog.FrostSigilIndex
+            || upgradeIndex == UpgradeOptionCatalog.ShadowRiftIndex;
+    }
+
     private bool HasAnySupportWeaponOnMenu(int slotIndex)
     {
         for (int i = 0; i < slotIndex; i++)
         {
             int picked = shownUpgradeIndices[i];
 
-            if (picked >= 7 && picked <= 9)
+            if (IsGeneralSupportSkill(picked))
             {
                 return true;
             }
@@ -1151,7 +1181,7 @@ public class LevelUpManager : MonoBehaviour
 
     private bool HasSupportWeaponAlreadyPicked(int candidateIndex, int slotIndex)
     {
-        if (candidateIndex < 7 || candidateIndex > 9)
+        if (!IsGeneralSupportSkill(candidateIndex))
         {
             return false;
         }
@@ -1160,7 +1190,7 @@ public class LevelUpManager : MonoBehaviour
         {
             int picked = shownUpgradeIndices[i];
 
-            if (picked >= 7 && picked <= 9 && picked != candidateIndex)
+            if (IsGeneralSupportSkill(picked) && picked != candidateIndex)
             {
                 return true;
             }
@@ -1269,6 +1299,26 @@ public class LevelUpManager : MonoBehaviour
                     "Blade Tempest",
                     GetSwordSkillDamageDescription(multiplier),
                     "blade_tempest");
+            case 15:
+                return MakeContent(
+                    "Frost Sigil",
+                    "Drops an icy circle under a nearby enemy cluster. Deals damage and slows.",
+                    "frost_sigil");
+            case 16:
+                return MakeContent(
+                    "Cryo Core",
+                    "Boosts Frost Sigil damage, radius, and slow strength.",
+                    "cryo_core");
+            case 17:
+                return MakeContent(
+                    "Shadow Rift",
+                    "Opens a void field on nearby enemies that deals tick damage.",
+                    "shadow_rift");
+            case 18:
+                return MakeContent(
+                    "Void Catalyst",
+                    "Boosts Shadow Rift damage, duration, and radius.",
+                    "void_catalyst");
             default:
                 return MakeContent(string.Empty, string.Empty, string.Empty);
         }
@@ -1533,19 +1583,21 @@ public class LevelUpManager : MonoBehaviour
             weaponIndices.Add(6);
         }
 
-        if (playerStats != null && !playerStats.RocketLauncherUnlocked)
-        {
-            weaponIndices.Add(7);
-        }
-
         if (playerStats != null && !playerStats.ChainLightningUnlocked)
         {
             weaponIndices.Add(8);
         }
 
-        if (playerStats != null && !playerStats.LaserBeamUnlocked)
+        RunBuildTracker tracker = RunBuildTracker.Instance;
+
+        if (tracker == null || !tracker.IsTrackedUpgrade(UpgradeOptionCatalog.FrostSigilIndex))
         {
-            weaponIndices.Add(9);
+            weaponIndices.Add(UpgradeOptionCatalog.FrostSigilIndex);
+        }
+
+        if (tracker == null || !tracker.IsTrackedUpgrade(UpgradeOptionCatalog.ShadowRiftIndex))
+        {
+            weaponIndices.Add(UpgradeOptionCatalog.ShadowRiftIndex);
         }
 
         return weaponIndices;
@@ -1669,13 +1721,13 @@ public class LevelUpManager : MonoBehaviour
             case 6:
                 ApplyOrbitingOrbUpgrade();
                 break;
-            case 7:
+            case 7: // Legacy/disabled for now. Kept for possible future reuse.
                 ApplyRocketLauncherUpgrade(multiplier);
                 break;
             case 8:
                 ApplyChainLightningUpgrade(multiplier);
                 break;
-            case 9:
+            case 9: // Legacy/disabled for now. Kept for possible future reuse.
                 ApplyLaserBeamUpgrade(multiplier);
                 break;
             case 10:
@@ -1692,6 +1744,11 @@ public class LevelUpManager : MonoBehaviour
                 break;
             case 14:
                 ApplySwordSkillDamageUpgrade(0.15f * multiplier);
+                break;
+            case 15:
+            case 16:
+            case 17:
+            case 18:
                 break;
         }
 
