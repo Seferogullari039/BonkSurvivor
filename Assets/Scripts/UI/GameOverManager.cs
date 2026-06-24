@@ -1,3 +1,4 @@
+using System.Collections;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -14,7 +15,15 @@ public class GameOverManager : MonoBehaviour
     private const float ContentPadding = 20f;
     private const float ColumnWidth = 390f;
     private const float DimOverlayAlpha = 0.78f;
+    private const float TransitionDimAlpha = 0.88f;
     private const float PanelBackgroundAlpha = 0.92f;
+    private const float RedFlashPeakAlpha = 0.30f;
+    private const float RunEndedFadeInDelay = 0.15f;
+    private const float RunEndedFadeInDuration = 0.22f;
+    private const float RunEndedFadeOutStart = 0.90f;
+    private const float RunEndedFadeOutDuration = 0.15f;
+    private const float SummaryRevealStart = 1.05f;
+    private const float SummaryFadeDuration = 0.25f;
 
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TMP_Text titleText;
@@ -25,6 +34,16 @@ public class GameOverManager : MonoBehaviour
     [SerializeField] private Button mainMenuButton;
 
     private GameObject dimOverlay;
+    private Image dimOverlayImage;
+    private GameObject deathTransitionRoot;
+    private CanvasGroup deathTransitionGroup;
+    private Image redFlashImage;
+    private TMP_Text runEndedTitleText;
+    private TMP_Text runEndedSubtitleText;
+    private RectTransform runEndedTitleRect;
+    private CanvasGroup summaryPanelGroup;
+    private Coroutine transitionRoutine;
+    private bool summaryRevealed;
     private TMP_Text leftSummaryText;
     private TMP_Text rightSummaryText;
     private RectTransform buttonBarRect;
@@ -62,6 +81,7 @@ public class GameOverManager : MonoBehaviour
         EnsureMainMenuButton();
         EnsureQuitButton();
         ApplyGameOverPanelLayout();
+        SetSummaryPanelVisible(false, 0f, false);
     }
 
     private void ApplyGameOverPanelLayout()
@@ -236,6 +256,7 @@ public class GameOverManager : MonoBehaviour
         Canvas canvas = gameOverPanel.GetComponentInParent<Canvas>();
 
         EnsureDimOverlay(canvas);
+        EnsureDeathTransitionUi(canvas);
         EnsurePanelBackground(panelRoot);
         EnsureScrollSummary(panelRoot);
         EnsureButtonBar(panelRoot);
@@ -256,6 +277,7 @@ public class GameOverManager : MonoBehaviour
         }
 
         summaryUiBuilt = true;
+        EnsureSummaryPanelGroup();
     }
 
     private void EnsureDimOverlay(Canvas canvas)
@@ -270,11 +292,11 @@ public class GameOverManager : MonoBehaviour
         if (existing != null)
         {
             dimOverlay = existing.gameObject;
-            Image existingImage = dimOverlay.GetComponent<Image>();
+            dimOverlayImage = dimOverlay.GetComponent<Image>();
 
-            if (existingImage != null)
+            if (dimOverlayImage != null)
             {
-                existingImage.color = new Color(0f, 0f, 0f, DimOverlayAlpha);
+                dimOverlayImage.color = new Color(0f, 0f, 0f, DimOverlayAlpha);
             }
 
             dimOverlay.SetActive(false);
@@ -291,10 +313,118 @@ public class GameOverManager : MonoBehaviour
         rectTransform.offsetMin = Vector2.zero;
         rectTransform.offsetMax = Vector2.zero;
 
-        Image image = dimOverlay.AddComponent<Image>();
-        image.color = new Color(0f, 0f, 0f, DimOverlayAlpha);
-        image.raycastTarget = true;
+        dimOverlayImage = dimOverlay.AddComponent<Image>();
+        dimOverlayImage.color = new Color(0f, 0f, 0f, DimOverlayAlpha);
+        dimOverlayImage.raycastTarget = true;
         dimOverlay.SetActive(false);
+    }
+
+    private void EnsureDeathTransitionUi(Canvas canvas)
+    {
+        if (canvas == null || deathTransitionRoot != null)
+        {
+            return;
+        }
+
+        Transform existing = canvas.transform.Find("DeathTransitionRoot");
+
+        if (existing != null)
+        {
+            deathTransitionRoot = existing.gameObject;
+            deathTransitionGroup = deathTransitionRoot.GetComponent<CanvasGroup>();
+            redFlashImage = deathTransitionRoot.transform.Find("RedFlashOverlay")?.GetComponent<Image>();
+            runEndedTitleText = deathTransitionRoot.transform.Find("RunEndedTitle")?.GetComponent<TMP_Text>();
+            runEndedSubtitleText = deathTransitionRoot.transform.Find("RunEndedSubtitle")?.GetComponent<TMP_Text>();
+            runEndedTitleRect = runEndedTitleText != null ? runEndedTitleText.rectTransform : null;
+            deathTransitionRoot.SetActive(false);
+            return;
+        }
+
+        deathTransitionRoot = new GameObject("DeathTransitionRoot");
+        deathTransitionRoot.transform.SetParent(canvas.transform, false);
+
+        RectTransform rootRect = deathTransitionRoot.AddComponent<RectTransform>();
+        rootRect.anchorMin = Vector2.zero;
+        rootRect.anchorMax = Vector2.one;
+        rootRect.offsetMin = Vector2.zero;
+        rootRect.offsetMax = Vector2.zero;
+
+        deathTransitionGroup = deathTransitionRoot.AddComponent<CanvasGroup>();
+        deathTransitionGroup.alpha = 0f;
+        deathTransitionGroup.interactable = false;
+        deathTransitionGroup.blocksRaycasts = true;
+
+        GameObject flashObject = new GameObject("RedFlashOverlay");
+        flashObject.transform.SetParent(deathTransitionRoot.transform, false);
+
+        RectTransform flashRect = flashObject.AddComponent<RectTransform>();
+        UiLayoutUtility.StretchToParent(flashRect);
+
+        redFlashImage = flashObject.AddComponent<Image>();
+        redFlashImage.color = new Color(0.55f, 0.08f, 0.08f, 0f);
+        redFlashImage.raycastTarget = false;
+
+        runEndedTitleText = CreateCenteredTransitionText(
+            deathTransitionRoot.transform,
+            "RunEndedTitle",
+            "RUN ENDED",
+            58f,
+            new Vector2(0f, 24f),
+            FontStyles.Bold,
+            new Color(0.96f, 0.96f, 0.98f, 1f));
+
+        runEndedSubtitleText = CreateCenteredTransitionText(
+            deathTransitionRoot.transform,
+            "RunEndedSubtitle",
+            "The run is over.",
+            22f,
+            new Vector2(0f, -34f),
+            FontStyles.Normal,
+            new Color(0.72f, 0.74f, 0.78f, 1f));
+
+        runEndedTitleRect = runEndedTitleText.rectTransform;
+        deathTransitionRoot.SetActive(false);
+    }
+
+    private static TMP_Text CreateCenteredTransitionText(
+        Transform parent,
+        string objectName,
+        string text,
+        float fontSize,
+        Vector2 position,
+        FontStyles fontStyle,
+        Color color)
+    {
+        GameObject textObject = new GameObject(objectName);
+        textObject.transform.SetParent(parent, false);
+
+        RectTransform rectTransform = textObject.AddComponent<RectTransform>();
+        UiLayoutUtility.SetAnchorCenter(rectTransform, position, new Vector2(720f, fontSize + 24f));
+
+        TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
+        textMesh.text = text;
+        textMesh.fontSize = fontSize;
+        textMesh.fontStyle = fontStyle;
+        textMesh.alignment = TextAlignmentOptions.Center;
+        textMesh.color = color;
+        textMesh.raycastTarget = false;
+
+        return textMesh;
+    }
+
+    private void EnsureSummaryPanelGroup()
+    {
+        if (gameOverPanel == null || summaryPanelGroup != null)
+        {
+            return;
+        }
+
+        summaryPanelGroup = gameOverPanel.GetComponent<CanvasGroup>();
+
+        if (summaryPanelGroup == null)
+        {
+            summaryPanelGroup = gameOverPanel.AddComponent<CanvasGroup>();
+        }
     }
 
     private static void EnsurePanelBackground(Transform panelRoot)
@@ -449,10 +579,42 @@ public class GameOverManager : MonoBehaviour
         }
 
         EnsureSummaryUi();
-        ShowGameOverPanel(snapshot);
+        PrepareSummaryContent(snapshot);
+        BeginDeathTransition(snapshot);
     }
 
-    private void ShowGameOverPanel(RunStatsSnapshot snapshot)
+    private void BeginDeathTransition(RunStatsSnapshot snapshot)
+    {
+        if (transitionRoutine != null)
+        {
+            StopCoroutine(transitionRoutine);
+        }
+
+        summaryRevealed = false;
+
+        if (dimOverlay != null)
+        {
+            dimOverlay.SetActive(true);
+
+            if (dimOverlayImage != null)
+            {
+                dimOverlayImage.color = new Color(0f, 0f, 0f, DimOverlayAlpha);
+            }
+        }
+
+        SetSummaryPanelVisible(false, 0f, false);
+
+        if (deathTransitionRoot != null)
+        {
+            deathTransitionRoot.SetActive(true);
+            deathTransitionRoot.transform.SetAsLastSibling();
+        }
+
+        ResetTransitionVisuals();
+        transitionRoutine = StartCoroutine(PlayDeathTransitionThenSummary(snapshot));
+    }
+
+    private void PrepareSummaryContent(RunStatsSnapshot snapshot)
     {
         if (titleText != null)
         {
@@ -469,18 +631,6 @@ public class GameOverManager : MonoBehaviour
             rightSummaryText.text = RunStatsSummaryFormatter.FormatRightColumn(snapshot);
         }
 
-        if (dimOverlay != null)
-        {
-            dimOverlay.SetActive(true);
-            dimOverlay.transform.SetAsLastSibling();
-        }
-
-        if (gameOverPanel != null)
-        {
-            gameOverPanel.SetActive(true);
-            gameOverPanel.transform.SetAsLastSibling();
-        }
-
         if (summaryScrollRect != null)
         {
             summaryScrollRect.verticalNormalizedPosition = 1f;
@@ -488,6 +638,189 @@ public class GameOverManager : MonoBehaviour
 
         UpdateScrollContentHeight();
         ApplyGameOverPanelLayout();
+    }
+
+    private IEnumerator PlayDeathTransitionThenSummary(RunStatsSnapshot snapshot)
+    {
+        float elapsed = 0f;
+        float totalDuration = SummaryRevealStart + SummaryFadeDuration;
+
+        while (elapsed < totalDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            UpdateDeathTransitionVisuals(elapsed);
+
+            if (!summaryRevealed && elapsed >= SummaryRevealStart)
+            {
+                summaryRevealed = true;
+                RevealSummaryPanel();
+            }
+
+            if (summaryRevealed)
+            {
+                float summaryT = Mathf.Clamp01((elapsed - SummaryRevealStart) / SummaryFadeDuration);
+                SetSummaryPanelVisible(true, summaryT, summaryT >= 1f);
+            }
+
+            yield return null;
+        }
+
+        if (!summaryRevealed)
+        {
+            RevealSummaryPanel();
+        }
+
+        SetSummaryPanelVisible(true, 1f, true);
+        HideDeathTransition();
+        transitionRoutine = null;
+        AudioManager.Instance?.PlayGameOver();
+    }
+
+    private void UpdateDeathTransitionVisuals(float elapsed)
+    {
+        if (dimOverlayImage != null)
+        {
+            float dimT = Mathf.Clamp01(elapsed / 0.25f);
+            float dimAlpha = Mathf.Lerp(DimOverlayAlpha, TransitionDimAlpha, dimT);
+            dimOverlayImage.color = new Color(0f, 0f, 0f, dimAlpha);
+        }
+
+        if (redFlashImage != null)
+        {
+            float flashDuration = 0.22f;
+            float flashT = Mathf.Clamp01(elapsed / flashDuration);
+            float flashAlpha = Mathf.Sin(flashT * Mathf.PI) * RedFlashPeakAlpha;
+            redFlashImage.color = new Color(0.55f, 0.08f, 0.08f, flashAlpha);
+        }
+
+        if (deathTransitionGroup != null)
+        {
+            float titleAlpha = 0f;
+            float titleScale = 0.92f;
+
+            if (elapsed >= RunEndedFadeInDelay)
+            {
+                float fadeInT = Mathf.Clamp01((elapsed - RunEndedFadeInDelay) / RunEndedFadeInDuration);
+                titleAlpha = fadeInT;
+
+                if (elapsed < RunEndedFadeOutStart)
+                {
+                    titleScale = Mathf.Lerp(0.92f, 1f, fadeInT);
+                }
+            }
+
+            if (elapsed >= RunEndedFadeOutStart)
+            {
+                float fadeOutT = Mathf.Clamp01((elapsed - RunEndedFadeOutStart) / RunEndedFadeOutDuration);
+                titleAlpha = 1f - fadeOutT;
+                titleScale = Mathf.Lerp(1f, 0.98f, fadeOutT);
+            }
+
+            deathTransitionGroup.alpha = 1f;
+
+            if (runEndedTitleText != null)
+            {
+                Color titleColor = runEndedTitleText.color;
+                titleColor.a = titleAlpha;
+                runEndedTitleText.color = titleColor;
+            }
+
+            if (runEndedSubtitleText != null)
+            {
+                Color subtitleColor = runEndedSubtitleText.color;
+                subtitleColor.a = titleAlpha * 0.85f;
+                runEndedSubtitleText.color = subtitleColor;
+            }
+
+            if (runEndedTitleRect != null)
+            {
+                runEndedTitleRect.localScale = Vector3.one * titleScale;
+            }
+        }
+    }
+
+    private void ResetTransitionVisuals()
+    {
+        if (deathTransitionGroup != null)
+        {
+            deathTransitionGroup.alpha = 1f;
+        }
+
+        if (redFlashImage != null)
+        {
+            redFlashImage.color = new Color(0.55f, 0.08f, 0.08f, 0f);
+        }
+
+        if (runEndedTitleText != null)
+        {
+            Color titleColor = runEndedTitleText.color;
+            titleColor.a = 0f;
+            runEndedTitleText.color = titleColor;
+        }
+
+        if (runEndedSubtitleText != null)
+        {
+            Color subtitleColor = runEndedSubtitleText.color;
+            subtitleColor.a = 0f;
+            runEndedSubtitleText.color = subtitleColor;
+        }
+
+        if (runEndedTitleRect != null)
+        {
+            runEndedTitleRect.localScale = Vector3.one * 0.92f;
+        }
+    }
+
+    private void HideDeathTransition()
+    {
+        if (deathTransitionRoot != null)
+        {
+            deathTransitionRoot.SetActive(false);
+        }
+    }
+
+    private void RevealSummaryPanel()
+    {
+        if (gameOverPanel != null)
+        {
+            gameOverPanel.SetActive(true);
+            gameOverPanel.transform.SetAsLastSibling();
+        }
+
+        if (dimOverlay != null)
+        {
+            dimOverlay.transform.SetAsLastSibling();
+            gameOverPanel?.transform.SetAsLastSibling();
+        }
+    }
+
+    private void SetSummaryPanelVisible(bool visible, float alpha, bool interactable)
+    {
+        if (gameOverPanel != null)
+        {
+            gameOverPanel.SetActive(visible || alpha > 0f);
+        }
+
+        if (summaryPanelGroup != null)
+        {
+            summaryPanelGroup.alpha = alpha;
+            summaryPanelGroup.interactable = interactable;
+            summaryPanelGroup.blocksRaycasts = interactable;
+        }
+    }
+
+    private void ShowGameOverPanel(RunStatsSnapshot snapshot)
+    {
+        PrepareSummaryContent(snapshot);
+
+        if (dimOverlay != null)
+        {
+            dimOverlay.SetActive(true);
+            dimOverlay.transform.SetAsLastSibling();
+        }
+
+        SetSummaryPanelVisible(true, 1f, true);
+        RevealSummaryPanel();
         AudioManager.Instance?.PlayGameOver();
     }
 
@@ -514,6 +847,15 @@ public class GameOverManager : MonoBehaviour
     public void HideGameOver()
     {
         isShown = false;
+
+        if (transitionRoutine != null)
+        {
+            StopCoroutine(transitionRoutine);
+            transitionRoutine = null;
+        }
+
+        HideDeathTransition();
+        SetSummaryPanelVisible(false, 0f, false);
 
         if (gameOverPanel != null)
         {
