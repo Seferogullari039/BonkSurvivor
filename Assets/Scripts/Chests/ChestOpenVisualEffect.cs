@@ -204,6 +204,7 @@ public static class ChestOpenVisualEffect
     {
         return rarity switch
         {
+            UpgradeRarity.Legendary => new Color(1f, 0.82f, 0.28f, 0.95f),
             UpgradeRarity.Rare => RarePulse,
             UpgradeRarity.Epic => EpicPulse,
             _ => CommonPulse
@@ -224,6 +225,7 @@ public static class ChestOpenVisualEffect
     {
         return rarity switch
         {
+            UpgradeRarity.Legendary => new Color(0.92f, 0.72f, 0.18f, 0.22f),
             UpgradeRarity.Rare => new Color(0.32f, 0.58f, 0.95f, 0.18f),
             UpgradeRarity.Epic => new Color(0.62f, 0.28f, 0.92f, 0.20f),
             _ => new Color(0.82f, 0.84f, 0.88f, 0.14f)

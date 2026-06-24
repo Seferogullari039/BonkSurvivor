@@ -8,6 +8,7 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
     public struct SlotData
     {
         public string RarityLabel;
+        public string CategoryLabel;
         public Color RarityAccent;
         public Color RarityBackground;
         public Color RarityBorder;
@@ -15,13 +16,19 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
         public string Description;
         public string IconKey;
 
-        public static SlotData FromUpgrade(UpgradeRarity rarity, string title, string description, string iconKey)
+        public static SlotData FromUpgrade(
+            UpgradeRarity rarity,
+            RewardCategory category,
+            string title,
+            string description,
+            string iconKey)
         {
             ChestLootRarityPalette.GetStyle(rarity, out Color accent, out Color background, out Color border, out string label);
 
             return new SlotData
             {
                 RarityLabel = label,
+                CategoryLabel = UpgradeOptionCatalog.GetCategoryLabel(category),
                 RarityAccent = accent,
                 RarityBackground = background,
                 RarityBorder = border,
@@ -145,7 +152,7 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
 
         if (slot.RarityText != null)
         {
-            slot.RarityText.text = data.RarityLabel ?? "COMMON";
+            slot.RarityText.text = BuildRewardHeaderLabel(data.RarityLabel, data.CategoryLabel);
             slot.RarityText.color = data.RarityAccent;
         }
 
@@ -445,6 +452,18 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
             target.fontSharedMaterial = source.fontSharedMaterial;
         }
     }
+
+    internal static string BuildRewardHeaderLabel(string rarityLabel, string categoryLabel)
+    {
+        string rarity = string.IsNullOrEmpty(rarityLabel) ? "COMMON" : rarityLabel;
+
+        if (string.IsNullOrEmpty(categoryLabel))
+        {
+            return rarity;
+        }
+
+        return rarity + "  ·  " + categoryLabel;
+    }
 }
 
 internal static class ChestLootRarityPalette
@@ -480,6 +499,12 @@ internal static class ChestLootRarityPalette
                 background = EpicBackground;
                 border = EpicBorder;
                 label = "EPIC";
+                return;
+            case UpgradeRarity.Legendary:
+                accent = LegendaryAccent;
+                background = LegendaryBackground;
+                border = LegendaryBorder;
+                label = "LEGENDARY";
                 return;
             default:
                 accent = CommonAccent;

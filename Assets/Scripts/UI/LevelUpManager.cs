@@ -51,6 +51,7 @@ public class LevelUpManager : MonoBehaviour
         public Transform IconRoot;
         public Image IconImage;
         public TMP_Text RarityText;
+        public TMP_Text CategoryText;
         public TMP_Text TitleText;
         public TMP_Text DescriptionText;
     }
@@ -158,6 +159,7 @@ public class LevelUpManager : MonoBehaviour
             IconRoot = iconRoot,
             IconImage = iconImage,
             RarityText = CreateCardText(buttonRect, legacyText, "RarityText", new Vector2(0f, 92f), new Vector2(228f, 28f), 19f, FontStyles.Bold),
+            CategoryText = CreateCardText(buttonRect, legacyText, "CategoryText", new Vector2(0f, 66f), new Vector2(228f, 22f), 15f, FontStyles.Bold),
             TitleText = CreateCardText(buttonRect, legacyText, "TitleText", new Vector2(0f, 28f), new Vector2(228f, 88f), 32f, FontStyles.Bold),
             DescriptionText = CreateCardText(buttonRect, legacyText, "DescriptionText", new Vector2(0f, -68f), new Vector2(228f, 120f), 20f, FontStyles.Normal)
         };
@@ -165,6 +167,7 @@ public class LevelUpManager : MonoBehaviour
         ConfigureDescriptionText(upgradeCards[index].DescriptionText);
         ConfigureTitleText(upgradeCards[index].TitleText);
         ConfigureRarityText(upgradeCards[index].RarityText);
+        ConfigureCategoryText(upgradeCards[index].CategoryText);
     }
 
     private static Image EnsureCardGlow(RectTransform buttonRect)
@@ -319,6 +322,20 @@ public class LevelUpManager : MonoBehaviour
         {
             // Unity 6 TMP outline can throw if material is not ready; skip outline polish only.
         }
+    }
+
+    private static void ConfigureCategoryText(TMP_Text categoryText)
+    {
+        if (categoryText == null)
+        {
+            return;
+        }
+
+        categoryText.enableAutoSizing = true;
+        categoryText.fontSizeMin = 12f;
+        categoryText.fontSizeMax = 15f;
+        categoryText.characterSpacing = 3f;
+        TryApplyTextOutline(categoryText, 0.06f, new Color(0f, 0f, 0f, 0.3f));
     }
 
     private static void ConfigureRarityText(TMP_Text rarityText)
@@ -485,6 +502,7 @@ public class LevelUpManager : MonoBehaviour
 
         return ChestLootSelectionUI.SlotData.FromUpgrade(
             rarity,
+            UpgradeOptionCatalog.GetCategory(upgradeIndex),
             content.Title,
             content.Description,
             content.IconKey);
@@ -582,11 +600,18 @@ public class LevelUpManager : MonoBehaviour
         int multiplier = GetRarityMultiplier(rarity);
         PlayerStats playerStats = FindPlayerStats();
         UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier, playerStats);
+        RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
 
         if (card.RarityText != null)
         {
-            card.RarityText.text = GetRarityLabel(rarity);
-            card.RarityText.color = GetRarityColor(rarity);
+            card.RarityText.text = UpgradeOptionCatalog.GetRarityLabel(rarity);
+            card.RarityText.color = UpgradeOptionCatalog.GetRarityColor(rarity);
+        }
+
+        if (card.CategoryText != null)
+        {
+            card.CategoryText.text = UpgradeOptionCatalog.GetCategoryLabel(category);
+            card.CategoryText.color = UpgradeOptionCatalog.GetCategoryColor(category);
         }
 
         if (card.TitleText != null)
@@ -638,10 +663,11 @@ public class LevelUpManager : MonoBehaviour
             return;
         }
 
-        Color accent = GetRarityColor(rarity);
-        Color background = GetRarityBackgroundColor(rarity);
+        Color accent = UpgradeOptionCatalog.GetRarityColor(rarity);
+        Color background = UpgradeOptionCatalog.GetRarityBackgroundColor(rarity);
         float glowAlpha = rarity switch
         {
+            UpgradeRarity.Legendary => 0.3f,
             UpgradeRarity.Epic => 0.24f,
             UpgradeRarity.Rare => 0.2f,
             _ => 0.1f
@@ -669,16 +695,6 @@ public class LevelUpManager : MonoBehaviour
         colors.selectedColor = colors.highlightedColor;
         colors.fadeDuration = 0.08f;
         card.Button.colors = colors;
-    }
-
-    private static Color GetRarityBackgroundColor(UpgradeRarity rarity)
-    {
-        return rarity switch
-        {
-            UpgradeRarity.Rare => new Color(0.07f, 0.11f, 0.18f, 0.98f),
-            UpgradeRarity.Epic => new Color(0.13f, 0.08f, 0.18f, 0.98f),
-            _ => new Color(0.09f, 0.1f, 0.12f, 0.98f)
-        };
     }
 
     private void EnsureChestHeaderText()
@@ -878,56 +894,22 @@ public class LevelUpManager : MonoBehaviour
 
     private UpgradeRarity RollUpgradeRarity()
     {
-        float roll = Random.value;
-
-        if (roll < 0.05f)
-        {
-            return UpgradeRarity.Epic;
-        }
-
-        if (roll < 0.30f)
-        {
-            return UpgradeRarity.Rare;
-        }
-
-        return UpgradeRarity.Common;
+        return UpgradeOptionCatalog.RollDisplayRarity();
     }
 
     private static int GetRarityMultiplier(UpgradeRarity rarity)
     {
-        return rarity switch
-        {
-            UpgradeRarity.Rare => 2,
-            UpgradeRarity.Epic => 3,
-            _ => 1
-        };
-    }
-
-    private static string GetRarityLabel(UpgradeRarity rarity)
-    {
-        return rarity switch
-        {
-            UpgradeRarity.Rare => "RARE",
-            UpgradeRarity.Epic => "EPIC",
-            _ => "COMMON"
-        };
-    }
-
-    private static Color GetRarityColor(UpgradeRarity rarity)
-    {
-        return rarity switch
-        {
-            UpgradeRarity.Rare => new Color(0.42f, 0.78f, 1f, 1f),
-            UpgradeRarity.Epic => new Color(0.82f, 0.52f, 1f, 1f),
-            _ => new Color(0.9f, 0.92f, 0.96f, 1f)
-        };
+        return UpgradeOptionCatalog.GetRarityMultiplier(rarity);
     }
 
     private static string BuildLegacyOptionLabel(int upgradeIndex, UpgradeRarity rarity)
     {
         int multiplier = GetRarityMultiplier(rarity);
         UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier, null);
-        return $"{GetRarityLabel(rarity)}\n{content.Title}\n{content.Description}";
+        string header = ChestLootSelectionUI.BuildRewardHeaderLabel(
+            UpgradeOptionCatalog.GetRarityLabel(rarity),
+            UpgradeOptionCatalog.GetCategoryLabel(UpgradeOptionCatalog.GetCategory(upgradeIndex)));
+        return $"{header}\n{content.Title}\n{content.Description}";
     }
 
     private static UpgradeCardContent MakeContent(string title, string description, string iconKey)
@@ -1095,8 +1077,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return multiplier switch
         {
-            2 => $"Rare: {upgradeName} level +2.",
+            4 => $"Legendary: {upgradeName} level +4.",
             3 => $"Epic: {upgradeName} level +3.",
+            2 => $"Rare: {upgradeName} level +2.",
             _ => $"Common: {upgradeName} level +1."
         };
     }
