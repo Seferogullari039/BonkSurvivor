@@ -27,6 +27,7 @@ public class LevelUpManager : MonoBehaviour
     private TMP_Text chestHeaderText;
     private ChestLootSelectionUI chestLootSelectionUI;
     private ChestSingleCardRevealUI chestSingleCardRevealUI;
+    private readonly ItemOfferLayoutUI itemOfferLayout = new ItemOfferLayoutUI();
 
     private const int BonusRewardCoin = -1;
     private const int BonusRewardHeal = -2;
@@ -82,33 +83,35 @@ public class LevelUpManager : MonoBehaviour
         Canvas canvas = levelUpPanel.GetComponentInParent<Canvas>();
         UiLayoutUtility.ConfigureGameplayCanvas(canvas);
 
+        itemOfferLayout.EnsureBuilt(canvas, levelUpPanel, optionText1);
+
         RectTransform panelRect = levelUpPanel.GetComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(panelRect, Vector2.zero, new Vector2(920f, 460f));
+        UiLayoutUtility.SetAnchorCenter(panelRect, new Vector2(0f, -8f), new Vector2(780f, 680f));
 
         Image panelImage = levelUpPanel.GetComponent<Image>();
 
         if (panelImage != null)
         {
-            panelImage.color = new Color(0.03f, 0.04f, 0.07f, 0.96f);
+            panelImage.color = new Color(0.04f, 0.05f, 0.09f, 0.94f);
         }
 
-        LayoutUpgradeButton(optionButton1, -290f);
-        LayoutUpgradeButton(optionButton2, 0f);
-        LayoutUpgradeButton(optionButton3, 290f);
+        LayoutUpgradeButton(optionButton1, 96f);
+        LayoutUpgradeButton(optionButton2, -56f);
+        LayoutUpgradeButton(optionButton3, -208f);
 
         if (chestHeaderText != null)
         {
-            UiLayoutUtility.SetAnchorCenter(chestHeaderText.rectTransform, new Vector2(0f, 170f), new Vector2(680f, 44f));
+            UiLayoutUtility.SetAnchorCenter(chestHeaderText.rectTransform, new Vector2(0f, 286f), new Vector2(680f, 44f));
             chestHeaderText.fontSize = 30f;
         }
     }
 
-    private static void LayoutUpgradeButton(Button button, float xOffset)
+    private static void LayoutUpgradeButton(Button button, float yOffset)
     {
         if (button == null) return;
 
         RectTransform rectTransform = button.GetComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(rectTransform, new Vector2(xOffset, -6f), new Vector2(260f, 320f));
+        UiLayoutUtility.SetAnchorCenter(rectTransform, new Vector2(0f, yOffset), new Vector2(700f, 132f));
 
         Image buttonImage = button.GetComponent<Image>();
 
@@ -131,6 +134,9 @@ public class LevelUpManager : MonoBehaviour
         EnsureUpgradeCard(0, optionButton1, optionText1);
         EnsureUpgradeCard(1, optionButton2, optionText2);
         EnsureUpgradeCard(2, optionButton3, optionText3);
+        ApplyUpgradeCardLayout(0, optionButton1);
+        ApplyUpgradeCardLayout(1, optionButton2);
+        ApplyUpgradeCardLayout(2, optionButton3);
     }
 
     private void EnsureUpgradeCard(int index, Button button, TMP_Text legacyText)
@@ -163,11 +169,11 @@ public class LevelUpManager : MonoBehaviour
             GlowImage = glowImage,
             IconRoot = iconRoot,
             IconImage = iconImage,
-            RarityText = CreateCardText(buttonRect, legacyText, "RarityText", new Vector2(0f, 98f), new Vector2(228f, 24f), 19f, FontStyles.Bold),
-            CategoryText = CreateCardText(buttonRect, legacyText, "CategoryText", new Vector2(0f, 74f), new Vector2(228f, 20f), 15f, FontStyles.Bold),
-            BuildText = CreateCardText(buttonRect, legacyText, "BuildText", new Vector2(0f, 52f), new Vector2(228f, 20f), 14f, FontStyles.Bold),
-            TitleText = CreateCardText(buttonRect, legacyText, "TitleText", new Vector2(0f, 18f), new Vector2(228f, 88f), 32f, FontStyles.Bold),
-            DescriptionText = CreateCardText(buttonRect, legacyText, "DescriptionText", new Vector2(0f, -68f), new Vector2(228f, 120f), 20f, FontStyles.Normal)
+            RarityText = CreateCardText(buttonRect, legacyText, "RarityText", new Vector2(96f, 38f), new Vector2(420f, 22f), 16f, FontStyles.Bold, TextAlignmentOptions.MidlineLeft),
+            CategoryText = CreateCardText(buttonRect, legacyText, "CategoryText", new Vector2(96f, 14f), new Vector2(420f, 20f), 14f, FontStyles.Bold, TextAlignmentOptions.MidlineLeft),
+            BuildText = CreateCardText(buttonRect, legacyText, "BuildText", new Vector2(96f, -2f), new Vector2(420f, 18f), 12f, FontStyles.Bold, TextAlignmentOptions.MidlineLeft),
+            TitleText = CreateCardText(buttonRect, legacyText, "TitleText", new Vector2(96f, -22f), new Vector2(420f, 34f), 28f, FontStyles.Bold, TextAlignmentOptions.MidlineLeft),
+            DescriptionText = CreateCardText(buttonRect, legacyText, "DescriptionText", new Vector2(96f, -58f), new Vector2(420f, 52f), 16f, FontStyles.Normal, TextAlignmentOptions.TopLeft)
         };
 
         ConfigureDescriptionText(upgradeCards[index].DescriptionText);
@@ -175,6 +181,45 @@ public class LevelUpManager : MonoBehaviour
         ConfigureRarityText(upgradeCards[index].RarityText);
         ConfigureCategoryText(upgradeCards[index].CategoryText);
         ConfigureBuildText(upgradeCards[index].BuildText);
+    }
+
+    private static void ApplyUpgradeCardLayout(int index, Button button)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        RectTransform buttonRect = button.GetComponent<RectTransform>();
+
+        if (buttonRect == null)
+        {
+            return;
+        }
+
+        Transform iconRootTransform = buttonRect.Find("CardIconRoot");
+
+        if (iconRootTransform is RectTransform iconRootRect)
+        {
+            UiLayoutUtility.SetAnchorCenter(iconRootRect, new Vector2(-272f, 0f), new Vector2(88f, 88f));
+            iconRootTransform.gameObject.SetActive(true);
+        }
+
+        RepositionCardText(buttonRect, "RarityText", new Vector2(96f, 38f), new Vector2(420f, 22f));
+        RepositionCardText(buttonRect, "CategoryText", new Vector2(96f, 14f), new Vector2(420f, 20f));
+        RepositionCardText(buttonRect, "BuildText", new Vector2(96f, -2f), new Vector2(420f, 18f));
+        RepositionCardText(buttonRect, "TitleText", new Vector2(96f, -22f), new Vector2(420f, 34f));
+        RepositionCardText(buttonRect, "DescriptionText", new Vector2(96f, -58f), new Vector2(420f, 52f));
+    }
+
+    private static void RepositionCardText(RectTransform parent, string childName, Vector2 position, Vector2 size)
+    {
+        Transform child = parent.Find(childName);
+
+        if (child is RectTransform childRect)
+        {
+            UiLayoutUtility.SetAnchorCenter(childRect, position, size);
+        }
     }
 
     private static Image EnsureCardGlow(RectTransform buttonRect)
@@ -216,24 +261,19 @@ public class LevelUpManager : MonoBehaviour
         {
             iconRoot = existingIconRoot;
             iconImage = existingIconRoot.Find("IconImage")?.GetComponent<Image>();
-
-            Transform existingFallback = existingIconRoot.Find("IconFallbackText");
-
-            if (existingFallback != null)
-            {
-                existingFallback.gameObject.SetActive(false);
-            }
-
-            iconRoot.gameObject.SetActive(false);
+            EnsureIconPlaceholder(existingIconRoot);
+            iconRoot.gameObject.SetActive(true);
             return;
         }
 
         GameObject iconRootObject = new GameObject("CardIconRoot");
         iconRootObject.transform.SetParent(buttonRect, false);
-        iconRootObject.SetActive(false);
+        iconRootObject.SetActive(true);
 
         RectTransform iconRootRect = iconRootObject.AddComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(iconRootRect, new Vector2(0f, 124f), new Vector2(44f, 44f));
+        UiLayoutUtility.SetAnchorCenter(iconRootRect, new Vector2(-272f, 0f), new Vector2(88f, 88f));
+
+        EnsureIconPlaceholder(iconRootObject.transform);
 
         GameObject iconImageObject = new GameObject("IconImage");
         iconImageObject.transform.SetParent(iconRootObject.transform, false);
@@ -241,8 +281,8 @@ public class LevelUpManager : MonoBehaviour
         RectTransform iconImageRect = iconImageObject.AddComponent<RectTransform>();
         iconImageRect.anchorMin = Vector2.zero;
         iconImageRect.anchorMax = Vector2.one;
-        iconImageRect.offsetMin = Vector2.zero;
-        iconImageRect.offsetMax = Vector2.zero;
+        iconImageRect.offsetMin = new Vector2(6f, 6f);
+        iconImageRect.offsetMax = new Vector2(-6f, -6f);
 
         iconImage = iconImageObject.AddComponent<Image>();
         iconImage.raycastTarget = false;
@@ -252,6 +292,30 @@ public class LevelUpManager : MonoBehaviour
         iconRoot = iconRootObject.transform;
     }
 
+    private static void EnsureIconPlaceholder(Transform iconRootTransform)
+    {
+        Transform existingPlaceholder = iconRootTransform.Find("IconPlaceholder");
+
+        if (existingPlaceholder != null)
+        {
+            return;
+        }
+
+        GameObject placeholderObject = new GameObject("IconPlaceholder");
+        placeholderObject.transform.SetParent(iconRootTransform, false);
+        placeholderObject.transform.SetAsFirstSibling();
+
+        RectTransform placeholderRect = placeholderObject.AddComponent<RectTransform>();
+        placeholderRect.anchorMin = Vector2.zero;
+        placeholderRect.anchorMax = Vector2.one;
+        placeholderRect.offsetMin = Vector2.zero;
+        placeholderRect.offsetMax = Vector2.zero;
+
+        Image placeholderImage = placeholderObject.AddComponent<Image>();
+        placeholderImage.raycastTarget = false;
+        placeholderImage.color = new Color(0.12f, 0.13f, 0.16f, 0.95f);
+    }
+
     private static TMP_Text CreateCardText(
         RectTransform parent,
         TMP_Text fontSource,
@@ -259,7 +323,8 @@ public class LevelUpManager : MonoBehaviour
         Vector2 anchoredPosition,
         Vector2 size,
         float fontSize,
-        FontStyles fontStyle)
+        FontStyles fontStyle,
+        TextAlignmentOptions alignment = TextAlignmentOptions.Center)
     {
         GameObject textObject = new GameObject(objectName);
         textObject.transform.SetParent(parent, false);
@@ -269,7 +334,7 @@ public class LevelUpManager : MonoBehaviour
 
         TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
         CopyTmpFontFrom(fontSource, textMesh);
-        textMesh.alignment = TextAlignmentOptions.Center;
+        textMesh.alignment = alignment;
         textMesh.fontSize = fontSize;
         textMesh.fontStyle = fontStyle;
         textMesh.textWrappingMode = TextWrappingModes.Normal;
@@ -306,9 +371,10 @@ public class LevelUpManager : MonoBehaviour
         }
 
         titleText.color = Color.white;
+        titleText.alignment = TextAlignmentOptions.MidlineLeft;
         titleText.enableAutoSizing = true;
-        titleText.fontSizeMin = 26f;
-        titleText.fontSizeMax = 34f;
+        titleText.fontSizeMin = 22f;
+        titleText.fontSizeMax = 30f;
         titleText.characterSpacing = 2f;
         TryApplyTextOutline(titleText, 0.1f, new Color(0f, 0f, 0f, 0.45f));
     }
@@ -340,8 +406,9 @@ public class LevelUpManager : MonoBehaviour
 
         categoryText.enableAutoSizing = true;
         categoryText.fontSizeMin = 12f;
-        categoryText.fontSizeMax = 15f;
-        categoryText.characterSpacing = 3f;
+        categoryText.fontSizeMax = 14f;
+        categoryText.alignment = TextAlignmentOptions.MidlineLeft;
+        categoryText.characterSpacing = 1f;
         TryApplyTextOutline(categoryText, 0.06f, new Color(0f, 0f, 0f, 0.3f));
     }
 
@@ -367,9 +434,10 @@ public class LevelUpManager : MonoBehaviour
         }
 
         rarityText.enableAutoSizing = true;
-        rarityText.fontSizeMin = 16f;
-        rarityText.fontSizeMax = 20f;
-        rarityText.characterSpacing = 4f;
+        rarityText.fontSizeMin = 14f;
+        rarityText.fontSizeMax = 18f;
+        rarityText.alignment = TextAlignmentOptions.MidlineLeft;
+        rarityText.characterSpacing = 2f;
         TryApplyTextOutline(rarityText, 0.08f, new Color(0f, 0f, 0f, 0.35f));
     }
 
@@ -381,7 +449,8 @@ public class LevelUpManager : MonoBehaviour
         }
 
         descriptionText.color = new Color(0.78f, 0.82f, 0.9f, 1f);
-        descriptionText.lineSpacing = 6f;
+        descriptionText.alignment = TextAlignmentOptions.TopLeft;
+        descriptionText.lineSpacing = 4f;
         descriptionText.paragraphSpacing = 2f;
         descriptionText.enableAutoSizing = true;
         descriptionText.fontSizeMin = 16f;
@@ -454,6 +523,8 @@ public class LevelUpManager : MonoBehaviour
         {
             levelUpPanel.SetActive(false);
         }
+
+        itemOfferLayout.SetVisible(false);
 
         if (chestHeaderText != null)
         {
@@ -610,6 +681,9 @@ public class LevelUpManager : MonoBehaviour
             levelUpPanel.SetActive(true);
         }
 
+        itemOfferLayout.SetVisible(true);
+        itemOfferLayout.RefreshSidePanels(FindPlayerStats());
+
         EnsureUpgradeCards();
         RefreshUpgradeOptionTexts();
         UpdateChestHeaderText();
@@ -764,11 +838,12 @@ public class LevelUpManager : MonoBehaviour
         if (card.IconImage != null)
         {
             card.IconImage.sprite = null;
+            card.IconImage.enabled = false;
         }
 
         if (card.IconRoot != null)
         {
-            card.IconRoot.gameObject.SetActive(false);
+            card.IconRoot.gameObject.SetActive(true);
         }
     }
 
@@ -1626,6 +1701,7 @@ public class LevelUpManager : MonoBehaviour
             AssignRandomUpgradeOptions();
             RefreshUpgradeOptionTexts();
             RefreshButtonListeners();
+            itemOfferLayout.RefreshSidePanels(FindPlayerStats());
             return;
         }
 
@@ -1639,19 +1715,26 @@ public class LevelUpManager : MonoBehaviour
             chestSingleCardRevealUI.Hide();
         }
 
+        HideLevelUpPresentation();
+
+        isChestUpgradeMenu = false;
+        useChestSingleCardReveal = false;
+        Time.timeScale = 1f;
+    }
+
+    private void HideLevelUpPresentation()
+    {
         if (levelUpPanel != null)
         {
             levelUpPanel.SetActive(false);
         }
 
+        itemOfferLayout.SetVisible(false);
+
         if (chestHeaderText != null)
         {
             chestHeaderText.gameObject.SetActive(false);
         }
-
-        isChestUpgradeMenu = false;
-        useChestSingleCardReveal = false;
-        Time.timeScale = 1f;
     }
 
     private void ApplySelectedUpgrade(int upgradeIndex, UpgradeRarity rarity)

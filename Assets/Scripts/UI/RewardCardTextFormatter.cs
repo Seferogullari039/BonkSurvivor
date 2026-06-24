@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Text;
 using UnityEngine;
 
 public static class RewardCardTextFormatter
@@ -16,6 +18,90 @@ public static class RewardCardTextFormatter
     public static Color GetBonusHeaderColor()
     {
         return BonusHeaderColor;
+    }
+
+    public static string BuildInventoryPanelText()
+    {
+        RunBuildTracker tracker = RunBuildTracker.Instance;
+
+        if (tracker == null)
+        {
+            tracker = RunBuildTracker.GetOrCreate();
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.AppendLine("Weapons");
+        AppendInventorySlotLines(builder, tracker, RewardCategory.Skill);
+        builder.AppendLine();
+        builder.AppendLine("Passives");
+        AppendInventorySlotLines(builder, tracker, RewardCategory.Passive);
+        builder.AppendLine();
+        builder.AppendLine("Items");
+
+        string synergySummary = ItemSynergyManager.GetActiveSynergySummary();
+
+        if (string.IsNullOrEmpty(synergySummary))
+        {
+            builder.AppendLine("—");
+        }
+        else
+        {
+            string[] lines = synergySummary.Split('\n');
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (string.IsNullOrWhiteSpace(lines[i]))
+                {
+                    continue;
+                }
+
+                builder.AppendLine("• " + lines[i].Trim());
+            }
+        }
+
+        return builder.ToString().TrimEnd();
+    }
+
+    public static string BuildStatsPanelText(PlayerStats playerStats)
+    {
+        StringBuilder builder = new StringBuilder();
+
+        if (playerStats != null)
+        {
+            builder.AppendLine("HP  " + playerStats.CurrentHealth + " / " + playerStats.EffectiveMaxHealth);
+            builder.AppendLine("Coin  " + playerStats.Coins);
+            builder.AppendLine("Level  " + playerStats.CurrentLevel);
+        }
+        else
+        {
+            builder.AppendLine("HP  —");
+            builder.AppendLine("Coin  —");
+            builder.AppendLine("Level  —");
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("Chest Buffs");
+        builder.AppendLine(BuildCompactChestBuffSummary());
+        builder.AppendLine();
+        builder.AppendLine("Synergies");
+
+        string synergySummary = ItemSynergyManager.GetActiveSynergySummary();
+
+        if (string.IsNullOrEmpty(synergySummary))
+        {
+            builder.AppendLine("—");
+        }
+        else
+        {
+            builder.AppendLine(synergySummary);
+        }
+
+        builder.AppendLine();
+        builder.AppendLine("Damage  —");
+        builder.AppendLine("Crit  —");
+        builder.AppendLine("Luck  —");
+
+        return builder.ToString().TrimEnd();
     }
 
     public static string BuildHeader(int upgradeIndex, UpgradeRarity rarity)
@@ -226,5 +312,79 @@ public static class RewardCardTextFormatter
         }
 
         return header;
+    }
+
+    private static void AppendInventorySlotLines(StringBuilder builder, RunBuildTracker tracker, RewardCategory category)
+    {
+        for (int i = 0; i < RunBuildTracker.MaxSlotsPerCategory; i++)
+        {
+            RunBuildSlotEntry entry = category == RewardCategory.Skill
+                ? tracker.GetSkillSlot(i)
+                : tracker.GetPassiveSlot(i);
+
+            builder.Append("• ");
+            builder.AppendLine(FormatInventorySlotLine(entry));
+        }
+    }
+
+    private static string FormatInventorySlotLine(RunBuildSlotEntry entry)
+    {
+        if (entry == null)
+        {
+            return "—";
+        }
+
+        int maxLevel = UpgradeOptionCatalog.GetMaxLevel(entry.UpgradeIndex);
+        string displayName = GetInventoryDisplayName(entry);
+
+        if (entry.Level >= maxLevel)
+        {
+            return displayName + " Lv. MAX";
+        }
+
+        return displayName + " Lv. " + entry.Level;
+    }
+
+    private static string GetInventoryDisplayName(RunBuildSlotEntry entry)
+    {
+        if (entry == null)
+        {
+            return "—";
+        }
+
+        return GetDisplayTitle(entry.UpgradeIndex, entry.DisplayName);
+    }
+
+    private static string BuildCompactChestBuffSummary()
+    {
+        ChestStatBuffTracker tracker = ChestStatBuffTracker.Instance;
+
+        if (tracker == null)
+        {
+            return "—";
+        }
+
+        IReadOnlyList<ChestStatBuffEntry> buffs = tracker.GetActiveBuffs();
+
+        if (buffs == null || buffs.Count == 0)
+        {
+            return "—";
+        }
+
+        StringBuilder builder = new StringBuilder();
+        int visibleCount = Mathf.Min(buffs.Count, 4);
+
+        for (int i = 0; i < visibleCount; i++)
+        {
+            if (i > 0)
+            {
+                builder.AppendLine();
+            }
+
+            builder.Append("• ");
+            builder.Append(ChestStatBuffTracker.FormatHudBadgeText(buffs[i]));
+        }
+
+        return builder.ToString();
     }
 }
