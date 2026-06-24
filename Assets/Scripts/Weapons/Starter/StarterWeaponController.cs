@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class StarterWeaponController : MonoBehaviour
@@ -50,6 +51,19 @@ public class StarterWeaponController : MonoBehaviour
     [SerializeField] private float blastShellRange = 12f;
     [SerializeField] private float blastShellRadius = 2.4f;
     [SerializeField] private int blastShellDamage = 14;
+
+    [Header("Thunder Spear")]
+    [SerializeField] private float thunderSpearPrimaryCooldown = 0.65f;
+    [SerializeField] private float thunderSpearSkillCooldown = 3.2f;
+    [SerializeField] private float lightningThrustRange = 14f;
+    [SerializeField] private float lightningThrustLineRadius = 0.75f;
+    [SerializeField] private int lightningThrustBaseDamage = 8;
+    [SerializeField] private int lightningThrustMaxPierce = 3;
+    [SerializeField] private float thunderJavelinRange = 18f;
+    [SerializeField] private int thunderJavelinPrimaryDamage = 16;
+    [SerializeField] private float thunderJavelinShockRadius = 4f;
+    [SerializeField] private int thunderJavelinChainDamage = 7;
+    [SerializeField] private int thunderJavelinChainTargets = 2;
 
     #if UNITY_EDITOR
     // Default off: [StarterWeapon] skill diagnostics are opt-in only. Weapon/skill logic is unaffected.
@@ -166,6 +180,10 @@ public class StarterWeaponController : MonoBehaviour
         {
             ApplyWeapon(StarterWeaponType.Blunderbuss);
         }
+        else if (Input.GetKeyDown(KeyCode.Alpha5))
+        {
+            ApplyWeapon(StarterWeaponType.ThunderSpear);
+        }
     }
 
     private void ApplyWeapon(StarterWeaponType weaponType)
@@ -225,6 +243,10 @@ public class StarterWeaponController : MonoBehaviour
             case StarterWeaponType.Blunderbuss:
                 FireScatterShot();
                 nextPrimaryTime = Time.time + GetPrimaryCooldown(blunderbussPrimaryCooldown);
+                break;
+            case StarterWeaponType.ThunderSpear:
+                FireLightningThrust();
+                nextPrimaryTime = Time.time + GetPrimaryCooldown(thunderSpearPrimaryCooldown);
                 break;
         }
     }
@@ -316,6 +338,10 @@ public class StarterWeaponController : MonoBehaviour
             case StarterWeaponType.Blunderbuss:
                 FireBlastShell();
                 nextSkillTime = Time.time + GetPrimaryCooldown(blunderbussSkillCooldown);
+                break;
+            case StarterWeaponType.ThunderSpear:
+                FireThunderJavelin();
+                nextSkillTime = Time.time + GetPrimaryCooldown(thunderSpearSkillCooldown);
                 break;
         }
     }
@@ -806,5 +832,145 @@ public class StarterWeaponController : MonoBehaviour
         }
 
         Object.Destroy(ring, 0.28f);
+    }
+
+    private void FireLightningThrust()
+    {
+        if (fireCamera == null) return;
+
+        Vector3 origin = fireCamera.position;
+        Vector3 forward = fireCamera.forward;
+
+        if (!FPSAimUtility.TryGetAimDirection(out forward))
+        {
+            forward = fireCamera.forward;
+        }
+
+        int damage = Mathf.Max(lightningThrustBaseDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, lightningThrustBaseDamage));
+        int hitCount = StarterWeaponDamageUtility.DamageEnemiesAlongRayWithPierce(
+            origin,
+            forward,
+            lightningThrustRange,
+            lightningThrustLineRadius,
+            damage,
+            lightningThrustMaxPierce,
+            "Thunder Spear");
+
+        weaponViewModel?.PlayThunderSpearTipGlow();
+        fpsViewModel?.PlayRecoil();
+        SpawnLightningThrustVisual(origin, forward, lightningThrustRange, hitCount > 0);
+        FPSScreenShake.Shake(0.012f, 0.05f);
+    }
+
+    private void FireThunderJavelin()
+    {
+        int primaryDamage = Mathf.Max(thunderJavelinPrimaryDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, thunderJavelinPrimaryDamage));
+        bool hitPrimary = StarterWeaponDamageUtility.TryApplyThunderJavelin(
+            thunderJavelinRange,
+            primaryDamage,
+            thunderJavelinShockRadius,
+            thunderJavelinChainDamage,
+            thunderJavelinChainTargets,
+            out Vector3 impactPoint,
+            out List<Enemy> chainedEnemies);
+
+        weaponViewModel?.PlayThunderSpearTipGlow(0.18f);
+        fpsViewModel?.PlayRecoil();
+        SpawnThunderJavelinVisual(impactPoint, thunderJavelinShockRadius, hitPrimary, chainedEnemies);
+        FPSScreenShake.Shake(hitPrimary ? 0.022f : 0.008f, hitPrimary ? 0.08f : 0.05f);
+    }
+
+    private static void SpawnLightningThrustVisual(Vector3 origin, Vector3 direction, float range, bool hadHits)
+    {
+        if (direction.sqrMagnitude < 0.001f) return;
+
+        direction.Normalize();
+        Vector3 start = origin + direction * 0.45f;
+        Vector3 end = origin + direction * range;
+
+        if (Physics.Raycast(origin, direction, out RaycastHit hit, range, ~0, QueryTriggerInteraction.Collide))
+        {
+            end = hit.point;
+        }
+
+        WeaponFxUtility.SpawnLaserBeam(start, end, 0.1f);
+
+        if (hadHits)
+        {
+            GameObject spark = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            spark.name = "LightningThrustSpark";
+            spark.transform.position = end;
+            spark.transform.localScale = Vector3.one * 0.22f;
+
+            Collider sparkCollider = spark.GetComponent<Collider>();
+
+            if (sparkCollider != null)
+            {
+                Object.Destroy(sparkCollider);
+            }
+
+            Renderer sparkRenderer = spark.GetComponent<Renderer>();
+
+            if (sparkRenderer != null)
+            {
+                GameVisualStyle.ApplyColor(sparkRenderer, new Color(0.55f, 0.92f, 1f, 0.85f), 0.2f, true, 0.7f);
+            }
+
+            Object.Destroy(spark, 0.12f);
+        }
+    }
+
+    private static void SpawnThunderJavelinVisual(Vector3 impactPoint, float shockRadius, bool hitPrimary, List<Enemy> chainedEnemies)
+    {
+        if (!FPSAimUtility.TryGetCameraAim(out Vector3 origin, out Vector3 direction))
+        {
+            return;
+        }
+
+        direction.Normalize();
+        Vector3 start = origin + direction * 0.5f;
+        WeaponFxUtility.SpawnLaserBeam(start, impactPoint, 0.14f);
+
+        GameObject ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        ring.name = "ThunderJavelinShockRing";
+        ring.transform.position = impactPoint + Vector3.up * 0.05f;
+        ring.transform.localScale = new Vector3(shockRadius * 2f, 0.02f, shockRadius * 2f);
+
+        Collider ringCollider = ring.GetComponent<Collider>();
+
+        if (ringCollider != null)
+        {
+            Object.Destroy(ringCollider);
+        }
+
+        Renderer ringRenderer = ring.GetComponent<Renderer>();
+
+        if (ringRenderer != null)
+        {
+            Color ringColor = hitPrimary
+                ? new Color(0.35f, 0.82f, 1f, 0.65f)
+                : new Color(0.25f, 0.55f, 0.85f, 0.35f);
+            GameVisualStyle.ApplyColor(ringRenderer, ringColor, 0.25f, true, hitPrimary ? 0.55f : 0.25f);
+        }
+
+        Object.Destroy(ring, hitPrimary ? 0.26f : 0.16f);
+
+        if (!hitPrimary || chainedEnemies == null)
+        {
+            return;
+        }
+
+        for (int i = 0; i < chainedEnemies.Count; i++)
+        {
+            Enemy chainEnemy = chainedEnemies[i];
+
+            if (chainEnemy == null)
+            {
+                continue;
+            }
+
+            Vector3 chainPoint = chainEnemy.transform.position + Vector3.up * 0.5f;
+            WeaponFxUtility.SpawnChainLightning(impactPoint, chainPoint);
+        }
     }
 }

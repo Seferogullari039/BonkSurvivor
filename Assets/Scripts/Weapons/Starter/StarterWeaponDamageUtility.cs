@@ -214,6 +214,222 @@ public static class StarterWeaponDamageUtility
         return true;
     }
 
+    public static int DamageEnemiesAlongRayWithPierce(
+        Vector3 origin,
+        Vector3 direction,
+        float range,
+        float lineRadius,
+        int damage,
+        int maxPierce,
+        string damageSource)
+    {
+        if (range <= 0f || lineRadius <= 0f || damage <= 0 || maxPierce <= 0 || direction.sqrMagnitude < 0.001f)
+        {
+            return 0;
+        }
+
+        direction.Normalize();
+
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        List<RayPierceCandidate> candidates = new List<RayPierceCandidate>(enemies.Length);
+
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            GameObject enemyObject = enemies[i];
+
+            if (enemyObject == null)
+            {
+                continue;
+            }
+
+            Enemy enemy = enemyObject.GetComponent<Enemy>() ?? enemyObject.GetComponentInParent<Enemy>();
+
+            if (enemy == null)
+            {
+                continue;
+            }
+
+            Vector3 aimPoint = enemyObject.transform.position + Vector3.up * 0.5f;
+            Vector3 toEnemy = aimPoint - origin;
+            float alongDistance = Vector3.Dot(toEnemy, direction);
+
+            if (alongDistance <= 0f || alongDistance > range)
+            {
+                continue;
+            }
+
+            Vector3 closestOnRay = origin + direction * alongDistance;
+            float perpendicularDistance = Vector3.Distance(aimPoint, closestOnRay);
+
+            if (perpendicularDistance > lineRadius)
+            {
+                continue;
+            }
+
+            candidates.Add(new RayPierceCandidate(enemy, alongDistance));
+        }
+
+        if (candidates.Count == 0)
+        {
+            return 0;
+        }
+
+        candidates.Sort((a, b) => a.AlongDistance.CompareTo(b.AlongDistance));
+
+        HashSet<Enemy> damagedEnemies = new HashSet<Enemy>();
+        int hitCount = 0;
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            if (hitCount >= maxPierce)
+            {
+                break;
+            }
+
+            Enemy enemy = candidates[i].Enemy;
+
+            if (enemy == null || !damagedEnemies.Add(enemy))
+            {
+                continue;
+            }
+
+            TryApplyDamage(enemy, damage, damageSource);
+            hitCount++;
+        }
+
+        return hitCount;
+    }
+
+    public static bool TryApplyThunderJavelin(
+        float range,
+        int primaryDamage,
+        float shockRadius,
+        int chainDamage,
+        int maxChainTargets,
+        out Vector3 impactPoint,
+        out List<Enemy> chainedEnemies)
+    {
+        impactPoint = Vector3.zero;
+        chainedEnemies = new List<Enemy>();
+
+        if (range <= 0f || primaryDamage <= 0 || !FPSAimUtility.TryGetCameraAim(out Vector3 origin, out Vector3 direction))
+        {
+            return false;
+        }
+
+        direction.Normalize();
+
+        Transform primaryTarget = FPSAimUtility.FindEnemyAlongRay(origin, direction, range);
+
+        if (primaryTarget == null)
+        {
+            if (Physics.Raycast(origin, direction, out RaycastHit hit, range, ~0, QueryTriggerInteraction.Collide))
+            {
+                impactPoint = hit.point;
+            }
+            else
+            {
+                impactPoint = origin + direction * range;
+            }
+
+            return false;
+        }
+
+        Enemy primaryEnemy = primaryTarget.GetComponent<Enemy>() ?? primaryTarget.GetComponentInParent<Enemy>();
+
+        if (primaryEnemy == null)
+        {
+            impactPoint = primaryTarget.position + Vector3.up * 0.5f;
+            return false;
+        }
+
+        impactPoint = primaryTarget.position + Vector3.up * 0.5f;
+        TryApplyDamage(primaryEnemy, primaryDamage, "Thunder Javelin");
+
+        if (shockRadius <= 0f || chainDamage <= 0 || maxChainTargets <= 0)
+        {
+            return true;
+        }
+
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        List<ChainCandidate> chainCandidates = new List<ChainCandidate>();
+
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            GameObject enemyObject = enemies[i];
+
+            if (enemyObject == null)
+            {
+                continue;
+            }
+
+            Enemy enemy = enemyObject.GetComponent<Enemy>() ?? enemyObject.GetComponentInParent<Enemy>();
+
+            if (enemy == null || enemy == primaryEnemy)
+            {
+                continue;
+            }
+
+            float distance = Vector3.Distance(enemyObject.transform.position, impactPoint);
+
+            if (distance > shockRadius)
+            {
+                continue;
+            }
+
+            chainCandidates.Add(new ChainCandidate(enemy, distance));
+        }
+
+        chainCandidates.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+
+        int chainCount = 0;
+
+        for (int i = 0; i < chainCandidates.Count; i++)
+        {
+            if (chainCount >= maxChainTargets)
+            {
+                break;
+            }
+
+            Enemy chainEnemy = chainCandidates[i].Enemy;
+
+            if (chainEnemy == null)
+            {
+                continue;
+            }
+
+            TryApplyDamage(chainEnemy, chainDamage, "Thunder Chain");
+            chainedEnemies.Add(chainEnemy);
+            chainCount++;
+        }
+
+        return true;
+    }
+
+    private readonly struct RayPierceCandidate
+    {
+        public RayPierceCandidate(Enemy enemy, float alongDistance)
+        {
+            Enemy = enemy;
+            AlongDistance = alongDistance;
+        }
+
+        public Enemy Enemy { get; }
+        public float AlongDistance { get; }
+    }
+
+    private readonly struct ChainCandidate
+    {
+        public ChainCandidate(Enemy enemy, float distance)
+        {
+            Enemy = enemy;
+            Distance = distance;
+        }
+
+        public Enemy Enemy { get; }
+        public float Distance { get; }
+    }
+
     public static bool TryDamageSingleMeleeTarget(
         Transform aimCamera,
         float range,
