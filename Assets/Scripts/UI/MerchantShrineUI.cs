@@ -12,8 +12,11 @@ public class MerchantShrineUI : MonoBehaviour
 
     private const float PanelWidth = 480f;
     private const float PanelHeight = 360f;
-    private const float OptionRowWidth = 440f;
+    private const float OptionRowWidth = 432f;
     private const float OptionRowHeight = 50f;
+    private const float RowLeftPadding = 28f;
+    private const float RowRightPadding = 24f;
+    private const float RowCostWidth = 64f;
 
     private static readonly Color PanelBackgroundColor = new Color(0.04f, 0.05f, 0.09f, 0.94f);
     private static readonly Color OptionRowBackgroundColor = new Color(0.09f, 0.11f, 0.16f, 0.98f);
@@ -477,22 +480,103 @@ public class MerchantShrineUI : MonoBehaviour
         RectTransform rowRect = rowObject.AddComponent<RectTransform>();
         UiLayoutUtility.SetAnchorCenter(rowRect, anchoredPosition, new Vector2(OptionRowWidth, OptionRowHeight));
 
-        Button button = CreateButton(rowObject.transform, "Button", Vector2.zero, new Vector2(OptionRowWidth, OptionRowHeight), string.Empty, onClick);
+        GameObject buttonObject = new GameObject("Button");
+        buttonObject.transform.SetParent(rowObject.transform, false);
+
+        RectTransform buttonRect = buttonObject.AddComponent<RectTransform>();
+        StretchFillParent(buttonRect);
+
+        Image buttonImage = buttonObject.AddComponent<Image>();
+        buttonImage.raycastTarget = true;
+        buttonImage.color = OptionRowBackgroundColor;
+
+        Button button = buttonObject.AddComponent<Button>();
+        button.targetGraphic = buttonImage;
+        button.onClick.AddListener(onClick);
         optionButtons[index] = button;
-        button.GetComponent<Image>().color = OptionRowBackgroundColor;
 
-        optionLabels[index] = CreateText(rowObject.transform, "Label", new Vector2(-188f, 8f), new Vector2(300f, 22f), 16f, FontStyles.Bold);
+        optionLabels[index] = CreateRowText(rowObject.transform, "Label", 16f, FontStyles.Bold);
         optionLabels[index].alignment = TextAlignmentOptions.MidlineLeft;
-        optionLabels[index].overflowMode = TextOverflowModes.Overflow;
+        optionLabels[index].overflowMode = TextOverflowModes.Ellipsis;
+        SetStretchedRect(
+            optionLabels[index].rectTransform,
+            new Vector2(0f, 0.52f),
+            new Vector2(1f, 1f),
+            RowLeftPadding,
+            RowRightPadding + RowCostWidth + 4f,
+            4f,
+            0f);
 
-        optionCostLabels[index] = CreateText(rowObject.transform, "Cost", new Vector2(188f, 8f), new Vector2(72f, 22f), 17f, FontStyles.Bold);
+        optionCostLabels[index] = CreateRowText(rowObject.transform, "Cost", 17f, FontStyles.Bold);
         optionCostLabels[index].alignment = TextAlignmentOptions.MidlineRight;
         optionCostLabels[index].overflowMode = TextOverflowModes.Overflow;
 
-        optionStatusLabels[index] = CreateText(rowObject.transform, "Status", new Vector2(-188f, -14f), new Vector2(360f, 18f), 12.5f, FontStyles.Normal);
+        RectTransform costRect = optionCostLabels[index].rectTransform;
+        costRect.anchorMin = new Vector2(1f, 0.52f);
+        costRect.anchorMax = new Vector2(1f, 1f);
+        costRect.pivot = new Vector2(1f, 0.5f);
+        costRect.offsetMin = new Vector2(-(RowRightPadding + RowCostWidth), 2f);
+        costRect.offsetMax = new Vector2(-RowRightPadding, -4f);
+
+        optionStatusLabels[index] = CreateRowText(rowObject.transform, "Status", 12.5f, FontStyles.Normal);
         optionStatusLabels[index].alignment = TextAlignmentOptions.MidlineLeft;
         optionStatusLabels[index].overflowMode = TextOverflowModes.Overflow;
+        SetStretchedRect(
+            optionStatusLabels[index].rectTransform,
+            new Vector2(0f, 0f),
+            new Vector2(1f, 0.48f),
+            RowLeftPadding,
+            RowRightPadding,
+            0f,
+            2f);
         optionStatusLabels[index].gameObject.SetActive(false);
+    }
+
+    private static void StretchFillParent(RectTransform rectTransform)
+    {
+        rectTransform.anchorMin = Vector2.zero;
+        rectTransform.anchorMax = Vector2.one;
+        rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        rectTransform.offsetMin = Vector2.zero;
+        rectTransform.offsetMax = Vector2.zero;
+    }
+
+    private static void SetStretchedRect(
+        RectTransform rectTransform,
+        Vector2 anchorMin,
+        Vector2 anchorMax,
+        float left,
+        float right,
+        float top,
+        float bottom)
+    {
+        rectTransform.anchorMin = anchorMin;
+        rectTransform.anchorMax = anchorMax;
+        rectTransform.pivot = new Vector2(0.5f, 0.5f);
+        rectTransform.offsetMin = new Vector2(left, bottom);
+        rectTransform.offsetMax = new Vector2(-right, -top);
+    }
+
+    private static TMP_Text CreateRowText(Transform parent, string objectName, float fontSize, FontStyles fontStyle)
+    {
+        GameObject textObject = new GameObject(objectName);
+        textObject.transform.SetParent(parent, false);
+        textObject.AddComponent<RectTransform>();
+
+        TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
+        textMesh.fontSize = fontSize;
+        textMesh.fontStyle = fontStyle;
+        textMesh.raycastTarget = false;
+        textMesh.textWrappingMode = TextWrappingModes.NoWrap;
+
+        TMP_FontAsset font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+
+        if (font != null)
+        {
+            textMesh.font = font;
+        }
+
+        return textMesh;
     }
 
     private static TMP_Text CreateText(
