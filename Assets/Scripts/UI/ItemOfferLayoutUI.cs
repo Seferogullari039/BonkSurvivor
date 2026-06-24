@@ -4,22 +4,25 @@ using UnityEngine.UI;
 
 public sealed class ItemOfferLayoutUI
 {
-    private const float LeftPanelWidth = 390f;
-    private const float LeftPanelHeight = 620f;
-    private const float RightPanelWidth = 330f;
-    private const float RightPanelHeight = 620f;
-    private const float CenterPanelWidth = 780f;
-    private const float CenterPanelHeight = 680f;
-    private const float SidePanelOffsetX = 610f;
+    private const float LeftPanelWidth = 400f;
+    private const float LeftPanelHeight = 640f;
+    private const float RightPanelWidth = 340f;
+    private const float RightPanelHeight = 640f;
+    private const float CenterPanelWidth = 800f;
+    private const float CenterPanelHeight = 700f;
+    private const float SidePanelOffsetX = 620f;
+    private const float TitleBarHeight = 48f;
 
-    private static readonly Color DimColor = new Color(0.02f, 0.03f, 0.05f, 0.62f);
-    private static readonly Color PanelBackground = new Color(0.04f, 0.05f, 0.09f, 0.94f);
-    private static readonly Color PanelBorder = new Color(0.24f, 0.26f, 0.32f, 0.9f);
-    private static readonly Color TitleBarBackground = new Color(0.07f, 0.08f, 0.12f, 0.98f);
-    private static readonly Color TitleColor = new Color(0.93f, 0.89f, 0.78f, 1f);
-    private static readonly Color SubtitleColor = new Color(0.58f, 0.62f, 0.70f, 1f);
-    private static readonly Color SectionHeaderColor = new Color(0.82f, 0.86f, 0.92f, 1f);
-    private static readonly Color BodyColor = new Color(0.72f, 0.76f, 0.84f, 1f);
+    private static readonly Color DimColor = new Color(0.01f, 0.02f, 0.04f, 0.78f);
+    private static readonly Color PanelBackground = new Color(0.045f, 0.055f, 0.095f, 0.96f);
+    private static readonly Color PanelBorder = new Color(0.32f, 0.34f, 0.40f, 0.95f);
+    private static readonly Color PanelInnerLine = new Color(0.18f, 0.20f, 0.26f, 0.85f);
+    private static readonly Color TitleBarBackground = new Color(0.06f, 0.07f, 0.11f, 1f);
+    private static readonly Color TitleBarAccent = new Color(0.62f, 0.52f, 0.28f, 0.75f);
+    private static readonly Color TitleColor = new Color(0.96f, 0.91f, 0.78f, 1f);
+    private static readonly Color SubtitleColor = new Color(0.66f, 0.70f, 0.78f, 1f);
+    private static readonly Color SectionHeaderColor = new Color(0.88f, 0.90f, 0.96f, 1f);
+    private static readonly Color BodyColor = new Color(0.76f, 0.80f, 0.88f, 1f);
 
     private GameObject rootObject;
     private TMP_Text inventoryBodyText;
@@ -75,6 +78,15 @@ public sealed class ItemOfferLayoutUI
         {
             rootObject.SetActive(visible);
         }
+
+        if (visible)
+        {
+            ItemOfferHudVisibility.HideForItemOffer();
+        }
+        else
+        {
+            ItemOfferHudVisibility.RestoreAfterItemOffer();
+        }
     }
 
     public void RefreshSidePanels(PlayerStats playerStats)
@@ -96,7 +108,7 @@ public sealed class ItemOfferLayoutUI
 
         if (panelRect != null)
         {
-            UiLayoutUtility.SetAnchorCenter(panelRect, new Vector2(0f, -8f), new Vector2(CenterPanelWidth, CenterPanelHeight));
+            UiLayoutUtility.SetAnchorCenter(panelRect, new Vector2(0f, -6f), new Vector2(CenterPanelWidth, CenterPanelHeight));
         }
 
         Image panelImage = centerPanel.GetComponent<Image>();
@@ -106,57 +118,59 @@ public sealed class ItemOfferLayoutUI
             panelImage.color = PanelBackground;
         }
 
-        EnsurePanelBorder(centerPanel.transform, CenterPanelWidth, CenterPanelHeight);
+        EnsurePanelChrome(centerPanel.transform, CenterPanelWidth, CenterPanelHeight);
     }
 
     private void EnsureCenterPanelChrome(Transform centerPanel, TMP_Text fontSource)
     {
+        EnsureTitleBar(centerPanel, CenterPanelWidth, TitleBarHeight + 8f, 312f);
+
         centerTitleText = EnsureCenterText(
             centerPanel,
             "ItemOfferTitle",
-            new Vector2(0f, 286f),
-            new Vector2(720f, 42f),
-            30f,
+            new Vector2(0f, 300f),
+            new Vector2(740f, 40f),
+            32f,
             FontStyles.Bold,
             TitleColor,
             TextAlignmentOptions.Center,
             fontSource);
         centerTitleText.text = "ITEM OFFERS";
+        centerTitleText.characterSpacing = 4f;
 
         centerSubtitleText = EnsureCenterText(
             centerPanel,
             "ItemOfferSubtitle",
-            new Vector2(0f, 248f),
-            new Vector2(680f, 28f),
-            17f,
+            new Vector2(0f, 262f),
+            new Vector2(700f, 30f),
+            18f,
             FontStyles.Italic,
             SubtitleColor,
             TextAlignmentOptions.Center,
             fontSource);
         centerSubtitleText.text = "Choose one upgrade to shape your run.";
-
-        EnsureTitleBar(centerPanel);
+        centerSubtitleText.lineSpacing = 2f;
     }
 
-    private static void EnsureTitleBar(Transform centerPanel)
+    private static void EnsureTitleBar(Transform panelTransform, float width, float height, float centerY)
     {
-        Transform existingBar = centerPanel.Find("ItemOfferTitleBar");
+        Transform existingBar = panelTransform.Find("ItemOfferTitleBar");
 
-        if (existingBar != null)
+        if (existingBar == null)
         {
-            return;
+            GameObject barObject = new GameObject("ItemOfferTitleBar");
+            barObject.transform.SetParent(panelTransform, false);
+            barObject.transform.SetAsFirstSibling();
+
+            RectTransform barRect = barObject.AddComponent<RectTransform>();
+            UiLayoutUtility.SetAnchorCenter(barRect, new Vector2(0f, centerY), new Vector2(width - 6f, height));
+
+            Image barImage = barObject.AddComponent<Image>();
+            barImage.raycastTarget = false;
+            barImage.color = TitleBarBackground;
         }
 
-        GameObject barObject = new GameObject("ItemOfferTitleBar");
-        barObject.transform.SetParent(centerPanel, false);
-        barObject.transform.SetAsFirstSibling();
-
-        RectTransform barRect = barObject.AddComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(barRect, new Vector2(0f, 310f), new Vector2(CenterPanelWidth - 8f, 56f));
-
-        Image barImage = barObject.AddComponent<Image>();
-        barImage.raycastTarget = false;
-        barImage.color = TitleBarBackground;
+        EnsureHorizontalAccent(panelTransform, "ItemOfferTitleAccent", centerY - (height * 0.5f) - 2f, width - 24f);
     }
 
     private static TMP_Text EnsureCenterText(
@@ -178,6 +192,8 @@ public sealed class ItemOfferLayoutUI
 
             if (existingText != null)
             {
+                existingText.fontSize = fontSize;
+                existingText.color = color;
                 return existingText;
             }
         }
@@ -234,33 +250,44 @@ public sealed class ItemOfferLayoutUI
         panelImage.raycastTarget = false;
         panelImage.color = PanelBackground;
 
-        EnsurePanelBorder(panelObject.transform, width, height);
+        EnsurePanelChrome(panelObject.transform, width, height);
+        EnsureTitleBar(panelObject.transform, width, TitleBarHeight, height * 0.5f - (TitleBarHeight * 0.5f) - 4f);
 
         TMP_Text headerText = CreatePanelText(
             panelObject.transform,
             "Header",
-            new Vector2(0f, height * 0.5f - 28f),
-            new Vector2(width - 28f, 28f),
-            20f,
+            new Vector2(0f, height * 0.5f - 30f),
+            new Vector2(width - 36f, 30f),
+            22f,
             FontStyles.Bold,
             SectionHeaderColor,
             TextAlignmentOptions.MidlineLeft,
             fontSource);
         headerText.text = headerLabel;
+        headerText.characterSpacing = 2f;
 
         bodyText = CreatePanelText(
             panelObject.transform,
             "Body",
-            new Vector2(0f, -24f),
-            new Vector2(width - 28f, height - 72f),
-            15f,
+            new Vector2(0f, -18f),
+            new Vector2(width - 36f, height - 88f),
+            16f,
             FontStyles.Normal,
             BodyColor,
             TextAlignmentOptions.TopLeft,
             fontSource);
-        bodyText.lineSpacing = 4f;
+        bodyText.lineSpacing = 6f;
+        bodyText.paragraphSpacing = 4f;
         bodyText.textWrappingMode = TextWrappingModes.Normal;
         bodyText.overflowMode = TextOverflowModes.Truncate;
+        bodyText.margin = new Vector4(4f, 8f, 4f, 8f);
+    }
+
+    private static void EnsurePanelChrome(Transform panelTransform, float width, float height)
+    {
+        EnsurePanelBorder(panelTransform, width, height);
+        EnsureHorizontalAccent(panelTransform, "PanelTopAccent", height * 0.5f - 2f, width - 20f);
+        EnsureHorizontalAccent(panelTransform, "PanelBottomAccent", -(height * 0.5f) + 2f, width - 20f, PanelInnerLine);
     }
 
     private static void EnsurePanelBorder(Transform panelTransform, float width, float height)
@@ -269,6 +296,13 @@ public sealed class ItemOfferLayoutUI
 
         if (existingBorder != null)
         {
+            RectTransform existingRect = existingBorder as RectTransform;
+
+            if (existingRect != null)
+            {
+                UiLayoutUtility.SetAnchorCenter(existingRect, Vector2.zero, new Vector2(width + 6f, height + 6f));
+            }
+
             return;
         }
 
@@ -277,11 +311,36 @@ public sealed class ItemOfferLayoutUI
         borderObject.transform.SetAsFirstSibling();
 
         RectTransform borderRect = borderObject.AddComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(borderRect, Vector2.zero, new Vector2(width + 4f, height + 4f));
+        UiLayoutUtility.SetAnchorCenter(borderRect, Vector2.zero, new Vector2(width + 6f, height + 6f));
 
         Image borderImage = borderObject.AddComponent<Image>();
         borderImage.raycastTarget = false;
         borderImage.color = PanelBorder;
+    }
+
+    private static void EnsureHorizontalAccent(
+        Transform panelTransform,
+        string objectName,
+        float centerY,
+        float width,
+        Color? colorOverride = null)
+    {
+        Transform existing = panelTransform.Find(objectName);
+
+        if (existing != null)
+        {
+            return;
+        }
+
+        GameObject lineObject = new GameObject(objectName);
+        lineObject.transform.SetParent(panelTransform, false);
+
+        RectTransform lineRect = lineObject.AddComponent<RectTransform>();
+        UiLayoutUtility.SetAnchorCenter(lineRect, new Vector2(0f, centerY), new Vector2(width, 2f));
+
+        Image lineImage = lineObject.AddComponent<Image>();
+        lineImage.raycastTarget = false;
+        lineImage.color = colorOverride ?? TitleBarAccent;
     }
 
     private static TMP_Text CreatePanelText(

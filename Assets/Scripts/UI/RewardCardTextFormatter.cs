@@ -30,19 +30,19 @@ public static class RewardCardTextFormatter
         }
 
         StringBuilder builder = new StringBuilder();
-        builder.AppendLine("Weapons");
+        AppendSectionHeader(builder, "Weapons");
         AppendInventorySlotLines(builder, tracker, RewardCategory.Skill);
         builder.AppendLine();
-        builder.AppendLine("Passives");
+        AppendSectionHeader(builder, "Passives");
         AppendInventorySlotLines(builder, tracker, RewardCategory.Passive);
         builder.AppendLine();
-        builder.AppendLine("Items");
+        AppendSectionHeader(builder, "Items");
 
         string synergySummary = ItemSynergyManager.GetActiveSynergySummary();
 
         if (string.IsNullOrEmpty(synergySummary))
         {
-            builder.AppendLine("—");
+            builder.AppendLine("  —");
         }
         else
         {
@@ -55,7 +55,7 @@ public static class RewardCardTextFormatter
                     continue;
                 }
 
-                builder.AppendLine("• " + lines[i].Trim());
+                builder.AppendLine("  • " + lines[i].Trim());
             }
         }
 
@@ -68,38 +68,48 @@ public static class RewardCardTextFormatter
 
         if (playerStats != null)
         {
-            builder.AppendLine("HP  " + playerStats.CurrentHealth + " / " + playerStats.EffectiveMaxHealth);
-            builder.AppendLine("Coin  " + playerStats.Coins);
-            builder.AppendLine("Level  " + playerStats.CurrentLevel);
+            AppendStatLine(builder, "HP", playerStats.CurrentHealth + " / " + playerStats.EffectiveMaxHealth);
+            AppendStatLine(builder, "Coin", playerStats.Coins.ToString());
+            AppendStatLine(builder, "Level", playerStats.CurrentLevel.ToString());
         }
         else
         {
-            builder.AppendLine("HP  —");
-            builder.AppendLine("Coin  —");
-            builder.AppendLine("Level  —");
+            AppendStatLine(builder, "HP", "—");
+            AppendStatLine(builder, "Coin", "—");
+            AppendStatLine(builder, "Level", "—");
         }
 
         builder.AppendLine();
-        builder.AppendLine("Chest Buffs");
-        builder.AppendLine(BuildCompactChestBuffSummary());
+        AppendSectionHeader(builder, "Chest Buffs");
+        builder.AppendLine("  " + BuildCompactChestBuffSummary());
         builder.AppendLine();
-        builder.AppendLine("Synergies");
+        AppendSectionHeader(builder, "Synergies");
 
         string synergySummary = ItemSynergyManager.GetActiveSynergySummary();
 
         if (string.IsNullOrEmpty(synergySummary))
         {
-            builder.AppendLine("—");
+            builder.AppendLine("  —");
         }
         else
         {
-            builder.AppendLine(synergySummary);
+            string[] lines = synergySummary.Split('\n');
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                if (string.IsNullOrWhiteSpace(lines[i]))
+                {
+                    continue;
+                }
+
+                builder.AppendLine("  " + lines[i].Trim());
+            }
         }
 
         builder.AppendLine();
-        builder.AppendLine("Damage  —");
-        builder.AppendLine("Crit  —");
-        builder.AppendLine("Luck  —");
+        AppendStatLine(builder, "Damage", "—");
+        AppendStatLine(builder, "Crit", "—");
+        AppendStatLine(builder, "Luck", "—");
 
         return builder.ToString().TrimEnd();
     }
@@ -322,9 +332,20 @@ public static class RewardCardTextFormatter
                 ? tracker.GetSkillSlot(i)
                 : tracker.GetPassiveSlot(i);
 
-            builder.Append("• ");
+            builder.Append("  ");
             builder.AppendLine(FormatInventorySlotLine(entry));
         }
+    }
+
+    private static void AppendSectionHeader(StringBuilder builder, string label)
+    {
+        builder.AppendLine(label);
+    }
+
+    private static void AppendStatLine(StringBuilder builder, string label, string value)
+    {
+        builder.Append(label.PadRight(10));
+        builder.AppendLine(value);
     }
 
     private static string FormatInventorySlotLine(RunBuildSlotEntry entry)
@@ -339,10 +360,10 @@ public static class RewardCardTextFormatter
 
         if (entry.Level >= maxLevel)
         {
-            return displayName + " Lv. MAX";
+            return "• " + displayName + " Lv. MAX";
         }
 
-        return displayName + " Lv. " + entry.Level;
+        return "• " + displayName + " Lv. " + entry.Level;
     }
 
     private static string GetInventoryDisplayName(RunBuildSlotEntry entry)
@@ -381,7 +402,7 @@ public static class RewardCardTextFormatter
                 builder.AppendLine();
             }
 
-            builder.Append("• ");
+            builder.Append("  • ");
             builder.Append(ChestStatBuffTracker.FormatHudBadgeText(buffs[i]));
         }
 
