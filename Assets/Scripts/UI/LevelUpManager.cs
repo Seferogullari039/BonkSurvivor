@@ -687,8 +687,8 @@ public class LevelUpManager : MonoBehaviour
                 _ => optionText3
             };
 
-            int multiplier = GetRarityMultiplier(rarity);
-            UpgradeCardContent legacyContent = GetUpgradeCardContent(upgradeIndex, multiplier, null);
+            int rarityMultiplier = GetRarityMultiplier(rarity);
+            UpgradeCardContent legacyContent = GetUpgradeCardContent(upgradeIndex, rarityMultiplier, null);
 
             SetOptionText(
                 fallbackText,
