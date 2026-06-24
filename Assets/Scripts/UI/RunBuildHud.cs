@@ -27,7 +27,30 @@ public class RunBuildHud : MonoBehaviour
     private TMP_Text skillsHeaderText;
     private TMP_Text passivesHeaderText;
 
+    private GameObject panelRoot;
     private bool isBuilt;
+
+    private static RunBuildHud instance;
+
+    public static void ShowHud()
+    {
+        SetVisible(true);
+    }
+
+    public static void HideHud()
+    {
+        SetVisible(false);
+    }
+
+    public static void SetVisible(bool visible)
+    {
+        if (instance == null)
+        {
+            instance = FindFirstObjectByType<RunBuildHud>();
+        }
+
+        instance?.ApplyVisibility(visible);
+    }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
@@ -49,10 +72,12 @@ public class RunBuildHud : MonoBehaviour
 
     private void Awake()
     {
+        instance = this;
         BuildPanel();
         RunBuildTracker tracker = RunBuildTracker.GetOrCreate();
         tracker.OnBuildChanged += Refresh;
         Refresh();
+        ApplyVisibility(false);
     }
 
     private void OnDestroy()
@@ -60,6 +85,19 @@ public class RunBuildHud : MonoBehaviour
         if (RunBuildTracker.Instance != null)
         {
             RunBuildTracker.Instance.OnBuildChanged -= Refresh;
+        }
+
+        if (instance == this)
+        {
+            instance = null;
+        }
+    }
+
+    private void ApplyVisibility(bool visible)
+    {
+        if (panelRoot != null)
+        {
+            panelRoot.SetActive(visible);
         }
     }
 
@@ -79,6 +117,7 @@ public class RunBuildHud : MonoBehaviour
 
         GameObject panelObject = new GameObject("RunBuildPanel");
         panelObject.transform.SetParent(canvas.transform, false);
+        panelRoot = panelObject;
 
         RectTransform panelRect = panelObject.AddComponent<RectTransform>();
         UiLayoutUtility.SetAnchorTopLeft(panelRect, PanelX, PanelY, PanelWidth, PanelHeight);

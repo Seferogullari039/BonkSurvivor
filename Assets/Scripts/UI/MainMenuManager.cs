@@ -44,6 +44,7 @@ public class MainMenuManager : MonoBehaviour
 
         ApplyMenuPresentationState();
         HideMenuWeaponVisuals();
+        RunBuildHud.HideHud();
     }
 
     public void PlayGame()
@@ -107,6 +108,8 @@ public class MainMenuManager : MonoBehaviour
             hud.ForceHudElementsVisibleForRecovery();
         }
 
+        RunBuildHud.ShowHud();
+
         forceGameplayHudRoutine = null;
     }
 
@@ -149,6 +152,7 @@ public class MainMenuManager : MonoBehaviour
 
         ApplyMenuPresentationState();
         HideMenuWeaponVisuals();
+        RunBuildHud.HideHud();
     }
 
     public void OpenUpgrades()
@@ -423,6 +427,7 @@ public class MainMenuManager : MonoBehaviour
         }
 
         RefreshMainMenuCoinsText();
+        RunBuildHud.HideHud();
     }
 
     private void WireExistingButton(Transform parent, string buttonName, UnityEngine.Events.UnityAction onClick)
