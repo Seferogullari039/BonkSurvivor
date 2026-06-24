@@ -6,11 +6,20 @@ public class RunBuildHud : MonoBehaviour
 {
     private const int SlotCount = RunBuildTracker.MaxSlotsPerCategory;
 
-    private static readonly Color PanelBackground = new Color(0.04f, 0.05f, 0.08f, 0.82f);
+    private const float PanelX = 10f;
+    private const float PanelY = -90f;
+    private const float PanelWidth = 264f;
+    private const float PanelHeight = 152f;
+    private const float ContentPadding = 8f;
+    private const float SlotWidth = 74f;
+    private const float SlotHeight = 26f;
+    private const float SlotGap = 5f;
+
+    private static readonly Color PanelBackground = new Color(0.04f, 0.05f, 0.08f, 0.72f);
     private static readonly Color HeaderColor = new Color(0.9f, 0.92f, 0.96f, 1f);
     private static readonly Color SectionColor = new Color(0.72f, 0.76f, 0.84f, 1f);
-    private static readonly Color EmptySlotColor = new Color(0.1f, 0.11f, 0.14f, 0.72f);
-    private static readonly Color EmptyTextColor = new Color(0.45f, 0.48f, 0.54f, 0.9f);
+    private static readonly Color EmptySlotColor = new Color(0.1f, 0.11f, 0.14f, 0.68f);
+    private static readonly Color EmptyTextColor = new Color(0.5f, 0.53f, 0.58f, 0.55f);
 
     private readonly SlotView[] skillSlotViews = new SlotView[SlotCount];
     private readonly SlotView[] passiveSlotViews = new SlotView[SlotCount];
@@ -72,61 +81,53 @@ public class RunBuildHud : MonoBehaviour
         panelObject.transform.SetParent(canvas.transform, false);
 
         RectTransform panelRect = panelObject.AddComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorTopLeft(panelRect, 14f, -108f, 236f, 168f);
+        UiLayoutUtility.SetAnchorTopLeft(panelRect, PanelX, PanelY, PanelWidth, PanelHeight);
 
         Image panelImage = panelObject.AddComponent<Image>();
         panelImage.raycastTarget = false;
         panelImage.color = PanelBackground;
 
-        TMP_Text headerText = CreateLeftText(panelObject.transform, "BuildHeader", 10f, -10f, 216f, 22f, 17f, FontStyles.Bold);
+        TMP_Text headerText = CreateLeftText(panelObject.transform, "BuildHeader", ContentPadding, -6f, PanelWidth - (ContentPadding * 2f), 18f, 14f, FontStyles.Bold);
         headerText.text = "BUILD";
         headerText.color = HeaderColor;
         headerText.alignment = TextAlignmentOptions.MidlineLeft;
 
-        skillsHeaderText = CreateLeftText(panelObject.transform, "SkillsHeader", 10f, -34f, 216f, 18f, 13f, FontStyles.Bold);
-        skillsHeaderText.text = "SKILLS";
+        skillsHeaderText = CreateLeftText(panelObject.transform, "SkillsHeader", ContentPadding, -26f, PanelWidth - (ContentPadding * 2f), 14f, 11f, FontStyles.Bold);
+        skillsHeaderText.text = "SKILLS 0/3";
         skillsHeaderText.color = SectionColor;
         skillsHeaderText.alignment = TextAlignmentOptions.MidlineLeft;
 
-        BuildSlotRow(panelObject.transform, skillSlotViews, -58f);
+        BuildSlotRow(panelObject.transform, skillSlotViews, -42f);
 
-        passivesHeaderText = CreateLeftText(panelObject.transform, "PassivesHeader", 10f, -98f, 216f, 18f, 13f, FontStyles.Bold);
-        passivesHeaderText.text = "PASSIVES";
+        passivesHeaderText = CreateLeftText(panelObject.transform, "PassivesHeader", ContentPadding, -74f, PanelWidth - (ContentPadding * 2f), 14f, 11f, FontStyles.Bold);
+        passivesHeaderText.text = "PASSIVES 0/3";
         passivesHeaderText.color = SectionColor;
         passivesHeaderText.alignment = TextAlignmentOptions.MidlineLeft;
 
-        BuildSlotRow(panelObject.transform, passiveSlotViews, -122f);
+        BuildSlotRow(panelObject.transform, passiveSlotViews, -90f);
 
         isBuilt = true;
     }
 
     private static void BuildSlotRow(Transform parent, SlotView[] slotViews, float rowY)
     {
-        const float slotWidth = 72f;
-        const float slotHeight = 28f;
-        const float gap = 4f;
-        float startX = -((slotWidth * SlotCount) + (gap * (SlotCount - 1))) * 0.5f + slotWidth * 0.5f;
-
         for (int i = 0; i < SlotCount; i++)
         {
-            float x = startX + i * (slotWidth + gap);
+            float x = ContentPadding + i * (SlotWidth + SlotGap);
 
             GameObject slotObject = new GameObject("Slot_" + i);
             slotObject.transform.SetParent(parent, false);
 
             RectTransform slotRect = slotObject.AddComponent<RectTransform>();
-            UiLayoutUtility.SetAnchorTopLeft(slotRect, 118f + x, rowY, slotWidth, slotHeight);
+            UiLayoutUtility.SetAnchorTopLeft(slotRect, x, rowY, SlotWidth, SlotHeight);
 
             Image background = slotObject.AddComponent<Image>();
             background.raycastTarget = false;
             background.color = EmptySlotColor;
 
-            TMP_Text label = CreateText(slotObject.transform, "Label", Vector2.zero, new Vector2(slotWidth - 6f, slotHeight - 4f), 12f, FontStyles.Bold);
-            label.alignment = TextAlignmentOptions.Center;
-            label.enableAutoSizing = true;
-            label.fontSizeMin = 9f;
-            label.fontSizeMax = 12f;
+            TMP_Text label = CreateSlotLabel(slotObject.transform);
             label.text = "empty";
+            label.color = EmptyTextColor;
 
             slotViews[i] = new SlotView
             {
@@ -134,6 +135,31 @@ public class RunBuildHud : MonoBehaviour
                 Label = label
             };
         }
+    }
+
+    private static TMP_Text CreateSlotLabel(Transform slotParent)
+    {
+        GameObject textObject = new GameObject("Label");
+        textObject.transform.SetParent(slotParent, false);
+
+        RectTransform rectTransform = textObject.AddComponent<RectTransform>();
+        rectTransform.anchorMin = Vector2.zero;
+        rectTransform.anchorMax = Vector2.one;
+        rectTransform.offsetMin = new Vector2(2f, 1f);
+        rectTransform.offsetMax = new Vector2(-2f, -1f);
+
+        TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
+        textMesh.alignment = TextAlignmentOptions.Center;
+        textMesh.fontSize = 10f;
+        textMesh.fontStyle = FontStyles.Normal;
+        textMesh.enableAutoSizing = true;
+        textMesh.fontSizeMin = 7f;
+        textMesh.fontSizeMax = 10f;
+        textMesh.textWrappingMode = TextWrappingModes.NoWrap;
+        textMesh.overflowMode = TextOverflowModes.Ellipsis;
+        textMesh.raycastTarget = false;
+
+        return textMesh;
     }
 
     private static TMP_Text CreateLeftText(
@@ -154,31 +180,6 @@ public class RunBuildHud : MonoBehaviour
 
         TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
         textMesh.alignment = TextAlignmentOptions.MidlineLeft;
-        textMesh.fontSize = fontSize;
-        textMesh.fontStyle = fontStyle;
-        textMesh.textWrappingMode = TextWrappingModes.NoWrap;
-        textMesh.overflowMode = TextOverflowModes.Ellipsis;
-        textMesh.raycastTarget = false;
-
-        return textMesh;
-    }
-
-    private static TMP_Text CreateText(
-        Transform parent,
-        string objectName,
-        Vector2 anchoredPosition,
-        Vector2 size,
-        float fontSize,
-        FontStyles fontStyle)
-    {
-        GameObject textObject = new GameObject(objectName);
-        textObject.transform.SetParent(parent, false);
-
-        RectTransform rectTransform = textObject.AddComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorTopLeft(rectTransform, 118f + anchoredPosition.x, anchoredPosition.y, size.x, size.y);
-
-        TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
-        textMesh.alignment = TextAlignmentOptions.Center;
         textMesh.fontSize = fontSize;
         textMesh.fontStyle = fontStyle;
         textMesh.textWrappingMode = TextWrappingModes.NoWrap;
@@ -226,6 +227,7 @@ public class RunBuildHud : MonoBehaviour
             slotView.Background.color = EmptySlotColor;
             slotView.Label.text = "empty";
             slotView.Label.color = EmptyTextColor;
+            slotView.Label.fontStyle = FontStyles.Normal;
             return;
         }
 
@@ -233,5 +235,6 @@ public class RunBuildHud : MonoBehaviour
         slotView.Background.color = new Color(buildColor.r, buildColor.g, buildColor.b, 0.28f);
         slotView.Label.text = entry.DisplayName + " Lv." + entry.Level;
         slotView.Label.color = buildColor;
+        slotView.Label.fontStyle = FontStyles.Bold;
     }
 }
