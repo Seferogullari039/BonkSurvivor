@@ -277,11 +277,11 @@ public class RunBuildTracker : MonoBehaviour
 
     private void CheckEvolutionRequirements()
     {
-        IReadOnlyList<EvolutionRequirement> requirements = UpgradeOptionCatalog.GetEvolutionRequirements();
+        var requirements = UpgradeOptionCatalog.GetEvolutionRequirements();
 
         for (int i = 0; i < requirements.Count; i++)
         {
-            EvolutionRequirement requirement = requirements[i];
+            var requirement = requirements[i];
 
             if (requirement.EvolutionId == BuildEvolutionId.None || HasEvolution(requirement.EvolutionId))
             {
