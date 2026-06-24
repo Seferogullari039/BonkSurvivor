@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using TMPro;
 using UnityEngine;
@@ -24,6 +25,8 @@ public class GameOverManager : MonoBehaviour
     private const float RunEndedFadeOutDuration = 0.15f;
     private const float SummaryRevealStart = 1.05f;
     private const float SummaryFadeDuration = 0.25f;
+
+    private const float SummaryScrollFallbackHeight = 520f;
 
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TMP_Text titleText;
@@ -408,6 +411,7 @@ public class GameOverManager : MonoBehaviour
         textMesh.alignment = TextAlignmentOptions.Center;
         textMesh.color = color;
         textMesh.raycastTarget = false;
+        EnsureTmpFont(textMesh);
 
         return textMesh;
     }
@@ -579,8 +583,17 @@ public class GameOverManager : MonoBehaviour
         }
 
         EnsureSummaryUi();
-        PrepareSummaryContent(snapshot);
-        BeginDeathTransition(snapshot);
+
+        try
+        {
+            PrepareSummaryContent(snapshot);
+            BeginDeathTransition(snapshot);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[GameOverManager] Death transition failed, showing summary fallback. {ex.Message}");
+            ShowGameOverPanel(snapshot);
+        }
     }
 
     private void BeginDeathTransition(RunStatsSnapshot snapshot)
@@ -611,11 +624,22 @@ public class GameOverManager : MonoBehaviour
         }
 
         ResetTransitionVisuals();
+
+        if (deathTransitionRoot == null)
+        {
+            ShowGameOverPanel(snapshot);
+            return;
+        }
+
         transitionRoutine = StartCoroutine(PlayDeathTransitionThenSummary(snapshot));
     }
 
     private void PrepareSummaryContent(RunStatsSnapshot snapshot)
     {
+        EnsureTmpFont(titleText);
+        EnsureTmpFont(leftSummaryText);
+        EnsureTmpFont(rightSummaryText);
+
         if (titleText != null)
         {
             titleText.text = "RUN SUMMARY";
@@ -836,12 +860,66 @@ public class GameOverManager : MonoBehaviour
             return;
         }
 
-        Canvas.ForceUpdateCanvases();
+        const float fallbackColumnHeight = 360f;
+        float contentHeight = SummaryScrollFallbackHeight;
 
-        float leftHeight = leftSummaryText != null ? leftSummaryText.preferredHeight : 0f;
-        float rightHeight = rightSummaryText != null ? rightSummaryText.preferredHeight : 0f;
-        float contentHeight = Mathf.Max(360f, Mathf.Max(leftHeight, rightHeight) + 24f);
+        try
+        {
+            Canvas.ForceUpdateCanvases();
+
+            float leftHeight = TryGetPreferredHeight(leftSummaryText, fallbackColumnHeight);
+            float rightHeight = TryGetPreferredHeight(rightSummaryText, fallbackColumnHeight);
+            contentHeight = Mathf.Max(fallbackColumnHeight, Mathf.Max(leftHeight, rightHeight) + 24f);
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[GameOverManager] Failed to update summary scroll height, using fallback. {ex.Message}");
+        }
+
         summaryScrollRect.content.sizeDelta = new Vector2(0f, contentHeight);
+    }
+
+    private static void EnsureTmpFont(TMP_Text text)
+    {
+        if (text == null || text.font != null)
+        {
+            return;
+        }
+
+        if (TMP_Settings.defaultFontAsset != null)
+        {
+            text.font = TMP_Settings.defaultFontAsset;
+        }
+
+        if (text.font == null)
+        {
+            TMP_FontAsset font = Resources.Load<TMP_FontAsset>("Fonts & Materials/LiberationSans SDF");
+
+            if (font != null)
+            {
+                text.font = font;
+            }
+        }
+    }
+
+    private static float TryGetPreferredHeight(TMP_Text text, float fallback)
+    {
+        if (text == null)
+        {
+            return 0f;
+        }
+
+        EnsureTmpFont(text);
+
+        try
+        {
+            return text.preferredHeight;
+        }
+        catch (Exception ex)
+        {
+            Debug.LogWarning($"[GameOverManager] Failed to measure TMP preferred height on '{text.name}', using fallback. {ex.Message}");
+            return fallback;
+        }
     }
 
     public void HideGameOver()
@@ -945,6 +1023,7 @@ public class GameOverManager : MonoBehaviour
         ContentSizeFitter fitter = textObject.AddComponent<ContentSizeFitter>();
         fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
         fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        EnsureTmpFont(textMesh);
 
         return textMesh;
     }
@@ -976,6 +1055,7 @@ public class GameOverManager : MonoBehaviour
         labelText.fontSize = 19f;
         labelText.alignment = TextAlignmentOptions.Center;
         labelText.color = Color.white;
+        EnsureTmpFont(labelText);
 
         return button;
     }
