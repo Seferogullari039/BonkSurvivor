@@ -15,7 +15,10 @@ public class GameOverManager : MonoBehaviour
     [SerializeField] private Button restartButton;
     [SerializeField] private Button mainMenuButton;
 
+    private TMP_Text summaryText;
+    private Button quitButton;
     private bool isShown;
+    private bool summaryUiBuilt;
 
     public bool IsGameOverActive => isShown;
 
@@ -43,6 +46,8 @@ public class GameOverManager : MonoBehaviour
         }
 
         EnsureMainMenuButton();
+        EnsureQuitButton();
+        EnsureSummaryUi();
         ApplyGameOverPanelLayout();
     }
 
@@ -54,21 +59,30 @@ public class GameOverManager : MonoBehaviour
         UiLayoutUtility.ConfigureGameplayCanvas(canvas);
 
         RectTransform panelRect = gameOverPanel.GetComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorCenter(panelRect, Vector2.zero, new Vector2(520f, 360f));
+        UiLayoutUtility.SetAnchorCenter(panelRect, Vector2.zero, new Vector2(760f, 620f));
 
-        LayoutGameOverText(titleText, new Vector2(0f, 110f), new Vector2(460f, 56f), 40f);
-        LayoutGameOverText(waveText, new Vector2(0f, 50f), new Vector2(460f, 40f), 26f);
-        LayoutGameOverText(levelText, new Vector2(0f, 5f), new Vector2(460f, 40f), 26f);
-        LayoutGameOverText(coinsText, new Vector2(0f, -40f), new Vector2(460f, 40f), 26f);
+        LayoutGameOverText(titleText, new Vector2(0f, 250f), new Vector2(700f, 48f), 34f);
+
+        if (summaryText != null)
+        {
+            LayoutGameOverText(summaryText, new Vector2(0f, 20f), new Vector2(700f, 430f), 17f);
+            summaryText.alignment = TextAlignmentOptions.TopLeft;
+            summaryText.lineSpacing = 2f;
+        }
 
         if (restartButton != null)
         {
-            UiLayoutUtility.SetAnchorCenter(restartButton.GetComponent<RectTransform>(), new Vector2(0f, -110f), new Vector2(280f, 50f));
+            UiLayoutUtility.SetAnchorCenter(restartButton.GetComponent<RectTransform>(), new Vector2(0f, -250f), new Vector2(220f, 44f));
         }
 
         if (mainMenuButton != null)
         {
-            UiLayoutUtility.SetAnchorCenter(mainMenuButton.GetComponent<RectTransform>(), new Vector2(0f, -170f), new Vector2(280f, 50f));
+            UiLayoutUtility.SetAnchorCenter(mainMenuButton.GetComponent<RectTransform>(), new Vector2(0f, -300f), new Vector2(220f, 44f));
+        }
+
+        if (quitButton != null)
+        {
+            UiLayoutUtility.SetAnchorCenter(quitButton.GetComponent<RectTransform>(), new Vector2(0f, -350f), new Vector2(220f, 44f));
         }
     }
 
@@ -78,7 +92,6 @@ public class GameOverManager : MonoBehaviour
 
         UiLayoutUtility.SetAnchorCenter(text.rectTransform, position, size);
         text.fontSize = fontSize;
-        text.alignment = TextAlignmentOptions.Center;
     }
 
     private void ResolveReferences()
@@ -106,6 +119,7 @@ public class GameOverManager : MonoBehaviour
         waveText ??= FindText(panelRoot, "GameOverWaveText");
         levelText ??= FindText(panelRoot, "GameOverLevelText");
         coinsText ??= FindText(panelRoot, "GameOverCoinsText");
+        summaryText ??= FindText(panelRoot, "RunSummaryText");
 
         if (restartButton == null)
         {
@@ -126,6 +140,48 @@ public class GameOverManager : MonoBehaviour
                 mainMenuButton = mainMenuTransform.GetComponent<Button>();
             }
         }
+
+        if (quitButton == null)
+        {
+            Transform quitTransform = panelRoot.Find("QuitButton");
+
+            if (quitTransform != null)
+            {
+                quitButton = quitTransform.GetComponent<Button>();
+            }
+        }
+    }
+
+    private void EnsureSummaryUi()
+    {
+        if (summaryUiBuilt || gameOverPanel == null)
+        {
+            return;
+        }
+
+        Transform panelRoot = gameOverPanel.transform;
+
+        if (summaryText == null)
+        {
+            summaryText = CreateSummaryText(panelRoot);
+        }
+
+        if (waveText != null)
+        {
+            waveText.gameObject.SetActive(false);
+        }
+
+        if (levelText != null)
+        {
+            levelText.gameObject.SetActive(false);
+        }
+
+        if (coinsText != null)
+        {
+            coinsText.gameObject.SetActive(false);
+        }
+
+        summaryUiBuilt = true;
     }
 
     private TMP_Text FindText(Transform parent, string objectName)
@@ -137,39 +193,41 @@ public class GameOverManager : MonoBehaviour
 
     public void ShowGameOver(int wave, int level, int coins)
     {
+        RunStatsTracker tracker = RunStatsTracker.GetOrCreate();
+        tracker.RecordWaveReached(wave);
+        tracker.RecordLevelReached(level);
+        tracker.EndRun();
+        ShowGameOver(tracker.CreateSnapshot());
+    }
+
+    public void ShowGameOver(RunStatsSnapshot snapshot)
+    {
         if (isShown) return;
 
         isShown = true;
         Time.timeScale = 0f;
+        Cursor.lockState = CursorLockMode.None;
+        Cursor.visible = true;
 
         if (JuiceManager.Instance != null)
         {
             JuiceManager.Instance.PlayGameOver();
         }
 
-        ShowGameOverPanel(wave, level, coins);
+        EnsureSummaryUi();
+        ShowGameOverPanel(snapshot);
     }
 
-    private void ShowGameOverPanel(int wave, int level, int coins)
+    private void ShowGameOverPanel(RunStatsSnapshot snapshot)
     {
         if (titleText != null)
         {
-            titleText.text = "GAME OVER";
+            titleText.text = "RUN SUMMARY";
         }
 
-        if (waveText != null)
+        if (summaryText != null)
         {
-            waveText.text = "Wave: " + wave;
-        }
-
-        if (levelText != null)
-        {
-            levelText.text = "Level: " + level;
-        }
-
-        if (coinsText != null)
-        {
-            coinsText.text = "Coins: " + coins;
+            summaryText.text = snapshot.BuildSummaryText();
         }
 
         if (gameOverPanel != null)
@@ -224,7 +282,7 @@ public class GameOverManager : MonoBehaviour
             }
             else
             {
-                mainMenuButton = CreateMainMenuButton(panelRoot);
+                mainMenuButton = CreatePanelButton(panelRoot, "MainMenuButton", "Main Menu", new Color(0.2f, 0.35f, 0.55f, 0.95f));
             }
         }
 
@@ -238,27 +296,86 @@ public class GameOverManager : MonoBehaviour
         });
     }
 
+    private void EnsureQuitButton()
+    {
+        if (gameOverPanel == null) return;
+
+        Transform panelRoot = gameOverPanel.transform;
+
+        if (quitButton == null)
+        {
+            Transform existingButton = panelRoot.Find("QuitButton");
+
+            if (existingButton != null)
+            {
+                quitButton = existingButton.GetComponent<Button>();
+            }
+            else
+            {
+                quitButton = CreatePanelButton(panelRoot, "QuitButton", "Quit", new Color(0.35f, 0.18f, 0.18f, 0.95f));
+            }
+        }
+
+        if (quitButton == null) return;
+
+        quitButton.onClick.RemoveAllListeners();
+        quitButton.onClick.AddListener(() =>
+        {
+            AudioManager.Instance?.PlayButtonClick();
+            QuitGame();
+        });
+    }
+
     private void GoToMainMenu()
     {
+        Time.timeScale = 1f;
+
         if (MainMenuManager.Instance != null)
         {
             MainMenuManager.Instance.ReturnToMainMenu();
         }
     }
 
-    private Button CreateMainMenuButton(Transform panelRoot)
+    private void QuitGame()
     {
-        GameObject buttonObject = new GameObject("MainMenuButton");
+        Time.timeScale = 1f;
+        Application.Quit();
+    }
+
+    private static TMP_Text CreateSummaryText(Transform panelRoot)
+    {
+        GameObject textObject = new GameObject("RunSummaryText");
+        textObject.transform.SetParent(panelRoot, false);
+
+        RectTransform rectTransform = textObject.AddComponent<RectTransform>();
+        rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
+        rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+        rectTransform.anchoredPosition = new Vector2(0f, 20f);
+        rectTransform.sizeDelta = new Vector2(700f, 430f);
+
+        TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
+        textMesh.fontSize = 17f;
+        textMesh.alignment = TextAlignmentOptions.TopLeft;
+        textMesh.color = Color.white;
+        textMesh.raycastTarget = false;
+        textMesh.textWrappingMode = TextWrappingModes.Normal;
+        textMesh.overflowMode = TextOverflowModes.Overflow;
+
+        return textMesh;
+    }
+
+    private static Button CreatePanelButton(Transform panelRoot, string name, string label, Color color)
+    {
+        GameObject buttonObject = new GameObject(name);
         buttonObject.transform.SetParent(panelRoot, false);
 
         RectTransform rectTransform = buttonObject.AddComponent<RectTransform>();
         rectTransform.anchorMin = new Vector2(0.5f, 0.5f);
         rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
-        rectTransform.anchoredPosition = new Vector2(0f, -155f);
-        rectTransform.sizeDelta = new Vector2(180f, 40f);
+        rectTransform.sizeDelta = new Vector2(220f, 44f);
 
         Image image = buttonObject.AddComponent<Image>();
-        image.color = new Color(0.2f, 0.35f, 0.55f, 0.95f);
+        image.color = color;
 
         Button button = buttonObject.AddComponent<Button>();
 
@@ -271,11 +388,11 @@ public class GameOverManager : MonoBehaviour
         labelRect.offsetMin = Vector2.zero;
         labelRect.offsetMax = Vector2.zero;
 
-        TextMeshProUGUI label = labelObject.AddComponent<TextMeshProUGUI>();
-        label.text = "Main Menu";
-        label.fontSize = 22f;
-        label.alignment = TextAlignmentOptions.Center;
-        label.color = Color.white;
+        TextMeshProUGUI labelText = labelObject.AddComponent<TextMeshProUGUI>();
+        labelText.text = label;
+        labelText.fontSize = 20f;
+        labelText.alignment = TextAlignmentOptions.Center;
+        labelText.color = Color.white;
 
         return button;
     }

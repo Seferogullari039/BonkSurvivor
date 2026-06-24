@@ -380,6 +380,8 @@ public class PlayerStats : MonoBehaviour
         if (isGodMode) return;
         if (FPSPlayerController.IsInvulnerable) return;
 
+        RunStatsTracker.GetOrCreate().RecordDamageTaken(damage);
+
         currentHealth -= damage;
 
         if (HUDManager.Instance != null)
@@ -422,11 +424,13 @@ public class PlayerStats : MonoBehaviour
         if (!MainMenuManager.IsRunActive) return;
 
         int finalAmount = Mathf.Max(1, Mathf.RoundToInt(amount * metaXpGainMultiplier * chestXpGainMultiplier));
+        RunStatsTracker.GetOrCreate().RecordXpCollected(finalAmount);
         currentXP += finalAmount;
 
         if (currentXP >= xpToNextLevel)
         {
             currentLevel++;
+            RunStatsTracker.GetOrCreate().RecordLevelReached(currentLevel);
             currentXP = 0;
             xpToNextLevel += 5;
 
@@ -471,6 +475,7 @@ public class PlayerStats : MonoBehaviour
             ? Mathf.Max(1, Mathf.RoundToInt(amount * multiplier))
             : amount;
         coins += finalAmount;
+        RunStatsTracker.GetOrCreate().RecordCoinsEarned(finalAmount);
 
         if (LogCoinGain)
         {

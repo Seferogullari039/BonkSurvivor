@@ -512,6 +512,7 @@ public class Enemy : MonoBehaviour
 
             if (enemyType == EnemyType.MiniBoss || enemyType == EnemyType.DragonBoss)
             {
+                RunStatsTracker.GetOrCreate().RecordEnemyKill(false, true);
                 if (enemyType == EnemyType.DragonBoss)
                 {
                     DragonBossController dragon = GetComponent<DragonBossController>();
@@ -530,6 +531,7 @@ public class Enemy : MonoBehaviour
             }
             else if (enemyType == EnemyType.Elite && IsElite)
             {
+                RunStatsTracker.GetOrCreate().RecordEnemyKill(true, false);
                 DropEliteRewards(dropPosition);
 
                 if (JuiceManager.Instance != null)
@@ -539,6 +541,8 @@ public class Enemy : MonoBehaviour
             }
             else
             {
+                RunStatsTracker.GetOrCreate().RecordEnemyKill(false, false);
+
                 if (coinPrefab != null && LootLimits.CanSpawnCoin())
                 {
                     Vector3 coinOffset = new Vector3(

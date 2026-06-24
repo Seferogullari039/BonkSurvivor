@@ -54,7 +54,9 @@ public class ChainLightningWeapon : WeaponBase
             if (hitEnemyIds.Contains(enemyId)) break;
 
             hitEnemyIds.Add(enemyId);
-            enemy.TakeDamage(playerStats.GetEffectiveDamageAgainst(enemy));
+            int chainDamage = playerStats.GetEffectiveDamageAgainst(enemy);
+            RunStatsTracker.GetOrCreate().RecordDamageDealt("Chain Lightning", chainDamage);
+            enemy.TakeDamage(chainDamage);
             linePoints.Add(currentTarget.position + Vector3.up * 0.45f);
 
             currentPosition = currentTarget.position;

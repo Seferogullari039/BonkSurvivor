@@ -98,6 +98,7 @@ public class Projectile : MonoBehaviour
         PlayerStats playerStats = player != null ? player.GetComponent<PlayerStats>() : null;
         int damageAmount = playerStats != null ? playerStats.GetEffectiveDamageAgainst(enemy) : damage;
 
+        RunStatsTracker.GetOrCreate().RecordDamageDealt("Projectile", damageAmount);
         enemy.TakeDamage(damageAmount);
 
         if (remainingPierce > 0)

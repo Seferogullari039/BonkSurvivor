@@ -57,6 +57,8 @@ public class MainMenuManager : MonoBehaviour
         ResetGameplayWorld();
         ApplyMetaBonusesToPlayer();
 
+        RunStatsTracker.GetOrCreate().StartRun();
+
         GameObject player = GameObject.FindGameObjectWithTag("Player");
 
         if (proceduralArena != null)
@@ -615,6 +617,7 @@ public class MainMenuManager : MonoBehaviour
 
         RunBuildTracker.GetOrCreate().ClearRun();
         ChestStatBuffTracker.GetOrCreate().ClearRun();
+        RunStatsTracker.GetOrCreate().ClearRun();
     }
 
     private void ResetPlayerRun()

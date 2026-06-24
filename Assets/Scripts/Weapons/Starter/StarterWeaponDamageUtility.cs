@@ -326,7 +326,7 @@ public static class StarterWeaponDamageUtility
         return hitCollider.GetComponentInParent<Enemy>();
     }
 
-    private static void TryApplyDamage(Enemy enemy, int damage)
+    private static void TryApplyDamage(Enemy enemy, int damage, string sourceName = "Starter Weapon")
     {
         if (enemy == null || damage <= 0) return;
 
@@ -338,6 +338,8 @@ public static class StarterWeaponDamageUtility
         {
             finalDamage = Mathf.Max(1, Mathf.RoundToInt(damage * RelicManager.EliteDamageMultiplier));
         }
+
+        RunStatsTracker.GetOrCreate().RecordDamageDealt(sourceName, finalDamage);
 
         MethodInfo takeDamageInt = typeof(Enemy).GetMethod(
             "TakeDamage",

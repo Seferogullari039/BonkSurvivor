@@ -95,6 +95,7 @@ public class RelicManager : MonoBehaviour
         }
 
         ownedRelics.Add(relic);
+        RunStatsTracker.GetOrCreate().RecordRelicCollected(GetDisplayName(relic));
         Debug.Log("[RelicManager] Added relic: " + GetRelicName(relic) + " | " + BuildMultiplierSummary());
         return true;
     }
@@ -128,6 +129,7 @@ public class RelicManager : MonoBehaviour
 
         grantedRelic = unowned[Random.Range(0, unowned.Count)];
         ownedRelics.Add(grantedRelic);
+        RunStatsTracker.GetOrCreate().RecordRelicCollected(GetDisplayName(grantedRelic));
         Debug.Log("[RelicManager] Granted random relic: " + GetDisplayName(grantedRelic) + " | " + BuildMultiplierSummary());
         return true;
     }

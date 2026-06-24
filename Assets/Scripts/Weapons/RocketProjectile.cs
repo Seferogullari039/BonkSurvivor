@@ -203,6 +203,7 @@ public class RocketProjectile : MonoBehaviour
 
             damagedEnemies.Add(enemy);
             int enemyDamage = playerStats != null ? playerStats.GetEffectiveDamageAgainst(enemy) : damageAmount;
+            RunStatsTracker.GetOrCreate().RecordDamageDealt("Rocket", enemyDamage);
             enemy.TakeDamage(enemyDamage);
         }
 

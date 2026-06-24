@@ -75,6 +75,11 @@ public class OrbitOrb : MonoBehaviour
         if (IsFlameOrbitActive())
         {
             damage = Mathf.Max(1, Mathf.RoundToInt(damage * FlameOrbitDamageMultiplier));
+            RunStatsTracker.GetOrCreate().RecordDamageDealt("Flame Orbit", damage);
+        }
+        else
+        {
+            RunStatsTracker.GetOrCreate().RecordDamageDealt("Orbiting Orb", damage);
         }
 
         enemy.TakeDamage(damage);

@@ -524,6 +524,7 @@ public class LevelUpManager : MonoBehaviour
 
         PlayerStats playerStats = FindPlayerStats();
         ChestStatRewardCatalog.Apply(shownChestStatReward, shownUpgradeRarities[0], playerStats);
+        RunStatsTracker.GetOrCreate().RecordChestOpened();
 
         if (chestSingleCardRevealUI != null)
         {

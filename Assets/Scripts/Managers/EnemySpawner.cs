@@ -194,6 +194,7 @@ public class EnemySpawner : MonoBehaviour
         if (newWave != currentWave)
         {
             currentWave = newWave;
+            RunStatsTracker.GetOrCreate().RecordWaveReached(currentWave);
 
             if (HUDManager.Instance != null)
             {
