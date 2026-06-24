@@ -660,6 +660,14 @@ public class MainMenuManager : MonoBehaviour
         RunBuildTracker.GetOrCreate().ClearRun();
         ChestStatBuffTracker.GetOrCreate().ClearRun();
         RunStatsTracker.GetOrCreate().ClearRun();
+        MerchantShrineUI.ForceClose();
+
+        MerchantShrineManager merchantManager = FindFirstObjectByType<MerchantShrineManager>();
+
+        if (merchantManager != null)
+        {
+            merchantManager.ResetRunState();
+        }
     }
 
     private void ResetPlayerRun()

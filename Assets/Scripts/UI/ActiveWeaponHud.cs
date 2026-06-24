@@ -145,6 +145,11 @@ public class ActiveWeaponHud : MonoBehaviour
             return false;
         }
 
+        if (MerchantShrineUI.IsOpen)
+        {
+            return false;
+        }
+
         LevelUpManager levelUpManager = LevelUpManager.Instance;
 
         if (levelUpManager != null && levelUpManager.IsLevelUpOpen)

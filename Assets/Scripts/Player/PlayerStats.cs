@@ -522,6 +522,16 @@ public class PlayerStats : MonoBehaviour
         return true;
     }
 
+    public bool TrySpendCoins(int amount)
+    {
+        if (amount <= 0)
+        {
+            return false;
+        }
+
+        return SpendCoins(amount);
+    }
+
     public void SetGodMode(bool enabled)
     {
         isGodMode = enabled;

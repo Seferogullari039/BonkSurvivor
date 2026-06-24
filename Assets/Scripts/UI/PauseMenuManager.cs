@@ -106,6 +106,11 @@ public class PauseMenuManager : MonoBehaviour
             return true;
         }
 
+        if (MerchantShrineUI.IsOpen)
+        {
+            return true;
+        }
+
         return false;
     }
 

@@ -185,6 +185,7 @@ public class DevAdminPanel : MonoBehaviour
         CreateButton(scrollContent, "Give Powder Keg", GivePowderKeg);
         CreateButton(scrollContent, "Give Storm Conduit", GiveStormConduit);
         CreateButton(scrollContent, "Give Conductive Core", GiveConductiveCore);
+        CreateButton(scrollContent, "Spawn Merchant Shrine", SpawnMerchantShrine);
         CreateButton(scrollContent, "Unlock All Weapons", UnlockAllWeapons);
         CreateButton(scrollContent, "Heal Full", HealFull);
         CreateButton(scrollContent, "Kill All Enemies", KillAllEnemies);
@@ -743,6 +744,22 @@ public class DevAdminPanel : MonoBehaviour
     private void GiveConductiveCore()
     {
         RunBuildTracker.GetOrCreate().RecordUpgrade(UpgradeOptionCatalog.ConductiveCoreIndex);
+    }
+
+    private void SpawnMerchantShrine()
+    {
+        MerchantShrineManager manager = MerchantShrineManager.Instance ?? FindFirstObjectByType<MerchantShrineManager>();
+
+        if (manager == null)
+        {
+            GameObject host = new GameObject("MerchantShrineManager");
+            manager = host.AddComponent<MerchantShrineManager>();
+        }
+
+        if (!manager.DevSpawnMerchant())
+        {
+            Debug.Log("[DevAdmin] Merchant shrine spawn failed (run inactive, shrine already active, or no valid spawn point).");
+        }
     }
 
     private void UnlockAllWeapons()
