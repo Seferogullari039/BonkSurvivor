@@ -15,6 +15,9 @@ public class StarterWeaponViewModel : MonoBehaviour
     private static readonly Color SwordBladeColor = new Color(0.78f, 0.82f, 0.88f);
     private static readonly Color SwordGuardColor = new Color(0.55f, 0.45f, 0.2f);
     private static readonly Color SwordGripColor = new Color(0.22f, 0.12f, 0.08f);
+    private static readonly Color BlunderbussStockColor = new Color(0.28f, 0.16f, 0.09f);
+    private static readonly Color BlunderbussBarrelColor = new Color(0.2f, 0.21f, 0.24f);
+    private static readonly Color BlunderbussMuzzleColor = new Color(0.42f, 0.4f, 0.38f);
 
     private static readonly Vector3 VisibleWeaponLocalPosition = new Vector3(0.34f, -0.16f, 0.58f);
     private static readonly Vector3 VisibleWeaponLocalRotation = new Vector3(8f, -24f, 6f);
@@ -51,6 +54,9 @@ public class StarterWeaponViewModel : MonoBehaviour
     private static readonly Vector3 SwordWeaponLocalPosition = new Vector3(0.36f, -0.22f, 0.46f);
     private static readonly Vector3 SwordWeaponLocalRotation = new Vector3(10f, -26f, 7f);
     private static readonly Vector3 SwordWeaponLocalScale = new Vector3(1.75f, 1.75f, 1.75f);
+    private static readonly Vector3 BlunderbussWeaponLocalPosition = new Vector3(0.34f, -0.2f, 0.5f);
+    private static readonly Vector3 BlunderbussWeaponLocalRotation = new Vector3(8f, -22f, 5f);
+    private static readonly Vector3 BlunderbussWeaponLocalScale = new Vector3(1.65f, 1.65f, 1.65f);
     private const string StaffPrefabAssetPath = "Assets/Prefabs/Weapons/Staff_ViewModel.prefab";
     private const string BowPrefabAssetPath = "Assets/Prefabs/Weapons/Bow_ViewModel.prefab";
     private const string FpsArmsPrefabAssetPath = "Assets/Prefabs/Characters/FPS_Arms_ViewModel.prefab";
@@ -116,6 +122,8 @@ public class StarterWeaponViewModel : MonoBehaviour
     private float bowFireAnimTimer;
     private float staffGlowPulseTimer;
     private float staffChargeGlowTimer;
+    private float blunderbussMuzzleFlashTimer;
+    private Renderer blunderbussMuzzleRenderer;
 
     public Transform FireballSpawnPoint => fireballSpawnPoint;
     public Transform MeteorCastPoint => meteorCastPoint;
@@ -193,6 +201,8 @@ public class StarterWeaponViewModel : MonoBehaviour
         meteorCastPoint = null;
         usingStaffPrefabVisual = false;
         usingBowPrefabVisual = false;
+        blunderbussMuzzleRenderer = null;
+        blunderbussMuzzleFlashTimer = 0f;
         ClearFpsArmsVisual();
         SetPrimitiveArmPlaceholdersVisible(true);
         weaponVisualDiagnosticsLogged = false;
@@ -236,6 +246,11 @@ public class StarterWeaponViewModel : MonoBehaviour
         staffChargeGlowTimer = Mathf.Max(staffChargeGlowTimer, duration);
     }
 
+    public void PlayBlunderbussMuzzleFlash()
+    {
+        blunderbussMuzzleFlashTimer = 0.12f;
+    }
+
     public bool TryGetFireballSpawnPosition(out Vector3 worldPosition)
     {
         worldPosition = Vector3.zero;
@@ -260,6 +275,27 @@ public class StarterWeaponViewModel : MonoBehaviour
 
         UpdateBowVisualFeedback();
         UpdateStaffGlowEffects();
+        UpdateBlunderbussMuzzleFlash();
+    }
+
+    private void UpdateBlunderbussMuzzleFlash()
+    {
+        if (currentWeapon != StarterWeaponType.Blunderbuss || blunderbussMuzzleFlashTimer <= 0f)
+        {
+            return;
+        }
+
+        blunderbussMuzzleFlashTimer -= Time.deltaTime;
+
+        if (blunderbussMuzzleRenderer == null)
+        {
+            return;
+        }
+
+        float pulse = blunderbussMuzzleFlashTimer > 0f
+            ? 0.45f + Mathf.Sin((0.12f - blunderbussMuzzleFlashTimer) * 48f) * 0.35f
+            : 0.2f;
+        GameVisualStyle.ApplyColor(blunderbussMuzzleRenderer, BlunderbussMuzzleColor, 0.35f, true, pulse);
     }
 
     private void UpdateBowVisualFeedback()
@@ -651,6 +687,10 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             ApplySwordContainerPose(visualRoot);
         }
+        else if (currentWeapon == StarterWeaponType.Blunderbuss)
+        {
+            ApplyBlunderbussContainerPose(visualRoot);
+        }
         else
         {
             visualRoot.localPosition = VisibleWeaponLocalPosition;
@@ -668,6 +708,9 @@ public class StarterWeaponViewModel : MonoBehaviour
                 break;
             case StarterWeaponType.KnightSword:
                 BuildSwordVisual(visualRoot);
+                break;
+            case StarterWeaponType.Blunderbuss:
+                BuildBlunderbussVisual(visualRoot);
                 break;
         }
 
@@ -753,6 +796,10 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             ApplySwordContainerPose(visualTransform);
         }
+        else if (currentWeapon == StarterWeaponType.Blunderbuss)
+        {
+            ApplyBlunderbussContainerPose(visualTransform);
+        }
         else
         {
             visualTransform.localPosition = VisibleWeaponLocalPosition;
@@ -792,6 +839,10 @@ public class StarterWeaponViewModel : MonoBehaviour
                 else if (currentWeapon == StarterWeaponType.KnightSword)
                 {
                     ApplySwordContainerPose(visualTransform);
+                }
+                else if (currentWeapon == StarterWeaponType.Blunderbuss)
+                {
+                    ApplyBlunderbussContainerPose(visualTransform);
                 }
                 else
                 {
@@ -1020,6 +1071,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             StarterWeaponType.FireStaff => "Staff",
             StarterWeaponType.KnightSword => "Sword",
+            StarterWeaponType.Blunderbuss => "Blunderbuss",
             _ => "Bow"
         };
     }
@@ -1058,6 +1110,18 @@ public class StarterWeaponViewModel : MonoBehaviour
         visualTransform.localPosition = SwordWeaponLocalPosition;
         visualTransform.localRotation = Quaternion.Euler(SwordWeaponLocalRotation);
         visualTransform.localScale = SwordWeaponLocalScale;
+    }
+
+    private static void ApplyBlunderbussContainerPose(Transform visualTransform)
+    {
+        if (visualTransform == null)
+        {
+            return;
+        }
+
+        visualTransform.localPosition = BlunderbussWeaponLocalPosition;
+        visualTransform.localRotation = Quaternion.Euler(BlunderbussWeaponLocalRotation);
+        visualTransform.localScale = BlunderbussWeaponLocalScale;
     }
 
     private void BuildBowVisual(Transform root)
@@ -1341,6 +1405,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             StarterWeaponType.FireStaff => StaffFpsArmsLocalPosition,
             StarterWeaponType.KnightSword => SwordFpsArmsLocalPosition,
+            StarterWeaponType.Blunderbuss => SwordFpsArmsLocalPosition,
             _ => BowFpsArmsLocalPosition
         };
     }
@@ -1349,7 +1414,8 @@ public class StarterWeaponViewModel : MonoBehaviour
     {
         return weaponType == StarterWeaponType.HunterBow
             || weaponType == StarterWeaponType.FireStaff
-            || weaponType == StarterWeaponType.KnightSword;
+            || weaponType == StarterWeaponType.KnightSword
+            || weaponType == StarterWeaponType.Blunderbuss;
     }
 
     private void ClearFpsArmsVisual()
@@ -1371,6 +1437,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         {
             StarterWeaponType.FireStaff => FpsArmsVisibilityMode.MainHandOnly,
             StarterWeaponType.KnightSword => FpsArmsVisibilityMode.MainHandOnly,
+            StarterWeaponType.Blunderbuss => FpsArmsVisibilityMode.MainHandOnly,
             _ => FpsArmsVisibilityMode.TwoHandBow
         };
     }
@@ -2289,6 +2356,16 @@ public class StarterWeaponViewModel : MonoBehaviour
         CreatePart("SwordGrip", PrimitiveType.Cylinder, root, new Vector3(0f, -0.03f, 0.04f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.035f, 0.07f, 0.035f), SwordGripColor, false, 0.28f);
         CreatePart("SwordGuard", PrimitiveType.Cylinder, root, new Vector3(0f, 0f, 0.1f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.12f, 0.018f, 0.12f), SwordGuardColor, false, 0.5f);
         CreatePart("SwordBlade", PrimitiveType.Cylinder, root, new Vector3(0f, 0.01f, 0.22f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.035f, 0.2f, 0.012f), SwordBladeColor, false, 0.68f);
+    }
+
+    private void BuildBlunderbussVisual(Transform root)
+    {
+        blunderbussMuzzleRenderer = null;
+        CreatePart("BlunderbussStock", PrimitiveType.Cube, root, new Vector3(0f, -0.02f, 0.02f), Quaternion.identity, new Vector3(0.08f, 0.1f, 0.2f), BlunderbussStockColor, false, 0.32f);
+        CreatePart("BlunderbussGrip", PrimitiveType.Cylinder, root, new Vector3(0f, -0.05f, -0.02f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.03f, 0.06f, 0.03f), BlunderbussStockColor, false, 0.28f);
+        CreatePart("BlunderbussBarrel", PrimitiveType.Cylinder, root, new Vector3(0f, 0.01f, 0.2f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.055f, 0.18f, 0.055f), BlunderbussBarrelColor, false, 0.45f);
+        GameObject muzzle = CreatePart("BlunderbussMuzzle", PrimitiveType.Cylinder, root, new Vector3(0f, 0.015f, 0.31f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.075f, 0.02f, 0.075f), BlunderbussMuzzleColor, false, 0.55f);
+        blunderbussMuzzleRenderer = muzzle != null ? muzzle.GetComponent<Renderer>() : null;
     }
 
     private static GameObject CreatePart(

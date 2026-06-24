@@ -40,7 +40,18 @@ public class StarterWeaponController : MonoBehaviour
     [SerializeField] private float whirlwindTickInterval = 0.25f;
     [SerializeField] private float whirlwindRadius = 3.25f;
 
-#if UNITY_EDITOR
+    [Header("Blunderbuss")]
+    [SerializeField] private float blunderbussPrimaryCooldown = 0.75f;
+    [SerializeField] private float blunderbussSkillCooldown = 3.5f;
+    [SerializeField] private float scatterShotRange = 8.5f;
+    [SerializeField] private float scatterShotHalfAngle = 42f;
+    [SerializeField] private int scatterShotBaseDamage = 7;
+    [SerializeField] private int scatterShotMaxTargets = 8;
+    [SerializeField] private float blastShellRange = 12f;
+    [SerializeField] private float blastShellRadius = 2.4f;
+    [SerializeField] private int blastShellDamage = 14;
+
+    #if UNITY_EDITOR
     // Default off: [StarterWeapon] skill diagnostics are opt-in only. Weapon/skill logic is unaffected.
     public static bool LogStarterWeaponDebug = false;
 #endif
@@ -151,6 +162,10 @@ public class StarterWeaponController : MonoBehaviour
         {
             ApplyWeapon(StarterWeaponType.KnightSword);
         }
+        else if (Input.GetKeyDown(KeyCode.Alpha4))
+        {
+            ApplyWeapon(StarterWeaponType.Blunderbuss);
+        }
     }
 
     private void ApplyWeapon(StarterWeaponType weaponType)
@@ -206,6 +221,10 @@ public class StarterWeaponController : MonoBehaviour
             case StarterWeaponType.KnightSword:
                 PerformSwordComboHit();
                 nextPrimaryTime = Time.time + GetPrimaryCooldown(swordPrimaryCooldown);
+                break;
+            case StarterWeaponType.Blunderbuss:
+                FireScatterShot();
+                nextPrimaryTime = Time.time + GetPrimaryCooldown(blunderbussPrimaryCooldown);
                 break;
         }
     }
@@ -293,6 +312,10 @@ public class StarterWeaponController : MonoBehaviour
 
                 whirlwindRoutine = StartCoroutine(WhirlwindRoutine());
                 nextSkillTime = Time.time + GetSwordSkillCooldown(swordSkillCooldown);
+                break;
+            case StarterWeaponType.Blunderbuss:
+                FireBlastShell();
+                nextSkillTime = Time.time + GetPrimaryCooldown(blunderbussSkillCooldown);
                 break;
         }
     }
@@ -620,5 +643,168 @@ public class StarterWeaponController : MonoBehaviour
             + fireCamera.forward * spawnLocalOffset.z;
 
         return true;
+    }
+
+    private void FireScatterShot()
+    {
+        if (fireCamera == null) return;
+
+        Vector3 origin = fireCamera.position;
+        Vector3 forward = fireCamera.forward;
+
+        if (!FPSAimUtility.TryGetAimDirection(out forward))
+        {
+            forward = fireCamera.forward;
+        }
+
+        int damage = Mathf.Max(scatterShotBaseDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, scatterShotBaseDamage));
+        StarterWeaponDamageUtility.DamageEnemiesInConeWithFalloff(
+            origin,
+            forward,
+            scatterShotRange,
+            scatterShotHalfAngle,
+            damage,
+            scatterShotMaxTargets,
+            "Blunderbuss",
+            0.5f);
+
+        weaponViewModel?.PlayBlunderbussMuzzleFlash();
+        fpsViewModel?.PlayRecoil();
+        SpawnScatterShotVisuals(origin, forward, scatterShotRange, scatterShotHalfAngle);
+        FPSScreenShake.Shake(0.018f, 0.06f);
+    }
+
+    private void FireBlastShell()
+    {
+        if (!StarterWeaponDamageUtility.TryGetBlastShellImpactPoint(blastShellRange, out Vector3 impactPoint))
+        {
+            return;
+        }
+
+        int damage = Mathf.Max(blastShellDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, blastShellDamage));
+        StarterWeaponDamageUtility.DamageEnemiesInRadiusWithSource(impactPoint, blastShellRadius, damage, "Blast Shell");
+
+        weaponViewModel?.PlayBlunderbussMuzzleFlash();
+        fpsViewModel?.PlayRecoil();
+        SpawnBlastShellVisual(impactPoint, blastShellRadius);
+        FPSScreenShake.Shake(0.028f, 0.1f);
+
+        // TODO: Knockback when enemy displacement system exists.
+    }
+
+    private static void SpawnScatterShotVisuals(Vector3 origin, Vector3 forward, float range, float halfAngle)
+    {
+        if (forward.sqrMagnitude < 0.001f) return;
+
+        forward.Normalize();
+
+        GameObject flash = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        flash.name = "BlunderbussMuzzleFlash";
+        flash.transform.position = origin + forward * 0.55f + Vector3.down * 0.05f;
+        flash.transform.localScale = Vector3.one * 0.14f;
+
+        Collider flashCollider = flash.GetComponent<Collider>();
+
+        if (flashCollider != null)
+        {
+            Object.Destroy(flashCollider);
+        }
+
+        Renderer flashRenderer = flash.GetComponent<Renderer>();
+
+        if (flashRenderer != null)
+        {
+            GameVisualStyle.ApplyColor(flashRenderer, new Color(1f, 0.82f, 0.42f), 0.2f, true, 0.55f);
+        }
+
+        Object.Destroy(flash, 0.1f);
+
+        const int streakCount = 5;
+        float coneSpread = halfAngle * 0.85f;
+
+        for (int i = 0; i < streakCount; i++)
+        {
+            float yaw = Random.Range(-coneSpread, coneSpread);
+            float pitch = Random.Range(-coneSpread * 0.35f, coneSpread * 0.35f);
+            Vector3 streakDir = Quaternion.Euler(pitch, yaw, 0f) * forward;
+            Vector3 end = origin + streakDir.normalized * Random.Range(range * 0.35f, range * 0.82f);
+            SpawnPelletStreak(origin + forward * 0.45f, end);
+        }
+    }
+
+    private static void SpawnPelletStreak(Vector3 start, Vector3 end)
+    {
+        GameObject lineObject = new GameObject("BlunderbussPelletStreak");
+        LineRenderer line = lineObject.AddComponent<LineRenderer>();
+        line.useWorldSpace = true;
+        line.positionCount = 2;
+        line.SetPosition(0, start);
+        line.SetPosition(1, end);
+        line.startWidth = 0.035f;
+        line.endWidth = 0.01f;
+        line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        line.receiveShadows = false;
+
+        Shader shader = Shader.Find("Universal Render Pipeline/Unlit");
+
+        if (shader == null)
+        {
+            shader = Shader.Find("Sprites/Default");
+        }
+
+        if (shader != null)
+        {
+            line.material = new Material(shader);
+        }
+
+        Color streakColor = new Color(0.95f, 0.78f, 0.38f, 0.75f);
+        line.startColor = streakColor;
+        line.endColor = new Color(streakColor.r, streakColor.g, streakColor.b, 0.05f);
+        Object.Destroy(lineObject, 0.12f);
+    }
+
+    private static void SpawnBlastShellVisual(Vector3 center, float radius)
+    {
+        GameObject burst = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        burst.name = "BlastShellBurst";
+        burst.transform.position = center + Vector3.up * 0.15f;
+        burst.transform.localScale = Vector3.one * radius * 0.75f;
+
+        Collider burstCollider = burst.GetComponent<Collider>();
+
+        if (burstCollider != null)
+        {
+            Object.Destroy(burstCollider);
+        }
+
+        Renderer burstRenderer = burst.GetComponent<Renderer>();
+
+        if (burstRenderer != null)
+        {
+            GameVisualStyle.ApplyColor(burstRenderer, new Color(1f, 0.55f, 0.18f, 0.55f), 0.25f, true, 0.45f);
+        }
+
+        Object.Destroy(burst, 0.22f);
+
+        GameObject ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+        ring.name = "BlastShellRing";
+        ring.transform.position = center + Vector3.up * 0.05f;
+        ring.transform.localScale = new Vector3(radius * 2f, 0.025f, radius * 2f);
+
+        Collider ringCollider = ring.GetComponent<Collider>();
+
+        if (ringCollider != null)
+        {
+            Object.Destroy(ringCollider);
+        }
+
+        Renderer ringRenderer = ring.GetComponent<Renderer>();
+
+        if (ringRenderer != null)
+        {
+            GameVisualStyle.ApplyColor(ringRenderer, new Color(0.85f, 0.42f, 0.12f, 0.62f), 0.3f, false, 0.2f);
+        }
+
+        Object.Destroy(ring, 0.28f);
     }
 }

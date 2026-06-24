@@ -109,7 +109,109 @@ public static class StarterWeaponDamageUtility
             hitCount++;
         }
 
+        return damagedEnemies.Count;
+    }
+
+    public static int DamageEnemiesInRadiusWithSource(Vector3 center, float radius, int damage, string damageSource)
+    {
+        if (radius <= 0f || damage <= 0) return 0;
+
+        Collider[] hits = Physics.OverlapSphere(center, radius, ~0, QueryTriggerInteraction.Collide);
+        HashSet<Enemy> damagedEnemies = new HashSet<Enemy>();
+
+        for (int i = 0; i < hits.Length; i++)
+        {
+            Collider hitCollider = hits[i];
+
+            if (hitCollider == null) continue;
+            if (hitCollider.CompareTag("Player")) continue;
+
+            Enemy enemy = ResolveEnemy(hitCollider);
+
+            if (enemy == null || damagedEnemies.Contains(enemy)) continue;
+
+            damagedEnemies.Add(enemy);
+            TryApplyDamage(enemy, damage, damageSource);
+        }
+
+        return damagedEnemies.Count;
+    }
+
+    public static int DamageEnemiesInConeWithFalloff(
+        Vector3 origin,
+        Vector3 forward,
+        float range,
+        float halfAngleDegrees,
+        int baseDamage,
+        int maxTargets,
+        string damageSource,
+        float minDamageMultiplier = 0.5f)
+    {
+        if (range <= 0f || baseDamage <= 0 || forward.sqrMagnitude < 0.001f) return 0;
+
+        forward.Normalize();
+
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        int hitCount = 0;
+
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            if (hitCount >= maxTargets) break;
+
+            GameObject enemyObject = enemies[i];
+
+            if (enemyObject == null) continue;
+
+            Vector3 toEnemy = enemyObject.transform.position + Vector3.up * 0.5f - origin;
+            float distance = toEnemy.magnitude;
+
+            if (distance > range || distance < 0.01f) continue;
+
+            float angle = Vector3.Angle(forward, toEnemy);
+
+            if (angle > halfAngleDegrees) continue;
+
+            Enemy enemy = enemyObject.GetComponent<Enemy>() ?? enemyObject.GetComponentInParent<Enemy>();
+
+            if (enemy == null) continue;
+
+            float falloff = 1f - (distance / range) * (1f - minDamageMultiplier);
+            falloff = Mathf.Clamp(falloff, minDamageMultiplier, 1f);
+            int damage = Mathf.Max(1, Mathf.RoundToInt(baseDamage * falloff));
+            TryApplyDamage(enemy, damage, damageSource);
+            hitCount++;
+        }
+
         return hitCount;
+    }
+
+    public static bool TryGetBlastShellImpactPoint(float maxDistance, out Vector3 point)
+    {
+        point = Vector3.zero;
+
+        if (!FPSAimUtility.TryGetCameraAim(out Vector3 origin, out Vector3 direction))
+        {
+            return false;
+        }
+
+        direction.Normalize();
+
+        Transform enemyTarget = FPSAimUtility.FindEnemyAlongRay(origin, direction, maxDistance);
+
+        if (enemyTarget != null)
+        {
+            point = enemyTarget.position + Vector3.up * 0.5f;
+            return true;
+        }
+
+        if (Physics.Raycast(origin, direction, out RaycastHit hit, maxDistance, ~0, QueryTriggerInteraction.Collide))
+        {
+            point = hit.point;
+            return true;
+        }
+
+        point = origin + direction * maxDistance;
+        return true;
     }
 
     public static bool TryDamageSingleMeleeTarget(
