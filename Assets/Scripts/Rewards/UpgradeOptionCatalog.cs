@@ -23,6 +23,8 @@ public static class UpgradeOptionCatalog
     public const int HuntersEyeIndex = 26;
     public const int GravityStoneIndex = 27;
     public const int VoidBellIndex = 28;
+    public const int KeyIndex = 29;
+    public const int LuckIndex = 30;
 
     public static int OptionCount => Options.Length;
 
@@ -102,7 +104,9 @@ public static class UpgradeOptionCatalog
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 25 Death Mark
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Epic, WeaponBuildType.General, 3), // 26 Hunter's Eye
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Epic, WeaponBuildType.General, 3), // 27 Gravity Stone
-        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1) // 28 Void Bell
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 28 Void Bell
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.General, 30), // 29 Key
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Epic, WeaponBuildType.General, 10) // 30 Luck
     };
 
     private static readonly EvolutionRequirement[] EvolutionRequirements =
@@ -361,7 +365,7 @@ public static class UpgradeOptionCatalog
     {
         UpgradeRarity assigned = GetAssignedRarity(upgradeIndex);
 
-        if (assigned == UpgradeRarity.Legendary || assigned == UpgradeRarity.Epic)
+        if (assigned != UpgradeRarity.Common)
         {
             return assigned;
         }
@@ -453,6 +457,8 @@ public static class UpgradeOptionCatalog
         "Death Mark",
         "Hunter's Eye",
         "Gravity Stone",
-        "Void Bell"
+        "Void Bell",
+        "Key",
+        "Luck"
     };
 }

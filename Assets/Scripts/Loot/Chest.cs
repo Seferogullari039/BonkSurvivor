@@ -281,6 +281,12 @@ public class Chest : MonoBehaviour
 
         if (cachedPlayerStats == null) return;
 
+        if (ChestEconomyModifiers.ShouldOpenChestForFree())
+        {
+            BeginChestOpen();
+            return;
+        }
+
         if (!cachedPlayerStats.SpendCoins(price)) return;
 
         BeginChestOpen();

@@ -544,7 +544,8 @@ public class LevelUpManager : MonoBehaviour
     private void AssignSingleChestReward()
     {
         shownChestStatReward = ChestStatRewardCatalog.RollRandomReward();
-        shownUpgradeRarities[0] = MapChestRarityToUpgradeRarity(currentChestRarity);
+        UpgradeRarity baseRarity = MapChestRarityToUpgradeRarity(currentChestRarity);
+        shownUpgradeRarities[0] = ChestEconomyModifiers.ApplyLuckToChestStatRarity(baseRarity);
     }
 
     private ChestLootSelectionUI.SlotData BuildChestSingleCardData()
@@ -1052,6 +1053,12 @@ public class LevelUpManager : MonoBehaviour
             case UpgradeOptionCatalog.GravityStoneIndex:
                 weight = earlyGame ? 6 : (midGame ? 5 : 4);
                 break;
+            case UpgradeOptionCatalog.KeyIndex:
+                weight = earlyGame ? 5 : (midGame ? 4 : 3);
+                break;
+            case UpgradeOptionCatalog.LuckIndex:
+                weight = earlyGame ? 4 : (midGame ? 3 : 2);
+                break;
             case 10:
             case 11:
             case 12:
@@ -1274,6 +1281,16 @@ public class LevelUpManager : MonoBehaviour
                     "Void Bell",
                     "Every 10s, releases a void pulse that damages nearby enemies.",
                     "shadow_rift");
+            case UpgradeOptionCatalog.KeyIndex:
+                return MakeContent(
+                    "Key",
+                    "Grants a small chance to open paid chests for free.",
+                    "magnet_sense");
+            case UpgradeOptionCatalog.LuckIndex:
+                return MakeContent(
+                    "Luck",
+                    "Improves chest reward odds.",
+                    "sharp_instinct");
             default:
                 return MakeContent(string.Empty, string.Empty, string.Empty);
         }
@@ -1714,6 +1731,8 @@ public class LevelUpManager : MonoBehaviour
             case 26:
             case 27:
             case 28:
+            case UpgradeOptionCatalog.KeyIndex:
+            case UpgradeOptionCatalog.LuckIndex:
                 break;
         }
 
