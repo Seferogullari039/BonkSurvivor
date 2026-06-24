@@ -15,10 +15,11 @@ public class FPSPlayerController : MonoBehaviour
     private const float AirControlMultiplier = 0.55f;
     private const float MaxAirSpeed = 9f;
     private const float DashMomentumRetention = 0.72f;
-    private const float CrouchCameraOffset = -0.35f;
-    private const float CrouchHeightMultiplier = 0.62f;
-    private const float CrouchSpeedMultiplier = 0.65f;
-    private const float CrouchSmoothSpeed = 10f;
+    private const float CrouchCameraOffset = -0.62f;
+    private const float CrouchHeightMultiplier = 0.58f;
+    private const float CrouchSpeedMultiplier = 0.55f;
+    private const float CrouchSmoothSpeed = 13f;
+    private const float CrouchStandUpSmoothSpeed = 16f;
     private const float SlideDuration = 0.45f;
     private const float SlideCooldown = 0.9f;
     private const float SlideSpeedMultiplier = 1.35f;
@@ -53,6 +54,7 @@ public class FPSPlayerController : MonoBehaviour
     private float standingHeight;
     private float standingCenterY;
     private float standingEyeHeight;
+    private float currentEyeHeight;
     private float stanceBlend;
     private bool isSliding;
     private float slideTimer;
@@ -240,12 +242,14 @@ public class FPSPlayerController : MonoBehaviour
             verticalVelocity = 0f;
             horizontalVelocity = Vector3.zero;
             stanceBlend = 0f;
+            currentEyeHeight = standingEyeHeight;
             isSliding = false;
             slideTimer = 0f;
             slideCooldownTimer = 0f;
             ResetStandingCollider();
             cameraTransform.SetParent(transform, false);
-            cameraTransform.localPosition = new Vector3(0f, standingEyeHeight, 0f);
+            currentEyeHeight = standingEyeHeight;
+            ApplyCameraEyeHeight();
             cameraTransform.localRotation = Quaternion.identity;
             pitch = 0f;
         }
@@ -285,7 +289,7 @@ public class FPSPlayerController : MonoBehaviour
         if (cameraTransform.parent != transform)
         {
             cameraTransform.SetParent(transform, false);
-            cameraTransform.localPosition = new Vector3(0f, standingEyeHeight + CrouchCameraOffset * stanceBlend, 0f);
+            ApplyCameraEyeHeight();
             cameraTransform.localRotation = Quaternion.identity;
             pitch = 0f;
         }
@@ -553,14 +557,28 @@ public class FPSPlayerController : MonoBehaviour
         }
 
         float targetBlend = WantsCrouch() ? 1f : 0f;
-        stanceBlend = Mathf.MoveTowards(stanceBlend, targetBlend, CrouchSmoothSpeed * Time.deltaTime);
+        float blendSpeed = isSliding ? CrouchSmoothSpeed * 2.5f : CrouchSmoothSpeed;
+
+        if (!WantsCrouch())
+        {
+            blendSpeed = CrouchStandUpSmoothSpeed;
+        }
+
+        stanceBlend = Mathf.MoveTowards(stanceBlend, targetBlend, blendSpeed * Time.deltaTime);
 
         float targetHeight = Mathf.Lerp(standingHeight, standingHeight * CrouchHeightMultiplier, stanceBlend);
         ApplyControllerHeight(targetHeight);
+        ApplyCameraEyeHeight();
+    }
 
+    private void ApplyCameraEyeHeight()
+    {
         float targetEyeHeight = standingEyeHeight + CrouchCameraOffset * stanceBlend;
+        float eyeSmoothSpeed = WantsCrouch() || isSliding ? CrouchSmoothSpeed : CrouchStandUpSmoothSpeed;
+        currentEyeHeight = Mathf.Lerp(currentEyeHeight, targetEyeHeight, eyeSmoothSpeed * Time.deltaTime);
+
         Vector3 cameraLocalPosition = cameraTransform.localPosition;
-        cameraLocalPosition.y = Mathf.Lerp(cameraLocalPosition.y, targetEyeHeight, 1f - Mathf.Exp(-CrouchSmoothSpeed * Time.deltaTime));
+        cameraLocalPosition.y = currentEyeHeight;
         cameraTransform.localPosition = cameraLocalPosition;
     }
 
@@ -613,12 +631,8 @@ public class FPSPlayerController : MonoBehaviour
             return moveSpeed * SlideSpeedMultiplier;
         }
 
-        if (stanceBlend > 0.01f || WantsCrouch())
-        {
-            return moveSpeed * CrouchSpeedMultiplier;
-        }
-
-        return moveSpeed;
+        float crouchSpeedFactor = Mathf.Lerp(1f, CrouchSpeedMultiplier, stanceBlend);
+        return moveSpeed * crouchSpeedFactor;
     }
 
     private void HandleMovement()
