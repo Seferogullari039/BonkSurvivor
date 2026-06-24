@@ -341,7 +341,7 @@ public class StarterWeaponController : MonoBehaviour
             case StarterWeaponType.KnightSword:
                 return GetSwordSkillCooldown(swordSkillCooldown);
             case StarterWeaponType.Blunderbuss:
-                return GetPrimaryCooldown(blunderbussSkillCooldown);
+                return GetPrimaryCooldown(GetBlunderbussBlastShellCooldown());
             case StarterWeaponType.ThunderSpear:
                 return GetPrimaryCooldown(thunderSpearSkillCooldown);
             default:
@@ -405,7 +405,7 @@ public class StarterWeaponController : MonoBehaviour
                 break;
             case StarterWeaponType.Blunderbuss:
                 FireBlastShell();
-                nextSkillTime = Time.time + GetPrimaryCooldown(blunderbussSkillCooldown);
+                nextSkillTime = Time.time + GetPrimaryCooldown(GetBlunderbussBlastShellCooldown());
                 break;
             case StarterWeaponType.ThunderSpear:
                 FireThunderJavelin();
@@ -751,39 +751,131 @@ public class StarterWeaponController : MonoBehaviour
             forward = fireCamera.forward;
         }
 
-        int damage = Mathf.Max(scatterShotBaseDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, scatterShotBaseDamage));
+        GetBlunderbussScatterShotStats(
+            out int damage,
+            out float halfAngle,
+            out int maxTargets,
+            out float minFalloffMultiplier,
+            out string damageSource);
+
         StarterWeaponDamageUtility.DamageEnemiesInConeWithFalloff(
             origin,
             forward,
             scatterShotRange,
-            scatterShotHalfAngle,
+            halfAngle,
             damage,
-            scatterShotMaxTargets,
-            "Blunderbuss",
-            0.5f);
+            maxTargets,
+            damageSource,
+            minFalloffMultiplier);
 
         weaponViewModel?.PlayBlunderbussMuzzleFlash();
         fpsViewModel?.PlayRecoil();
-        SpawnScatterShotVisuals(origin, forward, scatterShotRange, scatterShotHalfAngle);
+        SpawnScatterShotVisuals(origin, forward, scatterShotRange, halfAngle);
         FPSScreenShake.Shake(0.018f, 0.06f);
     }
 
     private void FireBlastShell()
     {
+        GetBlunderbussBlastShellStats(
+            out int damage,
+            out float radius,
+            out string damageSource);
+
         if (!StarterWeaponDamageUtility.TryGetBlastShellImpactPoint(blastShellRange, out Vector3 impactPoint))
         {
             return;
         }
 
-        int damage = Mathf.Max(blastShellDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, blastShellDamage));
-        StarterWeaponDamageUtility.DamageEnemiesInRadiusWithSource(impactPoint, blastShellRadius, damage, "Blast Shell");
+        StarterWeaponDamageUtility.DamageEnemiesInRadiusWithSource(impactPoint, radius, damage, damageSource);
 
         weaponViewModel?.PlayBlunderbussMuzzleFlash();
         fpsViewModel?.PlayRecoil();
-        SpawnBlastShellVisual(impactPoint, blastShellRadius);
+        SpawnBlastShellVisual(impactPoint, radius);
         FPSScreenShake.Shake(0.028f, 0.1f);
 
         // TODO: Knockback when enemy displacement system exists.
+    }
+
+    private int GetRunUpgradeLevel(int upgradeIndex)
+    {
+        return RunBuildTracker.Instance != null
+            ? RunBuildTracker.Instance.GetTrackedLevel(upgradeIndex)
+            : 0;
+    }
+
+    private bool HasRunEvolution(BuildEvolutionId evolutionId)
+    {
+        return RunBuildTracker.Instance != null
+            && RunBuildTracker.Instance.HasEvolution(evolutionId);
+    }
+
+    private void GetBlunderbussScatterShotStats(
+        out int damage,
+        out float halfAngle,
+        out int maxTargets,
+        out float minFalloffMultiplier,
+        out string damageSource)
+    {
+        int shrapnelLevel = GetRunUpgradeLevel(UpgradeOptionCatalog.ShrapnelStormIndex);
+        bool dragonmouth = HasRunEvolution(BuildEvolutionId.DragonmouthBlunderbuss);
+
+        damage = Mathf.Max(scatterShotBaseDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, scatterShotBaseDamage));
+        halfAngle = scatterShotHalfAngle;
+        maxTargets = scatterShotMaxTargets;
+        minFalloffMultiplier = 0.5f;
+        damageSource = "Blunderbuss";
+
+        if (shrapnelLevel > 0)
+        {
+            damage = Mathf.Max(1, Mathf.RoundToInt(damage * (1f + 0.04f * shrapnelLevel)));
+            maxTargets += shrapnelLevel / 3;
+            halfAngle += Mathf.Min(5f, shrapnelLevel / 2);
+        }
+
+        if (dragonmouth)
+        {
+            damage = Mathf.Max(1, Mathf.RoundToInt(damage * 1.2f));
+            maxTargets += 2;
+            minFalloffMultiplier = 0.65f;
+            damageSource = "Dragonmouth Blunderbuss";
+        }
+    }
+
+    private void GetBlunderbussBlastShellStats(out int damage, out float radius, out string damageSource)
+    {
+        int powderLevel = GetRunUpgradeLevel(UpgradeOptionCatalog.PowderKegIndex);
+        bool dragonmouth = HasRunEvolution(BuildEvolutionId.DragonmouthBlunderbuss);
+
+        damage = Mathf.Max(blastShellDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, blastShellDamage));
+        radius = blastShellRadius;
+        damageSource = "Blast Shell";
+
+        if (powderLevel > 0)
+        {
+            damage = Mathf.Max(1, Mathf.RoundToInt(damage * (1f + 0.08f * powderLevel)));
+            radius *= 1f + 0.04f * powderLevel;
+        }
+
+        if (dragonmouth)
+        {
+            damage = Mathf.Max(1, Mathf.RoundToInt(damage * 1.25f));
+            radius *= 1.15f;
+            damageSource = "Dragonmouth Blast Shell";
+        }
+    }
+
+    private float GetBlunderbussBlastShellCooldown()
+    {
+        float cooldown = blunderbussSkillCooldown;
+        int powderLevel = GetRunUpgradeLevel(UpgradeOptionCatalog.PowderKegIndex);
+
+        if (powderLevel > 0)
+        {
+            cooldown *= Mathf.Pow(0.97f, powderLevel);
+            cooldown = Mathf.Max(2.8f, cooldown);
+        }
+
+        return cooldown;
     }
 
     private static void SpawnScatterShotVisuals(Vector3 origin, Vector3 forward, float range, float halfAngle)
