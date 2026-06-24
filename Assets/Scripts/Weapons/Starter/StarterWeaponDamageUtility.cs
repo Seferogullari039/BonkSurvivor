@@ -307,7 +307,9 @@ public static class StarterWeaponDamageUtility
         int chainDamage,
         int maxChainTargets,
         out Vector3 impactPoint,
-        out List<Enemy> chainedEnemies)
+        out List<Enemy> chainedEnemies,
+        string primaryDamageSource = "Thunder Javelin",
+        string chainDamageSource = "Thunder Chain")
     {
         impactPoint = Vector3.zero;
         chainedEnemies = new List<Enemy>();
@@ -344,7 +346,7 @@ public static class StarterWeaponDamageUtility
         }
 
         impactPoint = primaryTarget.position + Vector3.up * 0.5f;
-        TryApplyDamage(primaryEnemy, primaryDamage, "Thunder Javelin");
+        TryApplyDamage(primaryEnemy, primaryDamage, primaryDamageSource);
 
         if (shockRadius <= 0f || chainDamage <= 0 || maxChainTargets <= 0)
         {
@@ -398,7 +400,7 @@ public static class StarterWeaponDamageUtility
                 continue;
             }
 
-            TryApplyDamage(chainEnemy, chainDamage, "Thunder Chain");
+            TryApplyDamage(chainEnemy, chainDamage, chainDamageSource);
             chainedEnemies.Add(chainEnemy);
             chainCount++;
         }

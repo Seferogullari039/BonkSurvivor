@@ -343,7 +343,7 @@ public class StarterWeaponController : MonoBehaviour
             case StarterWeaponType.Blunderbuss:
                 return GetPrimaryCooldown(GetBlunderbussBlastShellCooldown());
             case StarterWeaponType.ThunderSpear:
-                return GetPrimaryCooldown(thunderSpearSkillCooldown);
+                return GetPrimaryCooldown(GetThunderSpearJavelinCooldown());
             default:
                 return bowSkillCooldown;
         }
@@ -409,7 +409,7 @@ public class StarterWeaponController : MonoBehaviour
                 break;
             case StarterWeaponType.ThunderSpear:
                 FireThunderJavelin();
-                nextSkillTime = Time.time + GetPrimaryCooldown(thunderSpearSkillCooldown);
+                nextSkillTime = Time.time + GetPrimaryCooldown(GetThunderSpearJavelinCooldown());
                 break;
         }
     }
@@ -878,6 +878,96 @@ public class StarterWeaponController : MonoBehaviour
         return cooldown;
     }
 
+    private void GetThunderSpearThrustStats(
+        out int damage,
+        out float lineRadius,
+        out int maxPierce,
+        out string damageSource)
+    {
+        int stormLevel = GetRunUpgradeLevel(UpgradeOptionCatalog.StormConduitIndex);
+        bool stormcaller = HasRunEvolution(BuildEvolutionId.StormcallerSpear);
+
+        damage = Mathf.Max(lightningThrustBaseDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, lightningThrustBaseDamage));
+        lineRadius = lightningThrustLineRadius;
+        maxPierce = lightningThrustMaxPierce;
+        damageSource = "Thunder Spear";
+
+        if (stormLevel > 0)
+        {
+            damage = Mathf.Max(1, Mathf.RoundToInt(damage * (1f + 0.04f * stormLevel)));
+            lineRadius *= 1f + 0.02f * stormLevel;
+            maxPierce += stormLevel / 4;
+        }
+
+        if (stormcaller)
+        {
+            damage = Mathf.Max(1, Mathf.RoundToInt(damage * 1.2f));
+            maxPierce += 1;
+            lineRadius *= 1.1f;
+            damageSource = "Stormcaller Spear";
+        }
+    }
+
+    private void GetThunderSpearJavelinStats(
+        out int primaryDamage,
+        out float shockRadius,
+        out int chainDamage,
+        out int maxChainTargets,
+        out string primaryDamageSource,
+        out string chainDamageSource)
+    {
+        int conductiveLevel = GetRunUpgradeLevel(UpgradeOptionCatalog.ConductiveCoreIndex);
+        bool stormcaller = HasRunEvolution(BuildEvolutionId.StormcallerSpear);
+
+        primaryDamage = Mathf.Max(thunderJavelinPrimaryDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, thunderJavelinPrimaryDamage));
+        shockRadius = thunderJavelinShockRadius;
+        chainDamage = thunderJavelinChainDamage;
+        maxChainTargets = thunderJavelinChainTargets;
+        primaryDamageSource = "Thunder Javelin";
+        chainDamageSource = "Thunder Chain";
+
+        if (conductiveLevel > 0)
+        {
+            primaryDamage = Mathf.Max(1, Mathf.RoundToInt(primaryDamage * (1f + 0.06f * conductiveLevel)));
+            chainDamage = Mathf.Max(1, Mathf.RoundToInt(chainDamage * (1f + 0.10f * conductiveLevel)));
+            shockRadius *= 1f + 0.04f * conductiveLevel;
+
+            if (conductiveLevel >= 3)
+            {
+                maxChainTargets += 1;
+            }
+
+            if (conductiveLevel >= 5)
+            {
+                maxChainTargets += 1;
+            }
+        }
+
+        if (stormcaller)
+        {
+            primaryDamage = Mathf.Max(1, Mathf.RoundToInt(primaryDamage * 1.2f));
+            chainDamage = Mathf.Max(1, Mathf.RoundToInt(chainDamage * 1.25f));
+            shockRadius *= 1.15f;
+            maxChainTargets += 1;
+            primaryDamageSource = "Stormcaller Spear";
+            chainDamageSource = "Stormcaller Chain";
+        }
+    }
+
+    private float GetThunderSpearJavelinCooldown()
+    {
+        float cooldown = thunderSpearSkillCooldown;
+        int conductiveLevel = GetRunUpgradeLevel(UpgradeOptionCatalog.ConductiveCoreIndex);
+
+        if (conductiveLevel > 0)
+        {
+            cooldown *= Mathf.Pow(0.97f, conductiveLevel);
+            cooldown = Mathf.Max(2.55f, cooldown);
+        }
+
+        return cooldown;
+    }
+
     private static void SpawnScatterShotVisuals(Vector3 origin, Vector3 forward, float range, float halfAngle)
     {
         if (forward.sqrMagnitude < 0.001f) return;
@@ -1009,15 +1099,16 @@ public class StarterWeaponController : MonoBehaviour
             forward = fireCamera.forward;
         }
 
-        int damage = Mathf.Max(lightningThrustBaseDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, lightningThrustBaseDamage));
+        GetThunderSpearThrustStats(out int damage, out float lineRadius, out int maxPierce, out string damageSource);
+
         int hitCount = StarterWeaponDamageUtility.DamageEnemiesAlongRayWithPierce(
             origin,
             forward,
             lightningThrustRange,
-            lightningThrustLineRadius,
+            lineRadius,
             damage,
-            lightningThrustMaxPierce,
-            "Thunder Spear");
+            maxPierce,
+            damageSource);
 
         weaponViewModel?.PlayThunderSpearTipGlow();
         fpsViewModel?.PlayRecoil();
@@ -1027,19 +1118,28 @@ public class StarterWeaponController : MonoBehaviour
 
     private void FireThunderJavelin()
     {
-        int primaryDamage = Mathf.Max(thunderJavelinPrimaryDamage, StarterWeaponDamageUtility.GetBaseDamage(playerStats, thunderJavelinPrimaryDamage));
+        GetThunderSpearJavelinStats(
+            out int primaryDamage,
+            out float shockRadius,
+            out int chainDamage,
+            out int maxChainTargets,
+            out string primaryDamageSource,
+            out string chainDamageSource);
+
         bool hitPrimary = StarterWeaponDamageUtility.TryApplyThunderJavelin(
             thunderJavelinRange,
             primaryDamage,
-            thunderJavelinShockRadius,
-            thunderJavelinChainDamage,
-            thunderJavelinChainTargets,
+            shockRadius,
+            chainDamage,
+            maxChainTargets,
             out Vector3 impactPoint,
-            out List<Enemy> chainedEnemies);
+            out List<Enemy> chainedEnemies,
+            primaryDamageSource,
+            chainDamageSource);
 
         weaponViewModel?.PlayThunderSpearTipGlow(0.18f);
         fpsViewModel?.PlayRecoil();
-        SpawnThunderJavelinVisual(impactPoint, thunderJavelinShockRadius, hitPrimary, chainedEnemies);
+        SpawnThunderJavelinVisual(impactPoint, shockRadius, hitPrimary, chainedEnemies);
         FPSScreenShake.Shake(hitPrimary ? 0.022f : 0.008f, hitPrimary ? 0.08f : 0.05f);
     }
 
