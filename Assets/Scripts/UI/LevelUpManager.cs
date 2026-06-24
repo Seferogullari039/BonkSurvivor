@@ -856,15 +856,13 @@ public class LevelUpManager : MonoBehaviour
 
     private void AssignRandomUpgradeOptions()
     {
-        RunBuildTracker tracker = RunBuildTracker.GetOrCreate();
-
-        if (tracker.IsBuildFullyMaxed())
+        if (RunBuildRewardFilter.ShouldUseBonusFallback())
         {
             AssignBonusFallbackOptions();
             return;
         }
 
-        List<int> availableIndices = BuildAvailableRewardIndices();
+        List<int> availableIndices = RunBuildRewardFilter.BuildPoolIndices();
         List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
         WeaponBuildType activeBuild = GetPlayerWeaponBuild();
 
@@ -882,21 +880,6 @@ public class LevelUpManager : MonoBehaviour
         }
 
         AssignWeightedOption(2, availableIndices, unpurchasedWeapons);
-    }
-
-    private static List<int> BuildAvailableRewardIndices()
-    {
-        List<int> indices = new List<int>(UpgradeOptionCatalog.OptionCount);
-
-        for (int i = 0; i < UpgradeOptionCatalog.OptionCount; i++)
-        {
-            if (UpgradeOptionCatalog.CanOfferInRewardPool(i))
-            {
-                indices.Add(i);
-            }
-        }
-
-        return indices;
     }
 
     private void AssignBonusFallbackOptions()
@@ -933,7 +916,7 @@ public class LevelUpManager : MonoBehaviour
         WeaponBuildType preferredBuild,
         RewardCategory category)
     {
-        List<int> offerableIndices = GetBuildLockEligibleCandidates(availableIndices);
+        List<int> offerableIndices = RunBuildRewardFilter.FilterEligibleCandidates(availableIndices);
 
         if (!UpgradeOptionCatalog.TryPickEligibleUpgradeByBuild(offerableIndices, preferredBuild, category, out int pick))
         {
@@ -948,7 +931,7 @@ public class LevelUpManager : MonoBehaviour
 
     private void AssignWeightedOption(int slotIndex, List<int> availableIndices, List<int> unpurchasedWeapons)
     {
-        List<int> offerableIndices = GetBuildLockEligibleCandidates(availableIndices);
+        List<int> offerableIndices = RunBuildRewardFilter.FilterEligibleCandidates(availableIndices);
 
         if (offerableIndices.Count == 0)
         {
@@ -961,110 +944,6 @@ public class LevelUpManager : MonoBehaviour
         shownUpgradeIndices[slotIndex] = pick;
         shownUpgradeRarities[slotIndex] = RollUpgradeRarity();
         availableIndices.Remove(pick);
-    }
-
-    private static List<int> GetBuildLockEligibleCandidates(List<int> candidates)
-    {
-        if (candidates == null || candidates.Count == 0)
-        {
-            return candidates;
-        }
-
-        RunBuildTracker tracker = RunBuildTracker.Instance;
-
-        if (tracker == null)
-        {
-            tracker = RunBuildTracker.GetOrCreate();
-        }
-
-        if (tracker.IsBuildFullyMaxed())
-        {
-            return new List<int>();
-        }
-
-        List<int> primary = FilterBuildLockCandidates(candidates, tracker, tracker.CanOfferUpgrade);
-
-        if (primary.Count > 0)
-        {
-            return primary;
-        }
-
-        List<int> buildLockFallback = FilterBuildLockCandidates(
-            candidates,
-            tracker,
-            index => PassesBuildLockFallback(tracker, index));
-
-        if (buildLockFallback.Count > 0)
-        {
-            return buildLockFallback;
-        }
-
-        List<int> freeSlotFallback = FilterBuildLockCandidates(
-            candidates,
-            tracker,
-            index => PassesFreeSlotNotMaxed(tracker, index));
-
-        if (freeSlotFallback.Count > 0)
-        {
-            return freeSlotFallback;
-        }
-
-        List<int> trackedNotMaxed = FilterBuildLockCandidates(
-            candidates,
-            tracker,
-            index => !tracker.IsMaxed(index) && tracker.IsTrackedUpgrade(index));
-
-        if (trackedNotMaxed.Count > 0)
-        {
-            return trackedNotMaxed;
-        }
-
-        return new List<int>();
-    }
-
-    private static List<int> FilterBuildLockCandidates(
-        List<int> candidates,
-        RunBuildTracker tracker,
-        System.Func<int, bool> predicate)
-    {
-        List<int> filtered = new List<int>(candidates.Count);
-
-        for (int i = 0; i < candidates.Count; i++)
-        {
-            if (predicate(candidates[i]))
-            {
-                filtered.Add(candidates[i]);
-            }
-        }
-
-        return filtered;
-    }
-
-    private static bool PassesBuildLockFallback(RunBuildTracker tracker, int upgradeIndex)
-    {
-        if (tracker.IsMaxed(upgradeIndex))
-        {
-            return false;
-        }
-
-        if (tracker.IsTrackedUpgrade(upgradeIndex))
-        {
-            return true;
-        }
-
-        RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
-        return tracker.HasFreeSlot(category);
-    }
-
-    private static bool PassesFreeSlotNotMaxed(RunBuildTracker tracker, int upgradeIndex)
-    {
-        if (tracker.IsMaxed(upgradeIndex))
-        {
-            return false;
-        }
-
-        RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
-        return tracker.HasFreeSlot(category);
     }
 
     private int PickWeightedUpgradeIndex(List<int> candidates, List<int> unpurchasedWeapons, int slotIndex)

@@ -174,12 +174,37 @@ public class RunBuildTracker : MonoBehaviour
         return GetFilledSlotCount(category) < MaxSlotsPerCategory;
     }
 
+    public bool IsSkillSlotFull()
+    {
+        return !HasFreeSlot(RewardCategory.Skill);
+    }
+
+    public bool IsPassiveSlotFull()
+    {
+        return !HasFreeSlot(RewardCategory.Passive);
+    }
+
     public bool IsTrackedUpgrade(int upgradeIndex)
     {
         return GetTrackedLevel(upgradeIndex) > 0;
     }
 
+    public bool HasUpgrade(int upgradeIndex)
+    {
+        return IsTrackedUpgrade(upgradeIndex);
+    }
+
+    public int GetUpgradeLevel(int upgradeIndex)
+    {
+        return GetTrackedLevel(upgradeIndex);
+    }
+
     public bool IsMaxed(int upgradeIndex)
+    {
+        return IsUpgradeMaxed(upgradeIndex);
+    }
+
+    public bool IsUpgradeMaxed(int upgradeIndex)
     {
         int level = GetTrackedLevel(upgradeIndex);
 
@@ -203,23 +228,7 @@ public class RunBuildTracker : MonoBehaviour
 
     public bool CanOfferUpgrade(int upgradeIndex)
     {
-        if (!UpgradeOptionCatalog.CanOfferInRewardPool(upgradeIndex))
-        {
-            return false;
-        }
-
-        if (IsMaxed(upgradeIndex))
-        {
-            return false;
-        }
-
-        if (IsTrackedUpgrade(upgradeIndex))
-        {
-            return true;
-        }
-
-        RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
-        return HasFreeSlot(category);
+        return RunBuildRewardFilter.CanOfferUpgrade(this, upgradeIndex);
     }
 
     public IReadOnlyList<int> GetTrackedUpgradeIndices(RewardCategory category)
