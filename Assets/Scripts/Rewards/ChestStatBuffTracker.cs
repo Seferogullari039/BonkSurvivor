@@ -121,7 +121,7 @@ public class ChestStatBuffTracker : MonoBehaviour
             }
         }
 
-        activeBuffCache.Sort((a, b) => a.Type.CompareTo(b.Type));
+        activeBuffCache.Sort((a, b) => GetHudSortOrder(a.Type).CompareTo(GetHudSortOrder(b.Type)));
         return activeBuffCache;
     }
 
@@ -139,6 +139,20 @@ public class ChestStatBuffTracker : MonoBehaviour
             + "Source: Chest rewards";
     }
 
+    public static int GetHudSortOrder(ChestStatRewardType type)
+    {
+        return type switch
+        {
+            ChestStatRewardType.AttackCooldown => 0,
+            ChestStatRewardType.MoveSpeed => 1,
+            ChestStatRewardType.PickupRange => 2,
+            ChestStatRewardType.MaxHealth => 3,
+            ChestStatRewardType.CoinGain => 4,
+            ChestStatRewardType.XpGain => 5,
+            _ => 99
+        };
+    }
+
     public static string GetShortLabel(ChestStatRewardType type)
     {
         return type switch
@@ -146,11 +160,21 @@ public class ChestStatBuffTracker : MonoBehaviour
             ChestStatRewardType.MaxHealth => "HP",
             ChestStatRewardType.MoveSpeed => "SPD",
             ChestStatRewardType.AttackCooldown => "CD",
-            ChestStatRewardType.PickupRange => "MAG",
+            ChestStatRewardType.PickupRange => "PICK",
             ChestStatRewardType.CoinGain => "COIN",
             ChestStatRewardType.XpGain => "XP",
             _ => "?"
         };
+    }
+
+    public static string FormatHudBadgeText(ChestStatBuffEntry entry)
+    {
+        if (entry == null || entry.Stacks <= 0)
+        {
+            return string.Empty;
+        }
+
+        return GetShortLabel(entry.Type) + " +" + entry.Stacks;
     }
 
     public static string FormatPauseSummaryLine(ChestStatBuffEntry entry)

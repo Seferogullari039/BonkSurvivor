@@ -6,17 +6,17 @@ using UnityEngine.UI;
 
 public class ChestStatBuffHud : MonoBehaviour
 {
-    private const float PanelX = 10f;
-    private const float PanelY = -248f;
-    private const float PanelWidth = 264f;
-    private const float PanelHeight = 34f;
-    private const float ChipWidth = 48f;
+    private const int MaxVisibleBadges = 7;
+
+    private const float PanelInsetX = 24f;
+    private const float PanelInsetY = 118f;
+    private const float PanelHeight = 28f;
+    private const float ChipWidth = 52f;
     private const float ChipHeight = 22f;
     private const float ChipGap = 4f;
-    private const float ContentPadding = 8f;
+    private const float ContentPadding = 6f;
 
     private static readonly Color PanelBackground = new Color(0.04f, 0.05f, 0.08f, 0.72f);
-    private static readonly Color HeaderColor = new Color(0.72f, 0.76f, 0.84f, 1f);
     private static readonly Color ChipBackground = new Color(0.12f, 0.14f, 0.2f, 0.9f);
     private static readonly Color ChipTextColor = new Color(0.88f, 0.9f, 0.95f, 1f);
     private static readonly Color TooltipBackground = new Color(0.06f, 0.07f, 0.1f, 0.96f);
@@ -126,22 +126,18 @@ public class ChestStatBuffHud : MonoBehaviour
         panelRoot = panelObject;
 
         RectTransform panelRect = panelObject.AddComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorTopLeft(panelRect, PanelX, PanelY, PanelWidth, PanelHeight);
+        UiLayoutUtility.SetAnchorBottomLeft(panelRect, PanelInsetX, PanelInsetY, ChipWidth, PanelHeight);
 
         Image panelImage = panelObject.AddComponent<Image>();
         panelImage.raycastTarget = false;
         panelImage.color = PanelBackground;
-
-        TMP_Text headerText = CreateText(panelObject.transform, "BuffHeader", ContentPadding, -4f, 60f, 14f, 10f, FontStyles.Bold);
-        headerText.text = "BUFFS";
-        headerText.color = HeaderColor;
 
         GameObject rowObject = new GameObject("ChipRow");
         rowObject.transform.SetParent(panelObject.transform, false);
         chipRow = rowObject.transform;
 
         RectTransform rowRect = rowObject.AddComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorTopLeft(rowRect, 52f, -6f, PanelWidth - 60f, ChipHeight);
+        UiLayoutUtility.SetAnchorTopLeft(rowRect, ContentPadding, -3f, ChipWidth, ChipHeight);
 
         BuildTooltip(canvas.transform);
         isBuilt = true;
@@ -195,8 +191,10 @@ public class ChestStatBuffHud : MonoBehaviour
         }
 
         IReadOnlyList<ChestStatBuffEntry> activeBuffs = tracker.GetActiveBuffs();
+        int visibleCount = Mathf.Min(activeBuffs.Count, MaxVisibleBadges);
+        ResizePanel(visibleCount);
 
-        for (int i = 0; i < activeBuffs.Count; i++)
+        for (int i = 0; i < visibleCount; i++)
         {
             CreateChip(activeBuffs[i], i);
         }
@@ -212,7 +210,7 @@ public class ChestStatBuffHud : MonoBehaviour
         }
 
         bool hasBuffs = ChestStatBuffTracker.Instance != null && ChestStatBuffTracker.Instance.GetActiveBuffs().Count > 0;
-        panelRoot.SetActive(runHudVisible && hasBuffs);
+        panelRoot.SetActive(runHudVisible && hasBuffs && ShouldShowDuringGameplay());
     }
 
     private void ApplyRunVisibility(bool visible)
@@ -230,6 +228,55 @@ public class ChestStatBuffHud : MonoBehaviour
         }
 
         instance?.ApplyRunVisibility(true);
+    }
+
+    private static bool ShouldShowDuringGameplay()
+    {
+        if (!MainMenuManager.IsRunActive)
+        {
+            return false;
+        }
+
+        if (DevAdminPanel.IsOpen)
+        {
+            return false;
+        }
+
+        if (GameOverManager.Instance != null && GameOverManager.Instance.IsGameOverActive)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private void ResizePanel(int visibleChipCount)
+    {
+        if (panelRoot == null || visibleChipCount <= 0)
+        {
+            return;
+        }
+
+        float panelWidth = (ContentPadding * 2f)
+            + (visibleChipCount * ChipWidth)
+            + (Mathf.Max(visibleChipCount - 1, 0) * ChipGap);
+
+        RectTransform panelRect = panelRoot.GetComponent<RectTransform>();
+
+        if (panelRect != null)
+        {
+            panelRect.sizeDelta = new Vector2(panelWidth, PanelHeight);
+        }
+
+        if (chipRow != null)
+        {
+            RectTransform rowRect = chipRow as RectTransform;
+
+            if (rowRect != null)
+            {
+                rowRect.sizeDelta = new Vector2(panelWidth - (ContentPadding * 2f), ChipHeight);
+            }
+        }
     }
 
     private void ClearChips()
@@ -262,7 +309,7 @@ public class ChestStatBuffHud : MonoBehaviour
 
         TMP_Text label = CreateText(chipObject.transform, "Label", 0f, 0f, ChipWidth, ChipHeight, 9f, FontStyles.Bold);
         label.alignment = TextAlignmentOptions.Center;
-        label.text = ChestStatBuffTracker.GetShortLabel(entry.Type) + " x" + entry.Stacks;
+        label.text = ChestStatBuffTracker.FormatHudBadgeText(entry);
         label.color = ChipTextColor;
         label.raycastTarget = false;
 
