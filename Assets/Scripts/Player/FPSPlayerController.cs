@@ -223,10 +223,24 @@ public class FPSPlayerController : MonoBehaviour
 
     private void RefreshMoveSpeed()
     {
+        float chestMoveSpeedMultiplier = 1f;
+        PlayerStats playerStats = GetComponent<PlayerStats>();
+
+        if (playerStats != null)
+        {
+            chestMoveSpeedMultiplier = playerStats.ChestMoveSpeedMultiplier;
+        }
+
         // Always recomputed from baseMoveSpeed so relic add/clear never permanently stacks.
         moveSpeed = baseMoveSpeed
             * (1f + 0.05f * MetaProgressionData.UpgradeLevelSpeed)
-            * RelicManager.MoveSpeedMultiplier;
+            * RelicManager.MoveSpeedMultiplier
+            * chestMoveSpeedMultiplier;
+    }
+
+    public void RefreshMoveSpeedFromStats()
+    {
+        RefreshMoveSpeed();
     }
 
     private void UpdateCursorState()

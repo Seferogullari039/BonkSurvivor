@@ -37,6 +37,7 @@ public class XPOrb : MonoBehaviour
         if (UpgradeManager.Instance != null)
         {
             finalAttractionRange *= UpgradeManager.Instance.XPAttractionMultiplier;
+            finalAttractionRange *= UpgradeManager.Instance.PickupRangeMultiplier;
         }
 
         finalAttractionRange *= RelicManager.PickupRangeMultiplier;

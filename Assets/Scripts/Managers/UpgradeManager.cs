@@ -6,6 +6,7 @@ public class UpgradeManager : MonoBehaviour
 
     public float ProjectileSpeedMultiplier { get; private set; } = 1f;
     public float XPAttractionMultiplier { get; private set; } = 1f;
+    public float PickupRangeMultiplier { get; private set; } = 1f;
 
     private void Awake()
     {
@@ -31,5 +32,17 @@ public class UpgradeManager : MonoBehaviour
     public void IncreaseXPAttraction(float percent)
     {
         XPAttractionMultiplier *= 1f + percent;
+    }
+
+    public void IncreasePickupRange(float percent)
+    {
+        PickupRangeMultiplier *= 1f + percent;
+    }
+
+    public void ResetForNewRun()
+    {
+        ProjectileSpeedMultiplier = 1f;
+        XPAttractionMultiplier = 1f;
+        PickupRangeMultiplier = 1f;
     }
 }

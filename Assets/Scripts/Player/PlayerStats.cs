@@ -36,7 +36,11 @@ public class PlayerStats : MonoBehaviour
     private float arrowRainDamageMultiplier = 1f;
     private float megaMeteorSkillDamageMultiplier = 1f;
     private float swordRmbDamageMultiplier = 1f;
+    private float chestMoveSpeedMultiplier = 1f;
+    private float chestCoinGainMultiplier = 1f;
+    private float chestXpGainMultiplier = 1f;
 
+    public float ChestMoveSpeedMultiplier => chestMoveSpeedMultiplier;
     public float StarterWeaponCooldownMultiplier => starterWeaponCooldownMultiplier;
     public float StarterProjectileSpeedMultiplier => starterProjectileSpeedMultiplier;
     public float MegaMeteorCooldownMultiplier => megaMeteorCooldownMultiplier;
@@ -276,6 +280,57 @@ public class PlayerStats : MonoBehaviour
         arrowRainDamageMultiplier = 1f;
         megaMeteorSkillDamageMultiplier = 1f;
         swordRmbDamageMultiplier = 1f;
+        chestMoveSpeedMultiplier = 1f;
+        chestCoinGainMultiplier = 1f;
+        chestXpGainMultiplier = 1f;
+
+        if (UpgradeManager.Instance != null)
+        {
+            UpgradeManager.Instance.ResetForNewRun();
+        }
+    }
+
+    public void ApplyChestMaxHealthBonus(float percent)
+    {
+        int bonus = Mathf.Max(1, Mathf.RoundToInt(maxHealth * percent));
+        maxHealth += bonus;
+        currentHealth = Mathf.Min(currentHealth + bonus, EffectiveMaxHealth);
+        RefreshHUD();
+    }
+
+    public void ApplyChestMoveSpeedBonus(float percent)
+    {
+        chestMoveSpeedMultiplier = Mathf.Clamp(chestMoveSpeedMultiplier * (1f + percent), 1f, 3f);
+
+        FPSPlayerController fpsPlayerController = GetComponent<FPSPlayerController>();
+        fpsPlayerController?.RefreshMoveSpeedFromStats();
+    }
+
+    public void ApplyChestCoinGainBonus(float percent)
+    {
+        chestCoinGainMultiplier = Mathf.Clamp(chestCoinGainMultiplier * (1f + percent), 1f, 4f);
+    }
+
+    public void ApplyChestXpGainBonus(float percent)
+    {
+        chestXpGainMultiplier = Mathf.Clamp(chestXpGainMultiplier * (1f + percent), 1f, 4f);
+    }
+
+    public void HealAmount(int amount)
+    {
+        if (amount <= 0)
+        {
+            return;
+        }
+
+        currentHealth = Mathf.Min(currentHealth + amount, EffectiveMaxHealth);
+        RefreshHUD();
+    }
+
+    public void HealToFull()
+    {
+        currentHealth = EffectiveMaxHealth;
+        RefreshHUD();
     }
 
     private void Start()
@@ -363,7 +418,7 @@ public class PlayerStats : MonoBehaviour
     {
         if (!MainMenuManager.IsRunActive) return;
 
-        int finalAmount = Mathf.Max(1, Mathf.RoundToInt(amount * metaXpGainMultiplier));
+        int finalAmount = Mathf.Max(1, Mathf.RoundToInt(amount * metaXpGainMultiplier * chestXpGainMultiplier));
         currentXP += finalAmount;
 
         if (currentXP >= xpToNextLevel)
@@ -408,7 +463,7 @@ public class PlayerStats : MonoBehaviour
     {
         if (!MainMenuManager.IsRunActive) return;
 
-        float multiplier = RelicManager.CoinGainMultiplier;
+        float multiplier = RelicManager.CoinGainMultiplier * chestCoinGainMultiplier;
         int finalAmount = amount > 0
             ? Mathf.Max(1, Mathf.RoundToInt(amount * multiplier))
             : amount;

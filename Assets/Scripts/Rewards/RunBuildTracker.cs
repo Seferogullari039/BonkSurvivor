@@ -269,6 +269,38 @@ public class RunBuildTracker : MonoBehaviour
         return count;
     }
 
+    public bool IsBuildFullyMaxed()
+    {
+        if (GetFilledSlotCount(RewardCategory.Skill) < MaxSlotsPerCategory)
+        {
+            return false;
+        }
+
+        if (GetFilledSlotCount(RewardCategory.Passive) < MaxSlotsPerCategory)
+        {
+            return false;
+        }
+
+        for (int i = 0; i < MaxSlotsPerCategory; i++)
+        {
+            RunBuildSlotEntry skillEntry = skillSlots[i];
+
+            if (skillEntry != null && skillEntry.Level < UpgradeOptionCatalog.GetMaxLevel(skillEntry.UpgradeIndex))
+            {
+                return false;
+            }
+
+            RunBuildSlotEntry passiveEntry = passiveSlots[i];
+
+            if (passiveEntry != null && passiveEntry.Level < UpgradeOptionCatalog.GetMaxLevel(passiveEntry.UpgradeIndex))
+            {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     private void NotifyBuildChanged()
     {
         OnBuildChanged?.Invoke();

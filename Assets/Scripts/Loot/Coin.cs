@@ -33,6 +33,11 @@ public class Coin : MonoBehaviour
         float distance = Vector3.Distance(transform.position, player.position);
         float finalAttractionRange = attractionRange * RelicManager.PickupRangeMultiplier;
 
+        if (UpgradeManager.Instance != null)
+        {
+            finalAttractionRange *= UpgradeManager.Instance.PickupRangeMultiplier;
+        }
+
         if (distance <= finalAttractionRange)
         {
             transform.position = Vector3.MoveTowards(

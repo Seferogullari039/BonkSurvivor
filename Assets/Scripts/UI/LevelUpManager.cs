@@ -28,6 +28,10 @@ public class LevelUpManager : MonoBehaviour
     private ChestLootSelectionUI chestLootSelectionUI;
     private ChestSingleCardRevealUI chestSingleCardRevealUI;
 
+    private const int BonusRewardCoin = -1;
+    private const int BonusRewardHeal = -2;
+    private ChestStatRewardType shownChestStatReward;
+
     private void Awake()
     {
         Instance = this;
@@ -487,7 +491,9 @@ public class LevelUpManager : MonoBehaviour
 
         chestRewardCollected = true;
         AudioManager.Instance?.PlayUpgradeSelect();
-        ApplySelectedUpgrade(shownUpgradeIndices[0], shownUpgradeRarities[0]);
+
+        PlayerStats playerStats = FindPlayerStats();
+        ChestStatRewardCatalog.Apply(shownChestStatReward, shownUpgradeRarities[0], playerStats);
 
         if (chestSingleCardRevealUI != null)
         {
@@ -502,29 +508,13 @@ public class LevelUpManager : MonoBehaviour
 
     private void AssignSingleChestReward()
     {
-        List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
-        List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
-        List<int> offerableIndices = GetBuildLockEligibleCandidates(availableIndices);
-        int pick = PickWeightedUpgradeIndex(offerableIndices, unpurchasedWeapons, 0);
-        shownUpgradeIndices[0] = pick;
-        shownUpgradeRarities[0] = RollUpgradeRarity();
+        shownChestStatReward = ChestStatRewardCatalog.RollRandomReward();
+        shownUpgradeRarities[0] = MapChestRarityToUpgradeRarity(currentChestRarity);
     }
 
     private ChestLootSelectionUI.SlotData BuildChestSingleCardData()
     {
-        PlayerStats playerStats = FindPlayerStats();
-        int upgradeIndex = shownUpgradeIndices[0];
-        UpgradeRarity rarity = shownUpgradeRarities[0];
-        int multiplier = GetRarityMultiplier(rarity);
-        UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier, playerStats);
-
-        return ChestLootSelectionUI.SlotData.FromUpgrade(
-            rarity,
-            UpgradeOptionCatalog.GetCategory(upgradeIndex),
-            UpgradeOptionCatalog.GetBuildType(upgradeIndex),
-            content.Title,
-            content.Description,
-            content.IconKey);
+        return ChestLootSelectionUI.SlotData.FromChestStat(shownChestStatReward, shownUpgradeRarities[0]);
     }
 
     private void EnsureChestSingleCardRevealUi()
@@ -602,6 +592,60 @@ public class LevelUpManager : MonoBehaviour
         EnsureUpgradeCards();
 
         UpgradeCardView card = upgradeCards[cardIndex];
+
+        if (IsBonusReward(upgradeIndex))
+        {
+            GetBonusCardContent(upgradeIndex, rarity, out string title, out string description, out string iconKey);
+
+            if (card == null)
+            {
+                TMP_Text fallbackText = cardIndex switch
+                {
+                    0 => optionText1,
+                    1 => optionText2,
+                    _ => optionText3
+                };
+
+                string header = ChestLootSelectionUI.BuildRewardHeaderLabel(
+                    UpgradeOptionCatalog.GetRarityLabel(rarity),
+                    "BONUS",
+                    "GENERAL");
+                SetOptionText(fallbackText, $"{header}\n{title}\n{description}");
+                return;
+            }
+
+            if (card.RarityText != null)
+            {
+                card.RarityText.text = UpgradeOptionCatalog.GetRarityLabel(rarity);
+                card.RarityText.color = UpgradeOptionCatalog.GetRarityColor(rarity);
+            }
+
+            if (card.CategoryText != null)
+            {
+                card.CategoryText.text = "BONUS";
+                card.CategoryText.color = UpgradeOptionCatalog.GetCategoryColor(RewardCategory.Passive);
+            }
+
+            if (card.BuildText != null)
+            {
+                card.BuildText.text = "GENERAL";
+                card.BuildText.color = UpgradeOptionCatalog.GetBuildColor(WeaponBuildType.General);
+            }
+
+            if (card.TitleText != null)
+            {
+                card.TitleText.text = title;
+            }
+
+            if (card.DescriptionText != null)
+            {
+                card.DescriptionText.text = description;
+            }
+
+            ApplyCardIcon(card, iconKey);
+            ApplyCardRarityVisuals(card, rarity);
+            return;
+        }
 
         if (card == null)
         {
@@ -769,6 +813,14 @@ public class LevelUpManager : MonoBehaviour
 
     private void AssignRandomUpgradeOptions()
     {
+        RunBuildTracker tracker = RunBuildTracker.GetOrCreate();
+
+        if (tracker.IsBuildFullyMaxed())
+        {
+            AssignBonusFallbackOptions();
+            return;
+        }
+
         List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
         List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
         WeaponBuildType activeBuild = GetPlayerWeaponBuild();
@@ -787,6 +839,15 @@ public class LevelUpManager : MonoBehaviour
         }
 
         AssignWeightedOption(2, availableIndices, unpurchasedWeapons);
+    }
+
+    private void AssignBonusFallbackOptions()
+    {
+        for (int i = 0; i < shownUpgradeIndices.Length; i++)
+        {
+            shownUpgradeIndices[i] = Random.value < 0.5f ? BonusRewardCoin : BonusRewardHeal;
+            shownUpgradeRarities[i] = RollUpgradeRarity();
+        }
     }
 
     private WeaponBuildType GetPlayerWeaponBuild()
@@ -830,6 +891,14 @@ public class LevelUpManager : MonoBehaviour
     private void AssignWeightedOption(int slotIndex, List<int> availableIndices, List<int> unpurchasedWeapons)
     {
         List<int> offerableIndices = GetBuildLockEligibleCandidates(availableIndices);
+
+        if (offerableIndices.Count == 0)
+        {
+            shownUpgradeIndices[slotIndex] = Random.value < 0.5f ? BonusRewardCoin : BonusRewardHeal;
+            shownUpgradeRarities[slotIndex] = RollUpgradeRarity();
+            return;
+        }
+
         int pick = PickWeightedUpgradeIndex(offerableIndices, unpurchasedWeapons, slotIndex);
         shownUpgradeIndices[slotIndex] = pick;
         shownUpgradeRarities[slotIndex] = RollUpgradeRarity();
@@ -848,6 +917,11 @@ public class LevelUpManager : MonoBehaviour
         if (tracker == null)
         {
             tracker = RunBuildTracker.GetOrCreate();
+        }
+
+        if (tracker.IsBuildFullyMaxed())
+        {
+            return new List<int>();
         }
 
         List<int> primary = FilterBuildLockCandidates(candidates, tracker, tracker.CanOfferUpgrade);
@@ -887,8 +961,7 @@ public class LevelUpManager : MonoBehaviour
             return trackedNotMaxed;
         }
 
-        LogBuildRewardEmergencyFallback();
-        return candidates;
+        return new List<int>();
     }
 
     private static List<int> FilterBuildLockCandidates(
@@ -936,15 +1009,13 @@ public class LevelUpManager : MonoBehaviour
         return tracker.HasFreeSlot(category);
     }
 
-    private static void LogBuildRewardEmergencyFallback()
-    {
-#if UNITY_EDITOR
-        Debug.Log("[LevelUpManager] Build reward emergency fallback used.");
-#endif
-    }
-
     private int PickWeightedUpgradeIndex(List<int> candidates, List<int> unpurchasedWeapons, int slotIndex)
     {
+        if (candidates == null || candidates.Count == 0)
+        {
+            return Random.value < 0.5f ? BonusRewardCoin : BonusRewardHeal;
+        }
+
         int totalWeight = 0;
         int[] weights = new int[candidates.Count];
 
@@ -1530,6 +1601,18 @@ public class LevelUpManager : MonoBehaviour
 
     private void ApplySelectedUpgrade(int upgradeIndex, UpgradeRarity rarity)
     {
+        if (upgradeIndex == BonusRewardCoin)
+        {
+            ApplyBonusCoins(rarity);
+            return;
+        }
+
+        if (upgradeIndex == BonusRewardHeal)
+        {
+            ApplyBonusHeal(rarity);
+            return;
+        }
+
         int multiplier = GetRarityMultiplier(rarity);
 
         switch (upgradeIndex)
@@ -1581,7 +1664,63 @@ public class LevelUpManager : MonoBehaviour
                 break;
         }
 
-        RunBuildTracker.GetOrCreate().RecordUpgrade(upgradeIndex);
+        if (upgradeIndex >= 0)
+        {
+            RunBuildTracker.GetOrCreate().RecordUpgrade(upgradeIndex);
+        }
+    }
+
+    private static bool IsBonusReward(int upgradeIndex)
+    {
+        return upgradeIndex == BonusRewardCoin || upgradeIndex == BonusRewardHeal;
+    }
+
+    private static void GetBonusCardContent(
+        int upgradeIndex,
+        UpgradeRarity rarity,
+        out string title,
+        out string description,
+        out string iconKey)
+    {
+        int multiplier = GetRarityMultiplier(rarity);
+
+        if (upgradeIndex == BonusRewardCoin)
+        {
+            int amount = 25 * multiplier;
+            title = "Coins";
+            description = "Gain +" + amount + " coins.";
+            iconKey = "bonus_coins";
+            return;
+        }
+
+        int healAmount = 25 * multiplier;
+        title = "Heal";
+        description = "Restore " + healAmount + " HP.";
+        iconKey = "bonus_heal";
+    }
+
+    private void ApplyBonusCoins(UpgradeRarity rarity)
+    {
+        PlayerStats playerStats = FindPlayerStats();
+        int amount = 25 * GetRarityMultiplier(rarity);
+        playerStats?.AddCoins(amount);
+    }
+
+    private void ApplyBonusHeal(UpgradeRarity rarity)
+    {
+        PlayerStats playerStats = FindPlayerStats();
+        int amount = 25 * GetRarityMultiplier(rarity);
+        playerStats?.HealAmount(amount);
+    }
+
+    private static UpgradeRarity MapChestRarityToUpgradeRarity(ChestRarity chestRarity)
+    {
+        return chestRarity switch
+        {
+            ChestRarity.Epic => UpgradeRarity.Epic,
+            ChestRarity.Rare => UpgradeRarity.Rare,
+            _ => UpgradeRarity.Common
+        };
     }
 
     private void ApplyFireRateUpgrade(float percent)

@@ -40,6 +40,26 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
                 IconKey = iconKey ?? string.Empty
             };
         }
+
+        public static SlotData FromChestStat(ChestStatRewardType rewardType, UpgradeRarity rarity)
+        {
+            ChestStatRewardCatalog.GetDisplay(rewardType, rarity, out string title, out string description);
+
+            ChestLootRarityPalette.GetStyle(rarity, out Color accent, out Color background, out Color border, out string label);
+
+            return new SlotData
+            {
+                RarityLabel = label,
+                CategoryLabel = "CHEST PASSIVE",
+                BuildLabel = "GENERAL",
+                RarityAccent = accent,
+                RarityBackground = background,
+                RarityBorder = border,
+                Title = title,
+                Description = description,
+                IconKey = ChestStatRewardCatalog.GetIconKey(rewardType)
+            };
+        }
     }
 
     private sealed class LootSlotView
