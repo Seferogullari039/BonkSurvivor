@@ -795,7 +795,7 @@ public class StarterWeaponController : MonoBehaviour
         GameObject flash = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         flash.name = "BlunderbussMuzzleFlash";
         flash.transform.position = origin + forward * 0.55f + Vector3.down * 0.05f;
-        flash.transform.localScale = Vector3.one * 0.14f;
+        flash.transform.localScale = Vector3.one * 0.16f;
 
         Collider flashCollider = flash.GetComponent<Collider>();
 
@@ -859,10 +859,13 @@ public class StarterWeaponController : MonoBehaviour
 
     private static void SpawnBlastShellVisual(Vector3 center, float radius)
     {
+        const float burstVisualScale = 0.58f;
+        const float ringVisualDiameter = 2.1f;
+
         GameObject burst = GameObject.CreatePrimitive(PrimitiveType.Sphere);
         burst.name = "BlastShellBurst";
-        burst.transform.position = center + Vector3.up * 0.15f;
-        burst.transform.localScale = Vector3.one * radius * 0.75f;
+        burst.transform.position = center + Vector3.up * 0.08f;
+        burst.transform.localScale = Vector3.one * burstVisualScale;
 
         Collider burstCollider = burst.GetComponent<Collider>();
 
@@ -875,15 +878,15 @@ public class StarterWeaponController : MonoBehaviour
 
         if (burstRenderer != null)
         {
-            GameVisualStyle.ApplyColor(burstRenderer, new Color(1f, 0.55f, 0.18f, 0.55f), 0.25f, true, 0.45f);
+            GameVisualStyle.ApplyColor(burstRenderer, new Color(1f, 0.55f, 0.18f, 0.5f), 0.25f, true, 0.4f);
         }
 
-        Object.Destroy(burst, 0.22f);
+        Object.Destroy(burst, 0.2f);
 
         GameObject ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         ring.name = "BlastShellRing";
-        ring.transform.position = center + Vector3.up * 0.05f;
-        ring.transform.localScale = new Vector3(radius * 2f, 0.025f, radius * 2f);
+        ring.transform.position = center + Vector3.up * 0.02f;
+        ring.transform.localScale = new Vector3(ringVisualDiameter, 0.018f, ringVisualDiameter);
 
         Collider ringCollider = ring.GetComponent<Collider>();
 
@@ -896,10 +899,10 @@ public class StarterWeaponController : MonoBehaviour
 
         if (ringRenderer != null)
         {
-            GameVisualStyle.ApplyColor(ringRenderer, new Color(0.85f, 0.42f, 0.12f, 0.62f), 0.3f, false, 0.2f);
+            GameVisualStyle.ApplyColor(ringRenderer, new Color(0.85f, 0.42f, 0.12f, 0.55f), 0.3f, false, 0.18f);
         }
 
-        Object.Destroy(ring, 0.28f);
+        Object.Destroy(ring, 0.24f);
     }
 
     private void FireLightningThrust()

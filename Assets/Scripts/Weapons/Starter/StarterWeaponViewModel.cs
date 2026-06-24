@@ -57,9 +57,9 @@ public class StarterWeaponViewModel : MonoBehaviour
     private static readonly Vector3 SwordWeaponLocalPosition = new Vector3(0.36f, -0.22f, 0.46f);
     private static readonly Vector3 SwordWeaponLocalRotation = new Vector3(10f, -26f, 7f);
     private static readonly Vector3 SwordWeaponLocalScale = new Vector3(1.75f, 1.75f, 1.75f);
-    private static readonly Vector3 BlunderbussWeaponLocalPosition = new Vector3(0.34f, -0.2f, 0.5f);
+    private static readonly Vector3 BlunderbussWeaponLocalPosition = new Vector3(0.36f, -0.22f, 0.48f);
     private static readonly Vector3 BlunderbussWeaponLocalRotation = new Vector3(8f, -22f, 5f);
-    private static readonly Vector3 BlunderbussWeaponLocalScale = new Vector3(1.65f, 1.65f, 1.65f);
+    private static readonly Vector3 BlunderbussWeaponLocalScale = new Vector3(1.45f, 1.45f, 1.45f);
     private static readonly Vector3 ThunderSpearWeaponLocalPosition = new Vector3(0.35f, -0.2f, 0.48f);
     private static readonly Vector3 ThunderSpearWeaponLocalRotation = new Vector3(6f, -20f, 4f);
     private static readonly Vector3 ThunderSpearWeaponLocalScale = new Vector3(1.7f, 1.7f, 1.7f);
@@ -2428,10 +2428,10 @@ public class StarterWeaponViewModel : MonoBehaviour
     private void BuildBlunderbussVisual(Transform root)
     {
         blunderbussMuzzleRenderer = null;
-        CreatePart("BlunderbussStock", PrimitiveType.Cube, root, new Vector3(0f, -0.02f, 0.02f), Quaternion.identity, new Vector3(0.08f, 0.1f, 0.2f), BlunderbussStockColor, false, 0.32f);
-        CreatePart("BlunderbussGrip", PrimitiveType.Cylinder, root, new Vector3(0f, -0.05f, -0.02f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.03f, 0.06f, 0.03f), BlunderbussStockColor, false, 0.28f);
-        CreatePart("BlunderbussBarrel", PrimitiveType.Cylinder, root, new Vector3(0f, 0.01f, 0.2f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.055f, 0.18f, 0.055f), BlunderbussBarrelColor, false, 0.45f);
-        GameObject muzzle = CreatePart("BlunderbussMuzzle", PrimitiveType.Cylinder, root, new Vector3(0f, 0.015f, 0.31f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.075f, 0.02f, 0.075f), BlunderbussMuzzleColor, false, 0.55f);
+        CreatePart("BlunderbussStock", PrimitiveType.Cube, root, new Vector3(0f, -0.02f, 0.02f), Quaternion.identity, new Vector3(0.07f, 0.09f, 0.18f), BlunderbussStockColor, false, 0.32f);
+        CreatePart("BlunderbussGrip", PrimitiveType.Cylinder, root, new Vector3(0f, -0.05f, -0.02f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.028f, 0.055f, 0.028f), BlunderbussStockColor, false, 0.28f);
+        CreatePart("BlunderbussBarrel", PrimitiveType.Cylinder, root, new Vector3(0f, 0.01f, 0.18f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.05f, 0.16f, 0.05f), BlunderbussBarrelColor, false, 0.45f);
+        GameObject muzzle = CreatePart("BlunderbussMuzzle", PrimitiveType.Cylinder, root, new Vector3(0f, 0.012f, 0.28f), Quaternion.Euler(90f, 0f, 0f), new Vector3(0.065f, 0.018f, 0.065f), BlunderbussMuzzleColor, false, 0.55f);
         blunderbussMuzzleRenderer = muzzle != null ? muzzle.GetComponent<Renderer>() : null;
     }
 

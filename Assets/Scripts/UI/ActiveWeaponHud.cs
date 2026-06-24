@@ -6,16 +6,16 @@ public class ActiveWeaponHud : MonoBehaviour
 {
     private const float PanelInsetX = -18f;
     private const float PanelInsetY = 82f;
-    private const float PanelWidth = 290f;
+    private const float PanelWidth = 320f;
     private const float PanelHeight = 104f;
     private const float ContentPadding = 10f;
     private const float RowHeight = 24f;
     private const float HeaderHeight = 22f;
-    private const float LabelWidth = 168f;
-    private const float BarWidth = 72f;
+    private const float LabelWidth = 148f;
+    private const float BarWidth = 64f;
     private const float BarHeight = 7f;
-    private const float BarOffsetX = 174f;
-    private const float TimeWidth = 38f;
+    private const float BarOffsetX = 152f;
+    private const float TimeWidth = 56f;
     private const float HeaderFontSize = 14f;
     private const float RowFontSize = 11f;
     private const float TimeFontSize = 10.5f;
@@ -300,9 +300,7 @@ public class ActiveWeaponHud : MonoBehaviour
         Image barFill = CreateBarFill(barBackground.transform);
 
         float timeOffsetX = PanelWidth - (ContentPadding * 2f) - TimeWidth;
-        TMP_Text timeText = CreateLeftText(rowObject.transform, "Time", timeOffsetX, 0f, TimeWidth, RowHeight, TimeFontSize, FontStyles.Normal);
-        timeText.alignment = TextAlignmentOptions.MidlineRight;
-        timeText.color = TimeReadyColor;
+        TMP_Text timeText = CreateTimeText(rowObject.transform, "Time", timeOffsetX, 0f, TimeWidth, RowHeight, TimeFontSize);
 
         return new AbilityRowView
         {
@@ -387,6 +385,33 @@ public class ActiveWeaponHud : MonoBehaviour
         textMesh.textWrappingMode = TextWrappingModes.NoWrap;
         textMesh.overflowMode = TextOverflowModes.Ellipsis;
         textMesh.raycastTarget = false;
+
+        return textMesh;
+    }
+
+    private static TMP_Text CreateTimeText(
+        Transform parent,
+        string objectName,
+        float x,
+        float y,
+        float width,
+        float height,
+        float fontSize)
+    {
+        GameObject textObject = new GameObject(objectName);
+        textObject.transform.SetParent(parent, false);
+
+        RectTransform rectTransform = textObject.AddComponent<RectTransform>();
+        UiLayoutUtility.SetAnchorBottomLeft(rectTransform, x, y, width, height);
+
+        TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
+        textMesh.alignment = TextAlignmentOptions.MidlineRight;
+        textMesh.fontSize = fontSize;
+        textMesh.fontStyle = FontStyles.Normal;
+        textMesh.textWrappingMode = TextWrappingModes.NoWrap;
+        textMesh.overflowMode = TextOverflowModes.Overflow;
+        textMesh.raycastTarget = false;
+        textMesh.color = TimeReadyColor;
 
         return textMesh;
     }
