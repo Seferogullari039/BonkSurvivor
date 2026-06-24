@@ -36,15 +36,11 @@ public class MainMenuManager : MonoBehaviour
         gameStarted = false;
         CloseUpgrades();
         ShowMainMenuPanel();
-
-        if (HUDManager.Instance != null)
-        {
-            HUDManager.Instance.SetGameplayHUDVisible(false);
-        }
+        HUDManager.HideGameplayHud();
+        RunBuildHud.HideHud();
 
         ApplyMenuPresentationState();
         HideMenuWeaponVisuals();
-        RunBuildHud.HideHud();
     }
 
     public void PlayGame()
@@ -104,8 +100,12 @@ public class MainMenuManager : MonoBehaviour
         if (hud != null)
         {
             hud.EnsureHUDVisible();
-            hud.SetGameplayHUDVisible(true);
+            HUDManager.ShowGameplayHud();
             hud.ForceHudElementsVisibleForRecovery();
+        }
+        else
+        {
+            HUDManager.ShowGameplayHud();
         }
 
         RunBuildHud.ShowHud();
@@ -144,15 +144,10 @@ public class MainMenuManager : MonoBehaviour
         ResetGameplayWorld();
         CloseUpgrades();
         ShowMainMenuPanel();
-
-        if (HUDManager.Instance != null)
-        {
-            HUDManager.Instance.SetGameplayHUDVisible(false);
-        }
+        HUDManager.HideGameplayHud();
 
         ApplyMenuPresentationState();
         HideMenuWeaponVisuals();
-        RunBuildHud.HideHud();
     }
 
     public void OpenUpgrades()

@@ -30,6 +30,7 @@ public class HUDManager : MonoBehaviour
     private Coroutine levelUpFeedbackRoutine;
     private int lastPolishedLevel = -1;
     private bool polishedHudBuilt;
+    private bool gameplayHudVisible = true;
     private static Sprite coinCircleSprite;
     private static Texture2D uiKnobFallbackTexture;
     private static Sprite uiKnobFallbackSprite;
@@ -45,23 +46,50 @@ public class HUDManager : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+        gameplayHudVisible = ShouldShowGameplayHud();
         EnsureHUDVisible();
     }
 
     private void OnEnable()
     {
-        EnsureHUDVisible();
+        ApplyGameplayHudVisibility(gameplayHudVisible);
     }
 
     private void Start()
     {
-        EnsureHUDVisible();
+        ResolveReferences();
         UpdateHP(10, 10);
         UpdateXP(0, 5);
         UpdateLevel(1);
         UpdateWave(1);
         UpdateXPBar(0, 5);
         UpdateCoins(0);
+        ApplyGameplayHudVisibility(gameplayHudVisible);
+    }
+
+    public static void HideGameplayHud()
+    {
+        SetGameplayHudVisible(false);
+    }
+
+    public static void ShowGameplayHud()
+    {
+        SetGameplayHudVisible(true);
+    }
+
+    public static void SetGameplayHudVisible(bool visible)
+    {
+        if (Instance == null)
+        {
+            Instance = FindFirstObjectByType<HUDManager>();
+        }
+
+        Instance?.SetGameplayHUDVisible(visible);
+    }
+
+    private static bool ShouldShowGameplayHud()
+    {
+        return MainMenuManager.Instance == null || MainMenuManager.IsRunActive;
     }
 
     private void ResolveReferences()
@@ -362,10 +390,9 @@ public class HUDManager : MonoBehaviour
 
         ResolveReferences();
         SetupHudLayout();
-        EnsureGameplayHudElementsVisible();
 
         gameObject.SetActive(true);
-        SetGameplayHUDVisible(true);
+        ApplyGameplayHudVisibility(gameplayHudVisible);
 
         if (LogRecoveryDiagnostics)
         {
@@ -380,6 +407,13 @@ public class HUDManager : MonoBehaviour
 
     public void SetGameplayHUDVisible(bool visible)
     {
+        ApplyGameplayHudVisibility(visible);
+    }
+
+    private void ApplyGameplayHudVisibility(bool visible)
+    {
+        gameplayHudVisible = visible;
+
         if (visible)
         {
             Canvas canvas = UiLayoutUtility.GetGameplayCanvas();
@@ -409,6 +443,9 @@ public class HUDManager : MonoBehaviour
         SetElementVisible(polishedHudRoot, visible);
         SetElementVisible(hpBarBackground, visible);
         SetElementVisible(xpBarBackground, visible);
+        SetElementVisible(hpBarFill, visible);
+        SetElementVisible(xpBarFill, visible);
+        SetElementVisible(levelUpFeedbackText, visible);
     }
 
     public void ForceHudElementsVisibleForRecovery()
@@ -731,7 +768,7 @@ public class HUDManager : MonoBehaviour
 
         if (polishedHudRoot != null)
         {
-            polishedHudRoot.SetActive(true);
+            polishedHudRoot.SetActive(gameplayHudVisible);
         }
     }
 
