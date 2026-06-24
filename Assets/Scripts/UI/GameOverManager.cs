@@ -576,6 +576,7 @@ public class GameOverManager : MonoBehaviour
         HUDManager.HideGameplayHud();
         RunBuildHud.HideHud();
         ChestStatBuffHud.HideHud();
+        ActiveWeaponHud.HideHud();
 
         if (JuiceManager.Instance != null)
         {

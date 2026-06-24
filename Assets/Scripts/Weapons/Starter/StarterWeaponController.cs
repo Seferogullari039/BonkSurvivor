@@ -75,6 +75,40 @@ public class StarterWeaponController : MonoBehaviour
     private StarterWeaponType activeWeapon = StarterWeaponType.HunterBow;
 
     public StarterWeaponType ActiveWeapon => activeWeapon;
+    public StarterWeaponType CurrentWeapon => activeWeapon;
+
+    public float PrimaryCooldownRemainingSeconds => Mathf.Max(0f, nextPrimaryTime - Time.time);
+    public float SecondaryCooldownRemainingSeconds => Mathf.Max(0f, nextSkillTime - Time.time);
+
+    public float PrimaryCooldownRemaining01
+    {
+        get
+        {
+            float remaining = PrimaryCooldownRemainingSeconds;
+            if (remaining <= 0f)
+            {
+                return 1f;
+            }
+
+            float duration = GetActivePrimaryCooldownDuration();
+            return duration > 0f ? Mathf.Clamp01(1f - remaining / duration) : 1f;
+        }
+    }
+
+    public float SecondaryCooldownRemaining01
+    {
+        get
+        {
+            float remaining = SecondaryCooldownRemainingSeconds;
+            if (remaining <= 0f)
+            {
+                return 1f;
+            }
+
+            float duration = GetActiveSecondaryCooldownDuration();
+            return duration > 0f ? Mathf.Clamp01(1f - remaining / duration) : 1f;
+        }
+    }
 
     private float nextPrimaryTime;
     private float nextSkillTime;
@@ -279,6 +313,40 @@ public class StarterWeaponController : MonoBehaviour
         }
 
         return baseCooldown * playerStats.SwordSkillCooldownMultiplier;
+    }
+
+    private float GetActivePrimaryCooldownDuration()
+    {
+        switch (activeWeapon)
+        {
+            case StarterWeaponType.FireStaff:
+                return GetPrimaryCooldown(staffPrimaryCooldown);
+            case StarterWeaponType.KnightSword:
+                return GetPrimaryCooldown(swordPrimaryCooldown);
+            case StarterWeaponType.Blunderbuss:
+                return GetPrimaryCooldown(blunderbussPrimaryCooldown);
+            case StarterWeaponType.ThunderSpear:
+                return GetPrimaryCooldown(thunderSpearPrimaryCooldown);
+            default:
+                return GetPrimaryCooldown(bowPrimaryCooldown);
+        }
+    }
+
+    private float GetActiveSecondaryCooldownDuration()
+    {
+        switch (activeWeapon)
+        {
+            case StarterWeaponType.FireStaff:
+                return GetMegaMeteorCooldown(staffSkillCooldown);
+            case StarterWeaponType.KnightSword:
+                return GetSwordSkillCooldown(swordSkillCooldown);
+            case StarterWeaponType.Blunderbuss:
+                return GetPrimaryCooldown(blunderbussSkillCooldown);
+            case StarterWeaponType.ThunderSpear:
+                return GetPrimaryCooldown(thunderSpearSkillCooldown);
+            default:
+                return bowSkillCooldown;
+        }
     }
 
     private int ApplyArrowRainDamage(int damage)
