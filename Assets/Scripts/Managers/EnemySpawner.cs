@@ -139,7 +139,8 @@ public class EnemySpawner : MonoBehaviour
 
         timer += Time.deltaTime;
 
-        float effectiveSpawnInterval = spawnInterval;
+        int pressureWave = Mathf.Max(1, currentWave);
+        float effectiveSpawnInterval = spawnInterval * EnemyWavePressureScaler.GetSpawnIntervalMultiplier(pressureWave);
 
         if (BloodMoonEventManager.Instance != null && BloodMoonEventManager.Instance.IsActive)
         {
@@ -318,7 +319,8 @@ public class EnemySpawner : MonoBehaviour
             waveCap = 60;
         }
 
-        return Mathf.Min(waveCap, absoluteMaxEnemies);
+        int pressureBonus = EnemyWavePressureScaler.GetMaxAliveBonus(wave);
+        return Mathf.Min(waveCap + pressureBonus, absoluteMaxEnemies);
     }
 
     private static int ResolveWaveBurstCount(int wave)
