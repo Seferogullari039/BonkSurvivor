@@ -109,7 +109,7 @@ public static class StarterWeaponDamageUtility
             hitCount++;
         }
 
-        return damagedEnemies.Count;
+        return hitCount;
     }
 
     public static int DamageEnemiesInRadiusWithSource(Vector3 center, float radius, int damage, string damageSource)
