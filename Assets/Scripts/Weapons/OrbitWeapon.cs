@@ -4,10 +4,13 @@ using UnityEngine;
 public class OrbitWeapon : WeaponBase
 {
     private const float OrbScale = 0.45f;
+    private const float FlameOrbitScale = OrbScale * 1.15f;
+    private static readonly Color FlameOrbitColor = new Color(1f, 0.45f, 0.12f, 1f);
 
     private Transform orbitCenter;
     private readonly List<OrbitOrb> activeOrbs = new List<OrbitOrb>();
     private float currentAngle;
+    private bool lastFlameOrbitActive;
 
     public void Configure(Transform center)
     {
@@ -26,12 +29,21 @@ public class OrbitWeapon : WeaponBase
 
         damage = playerStats.EffectiveDamage;
 
-        if (activeOrbs.Count != playerStats.OrbitOrbCount)
+        if (activeOrbs.Count != GetTargetOrbCount())
         {
             SyncOrbCount();
         }
 
         if (activeOrbs.Count == 0) return;
+
+        bool flameOrbitActive = IsFlameOrbitActive();
+
+        if (flameOrbitActive != lastFlameOrbitActive)
+        {
+            lastFlameOrbitActive = flameOrbitActive;
+            SyncOrbCount();
+            ApplyOrbVisuals(flameOrbitActive);
+        }
 
         currentAngle += playerStats.OrbitSpeed * Time.deltaTime;
 
@@ -67,7 +79,7 @@ public class OrbitWeapon : WeaponBase
 
     private void SyncOrbCount()
     {
-        int targetCount = playerStats != null ? playerStats.OrbitOrbCount : 0;
+        int targetCount = GetTargetOrbCount();
 
         while (activeOrbs.Count < targetCount)
         {
@@ -86,6 +98,52 @@ public class OrbitWeapon : WeaponBase
 
             activeOrbs.RemoveAt(lastIndex);
         }
+
+        ApplyOrbVisuals(IsFlameOrbitActive());
+    }
+
+    private int GetTargetOrbCount()
+    {
+        int targetCount = playerStats != null ? playerStats.OrbitOrbCount : 0;
+
+        if (targetCount > 0 && IsFlameOrbitActive())
+        {
+            targetCount++;
+        }
+
+        return targetCount;
+    }
+
+    private static bool IsFlameOrbitActive()
+    {
+        RunBuildTracker tracker = RunBuildTracker.Instance;
+
+        return tracker != null && tracker.HasEvolution(BuildEvolutionId.FlameOrbit);
+    }
+
+    private void ApplyOrbVisuals(bool flameOrbitActive)
+    {
+        float scale = flameOrbitActive ? FlameOrbitScale : OrbScale;
+        Color color = flameOrbitActive ? FlameOrbitColor : GameVisualPalette.OrbitOrb;
+
+        for (int i = 0; i < activeOrbs.Count; i++)
+        {
+            OrbitOrb orb = activeOrbs[i];
+
+            if (orb == null)
+            {
+                continue;
+            }
+
+            orb.transform.localScale = Vector3.one * scale;
+
+            Renderer renderer = orb.GetComponent<Renderer>();
+
+            if (renderer != null)
+            {
+                GameVisualStyle.ApplyColor(renderer, color, flameOrbitActive ? 0.92f : 0.82f, true);
+            }
+        }
     }
 
     private OrbitOrb CreateOrb(int index)
@@ -100,13 +158,18 @@ public class OrbitWeapon : WeaponBase
             Object.Destroy(defaultCollider);
         }
 
-        orbObject.transform.localScale = Vector3.one * OrbScale;
+        orbObject.transform.localScale = Vector3.one * (IsFlameOrbitActive() ? FlameOrbitScale : OrbScale);
 
         Renderer renderer = orbObject.GetComponent<Renderer>();
 
         if (renderer != null)
         {
-            GameVisualStyle.ApplyColor(renderer, GameVisualPalette.OrbitOrb, 0.82f, true);
+            bool flameOrbitActive = IsFlameOrbitActive();
+            GameVisualStyle.ApplyColor(
+                renderer,
+                flameOrbitActive ? FlameOrbitColor : GameVisualPalette.OrbitOrb,
+                flameOrbitActive ? 0.92f : 0.82f,
+                true);
         }
 
         OrbitOrb orb = orbObject.AddComponent<OrbitOrb>();

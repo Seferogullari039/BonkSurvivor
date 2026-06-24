@@ -76,6 +76,7 @@ public class RunBuildHud : MonoBehaviour
         BuildPanel();
         RunBuildTracker tracker = RunBuildTracker.GetOrCreate();
         tracker.OnBuildChanged += Refresh;
+        tracker.OnEvolutionUnlocked += OnEvolutionUnlocked;
         Refresh();
         ApplyVisibility(false);
     }
@@ -85,12 +86,18 @@ public class RunBuildHud : MonoBehaviour
         if (RunBuildTracker.Instance != null)
         {
             RunBuildTracker.Instance.OnBuildChanged -= Refresh;
+            RunBuildTracker.Instance.OnEvolutionUnlocked -= OnEvolutionUnlocked;
         }
 
         if (instance == this)
         {
             instance = null;
         }
+    }
+
+    private void OnEvolutionUnlocked(BuildEvolutionId evolutionId)
+    {
+        Refresh();
     }
 
     private void ApplyVisibility(bool visible)
@@ -273,14 +280,18 @@ public class RunBuildHud : MonoBehaviour
         Color buildColor = UpgradeOptionCatalog.GetBuildColor(entry.BuildType);
         slotView.Background.color = new Color(buildColor.r, buildColor.g, buildColor.b, 0.28f);
         int maxLevel = UpgradeOptionCatalog.GetMaxLevel(entry.UpgradeIndex);
+        bool flameOrbitEvolved = entry.UpgradeIndex == 6
+            && RunBuildTracker.Instance != null
+            && RunBuildTracker.Instance.HasEvolution(BuildEvolutionId.FlameOrbit);
+        string displayName = flameOrbitEvolved ? "Flame Orbit" : entry.DisplayName;
 
         if (entry.Level >= maxLevel)
         {
-            slotView.Label.text = entry.DisplayName + " MAX";
+            slotView.Label.text = displayName + " MAX";
         }
         else
         {
-            slotView.Label.text = entry.DisplayName + " Lv." + entry.Level + "/" + maxLevel;
+            slotView.Label.text = displayName + " Lv." + entry.Level + "/" + maxLevel;
         }
 
         slotView.Label.color = buildColor;

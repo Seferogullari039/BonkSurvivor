@@ -3,6 +3,8 @@ using UnityEngine;
 
 public class OrbitOrb : MonoBehaviour
 {
+    private const float FlameOrbitDamageMultiplier = 1.5f;
+
     private PlayerStats playerStats;
 
     [SerializeField] private float hitRadius = 0.45f;
@@ -67,7 +69,22 @@ public class OrbitOrb : MonoBehaviour
         }
 
         lastHitTimes[enemy] = now;
-        enemy.TakeDamage(playerStats.GetEffectiveDamageAgainst(enemy));
+
+        int damage = playerStats.GetEffectiveDamageAgainst(enemy);
+
+        if (IsFlameOrbitActive())
+        {
+            damage = Mathf.Max(1, Mathf.RoundToInt(damage * FlameOrbitDamageMultiplier));
+        }
+
+        enemy.TakeDamage(damage);
+    }
+
+    private static bool IsFlameOrbitActive()
+    {
+        RunBuildTracker tracker = RunBuildTracker.Instance;
+
+        return tracker != null && tracker.HasEvolution(BuildEvolutionId.FlameOrbit);
     }
 
     private void CleanupDestroyedEnemies()
