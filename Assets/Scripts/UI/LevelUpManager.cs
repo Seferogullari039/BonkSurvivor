@@ -52,6 +52,7 @@ public class LevelUpManager : MonoBehaviour
         public Image IconImage;
         public TMP_Text RarityText;
         public TMP_Text CategoryText;
+        public TMP_Text BuildText;
         public TMP_Text TitleText;
         public TMP_Text DescriptionText;
     }
@@ -158,9 +159,10 @@ public class LevelUpManager : MonoBehaviour
             GlowImage = glowImage,
             IconRoot = iconRoot,
             IconImage = iconImage,
-            RarityText = CreateCardText(buttonRect, legacyText, "RarityText", new Vector2(0f, 92f), new Vector2(228f, 28f), 19f, FontStyles.Bold),
-            CategoryText = CreateCardText(buttonRect, legacyText, "CategoryText", new Vector2(0f, 66f), new Vector2(228f, 22f), 15f, FontStyles.Bold),
-            TitleText = CreateCardText(buttonRect, legacyText, "TitleText", new Vector2(0f, 28f), new Vector2(228f, 88f), 32f, FontStyles.Bold),
+            RarityText = CreateCardText(buttonRect, legacyText, "RarityText", new Vector2(0f, 98f), new Vector2(228f, 24f), 19f, FontStyles.Bold),
+            CategoryText = CreateCardText(buttonRect, legacyText, "CategoryText", new Vector2(0f, 74f), new Vector2(228f, 20f), 15f, FontStyles.Bold),
+            BuildText = CreateCardText(buttonRect, legacyText, "BuildText", new Vector2(0f, 52f), new Vector2(228f, 20f), 14f, FontStyles.Bold),
+            TitleText = CreateCardText(buttonRect, legacyText, "TitleText", new Vector2(0f, 18f), new Vector2(228f, 88f), 32f, FontStyles.Bold),
             DescriptionText = CreateCardText(buttonRect, legacyText, "DescriptionText", new Vector2(0f, -68f), new Vector2(228f, 120f), 20f, FontStyles.Normal)
         };
 
@@ -168,6 +170,7 @@ public class LevelUpManager : MonoBehaviour
         ConfigureTitleText(upgradeCards[index].TitleText);
         ConfigureRarityText(upgradeCards[index].RarityText);
         ConfigureCategoryText(upgradeCards[index].CategoryText);
+        ConfigureBuildText(upgradeCards[index].BuildText);
     }
 
     private static Image EnsureCardGlow(RectTransform buttonRect)
@@ -338,6 +341,20 @@ public class LevelUpManager : MonoBehaviour
         TryApplyTextOutline(categoryText, 0.06f, new Color(0f, 0f, 0f, 0.3f));
     }
 
+    private static void ConfigureBuildText(TMP_Text buildText)
+    {
+        if (buildText == null)
+        {
+            return;
+        }
+
+        buildText.enableAutoSizing = true;
+        buildText.fontSizeMin = 11f;
+        buildText.fontSizeMax = 14f;
+        buildText.characterSpacing = 2f;
+        TryApplyTextOutline(buildText, 0.06f, new Color(0f, 0f, 0f, 0.3f));
+    }
+
     private static void ConfigureRarityText(TMP_Text rarityText)
     {
         if (rarityText == null)
@@ -503,6 +520,7 @@ public class LevelUpManager : MonoBehaviour
         return ChestLootSelectionUI.SlotData.FromUpgrade(
             rarity,
             UpgradeOptionCatalog.GetCategory(upgradeIndex),
+            UpgradeOptionCatalog.GetBuildType(upgradeIndex),
             content.Title,
             content.Description,
             content.IconKey);
@@ -601,6 +619,7 @@ public class LevelUpManager : MonoBehaviour
         PlayerStats playerStats = FindPlayerStats();
         UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier, playerStats);
         RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
+        WeaponBuildType buildType = UpgradeOptionCatalog.GetBuildType(upgradeIndex);
 
         if (card.RarityText != null)
         {
@@ -612,6 +631,12 @@ public class LevelUpManager : MonoBehaviour
         {
             card.CategoryText.text = UpgradeOptionCatalog.GetCategoryLabel(category);
             card.CategoryText.color = UpgradeOptionCatalog.GetCategoryColor(category);
+        }
+
+        if (card.BuildText != null)
+        {
+            card.BuildText.text = UpgradeOptionCatalog.GetBuildLabel(buildType);
+            card.BuildText.color = UpgradeOptionCatalog.GetBuildColor(buildType);
         }
 
         if (card.TitleText != null)
@@ -745,14 +770,63 @@ public class LevelUpManager : MonoBehaviour
     {
         List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
         List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
+        WeaponBuildType activeBuild = GetPlayerWeaponBuild();
 
-        for (int i = 0; i < shownUpgradeIndices.Length; i++)
+        if (!TryAssignBuildAwareOption(0, availableIndices, activeBuild, RewardCategory.Skill))
         {
-            int pick = PickWeightedUpgradeIndex(availableIndices, unpurchasedWeapons, i);
-            shownUpgradeIndices[i] = pick;
-            shownUpgradeRarities[i] = RollUpgradeRarity();
-            availableIndices.Remove(pick);
+            AssignWeightedOption(0, availableIndices, unpurchasedWeapons);
         }
+
+        if (!TryAssignBuildAwareOption(1, availableIndices, WeaponBuildType.General, RewardCategory.Passive))
+        {
+            AssignWeightedOption(1, availableIndices, unpurchasedWeapons);
+        }
+
+        AssignWeightedOption(2, availableIndices, unpurchasedWeapons);
+    }
+
+    private WeaponBuildType GetPlayerWeaponBuild()
+    {
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+
+        if (player == null)
+        {
+            return WeaponBuildType.General;
+        }
+
+        StarterWeaponController weaponController = player.GetComponent<StarterWeaponController>();
+
+        if (weaponController == null)
+        {
+            return WeaponBuildType.General;
+        }
+
+        return UpgradeOptionCatalog.MapStarterWeaponToBuild(weaponController.ActiveWeapon);
+    }
+
+    private bool TryAssignBuildAwareOption(
+        int slotIndex,
+        List<int> availableIndices,
+        WeaponBuildType preferredBuild,
+        RewardCategory category)
+    {
+        if (!UpgradeOptionCatalog.TryPickEligibleUpgradeByBuild(availableIndices, preferredBuild, category, out int pick))
+        {
+            return false;
+        }
+
+        shownUpgradeIndices[slotIndex] = pick;
+        shownUpgradeRarities[slotIndex] = RollUpgradeRarity();
+        availableIndices.Remove(pick);
+        return true;
+    }
+
+    private void AssignWeightedOption(int slotIndex, List<int> availableIndices, List<int> unpurchasedWeapons)
+    {
+        int pick = PickWeightedUpgradeIndex(availableIndices, unpurchasedWeapons, slotIndex);
+        shownUpgradeIndices[slotIndex] = pick;
+        shownUpgradeRarities[slotIndex] = RollUpgradeRarity();
+        availableIndices.Remove(pick);
     }
 
     private int PickWeightedUpgradeIndex(List<int> candidates, List<int> unpurchasedWeapons, int slotIndex)
@@ -908,7 +982,8 @@ public class LevelUpManager : MonoBehaviour
         UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier, null);
         string header = ChestLootSelectionUI.BuildRewardHeaderLabel(
             UpgradeOptionCatalog.GetRarityLabel(rarity),
-            UpgradeOptionCatalog.GetCategoryLabel(UpgradeOptionCatalog.GetCategory(upgradeIndex)));
+            UpgradeOptionCatalog.GetCategoryLabel(UpgradeOptionCatalog.GetCategory(upgradeIndex)),
+            UpgradeOptionCatalog.GetBuildLabel(upgradeIndex));
         return $"{header}\n{content.Title}\n{content.Description}";
     }
 
@@ -997,9 +1072,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return multiplier switch
         {
-            2 => "Projectile speed +50%.",
-            3 => "Projectile speed +75%.",
-            _ => "Projectile speed +25%."
+            2 => "Bow and projectile speed +50%.",
+            3 => "Bow and projectile speed +75%.",
+            _ => "Bow and projectile speed +25%."
         };
     }
 
@@ -1007,9 +1082,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return multiplier switch
         {
-            2 => "XP pickup range +60%.",
-            3 => "XP pickup range +90%.",
-            _ => "XP pickup range +30%."
+            2 => "General pickup range +60%.",
+            3 => "General pickup range +90%.",
+            _ => "General pickup range +30%."
         };
     }
 
@@ -1017,9 +1092,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return multiplier switch
         {
-            2 => "Global damage +2.",
-            3 => "Global damage +3.",
-            _ => "Global damage +1."
+            2 => "General damage +2.",
+            3 => "General damage +3.",
+            _ => "General damage +1."
         };
     }
 
@@ -1027,9 +1102,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return multiplier switch
         {
-            2 => "Mega Meteor cooldown -24%.",
-            3 => "Mega Meteor cooldown -36%.",
-            _ => "Mega Meteor cooldown -12%."
+            2 => "Fire Staff Mega Meteor cooldown -24%.",
+            3 => "Fire Staff Mega Meteor cooldown -36%.",
+            _ => "Fire Staff Mega Meteor cooldown -12%."
         };
     }
 
@@ -1037,9 +1112,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return multiplier switch
         {
-            2 => "Sword skill cooldown -24%.",
-            3 => "Sword skill cooldown -36%.",
-            _ => "Sword skill cooldown -12%."
+            2 => "Sword Whirlwind cooldown -24%.",
+            3 => "Sword Whirlwind cooldown -36%.",
+            _ => "Sword Whirlwind cooldown -12%."
         };
     }
 
@@ -1047,9 +1122,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return multiplier switch
         {
-            2 => "Arrow Rain damage +30%.",
-            3 => "Arrow Rain damage +45%.",
-            _ => "Arrow Rain damage +15%."
+            2 => "Bow Arrow Rain damage +30%.",
+            3 => "Bow Arrow Rain damage +45%.",
+            _ => "Bow Arrow Rain damage +15%."
         };
     }
 
@@ -1057,9 +1132,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return multiplier switch
         {
-            2 => "Mega Meteor damage +30%.",
-            3 => "Mega Meteor damage +45%.",
-            _ => "Mega Meteor damage +15%."
+            2 => "Fire Staff Mega Meteor damage +30%.",
+            3 => "Fire Staff Mega Meteor damage +45%.",
+            _ => "Fire Staff Mega Meteor damage +15%."
         };
     }
 
@@ -1067,9 +1142,9 @@ public class LevelUpManager : MonoBehaviour
     {
         return multiplier switch
         {
-            2 => "Sword skill damage +30%.",
-            3 => "Sword skill damage +45%.",
-            _ => "Sword skill damage +15%."
+            2 => "Sword Whirlwind damage +30%.",
+            3 => "Sword Whirlwind damage +45%.",
+            _ => "Sword Whirlwind damage +15%."
         };
     }
 
@@ -1090,13 +1165,13 @@ public class LevelUpManager : MonoBehaviour
         {
             return MakeContent(
                 "Spread Shot",
-                "Support projectiles split into multiple shots.",
+                "Bow projectiles split into multiple shots.",
                 "spread_shot");
         }
 
         return MakeContent(
             "Spread Shot+",
-            "Support projectile spread improves.",
+            "Bow projectile spread improves.",
             "spread_shot");
     }
 
@@ -1122,13 +1197,13 @@ public class LevelUpManager : MonoBehaviour
         {
             return MakeContent(
                 "Orbiting Orb",
-                "Unlocks an orb that circles you and damages nearby enemies.",
+                "Fire Staff gains orbiting flame power.",
                 "orbiting_orb");
         }
 
         return MakeContent(
             "Orbiting Orb+",
-            "Adds +1 orbiting orb.",
+            "Adds +1 orbiting flame orb.",
             "orbiting_orb");
     }
 

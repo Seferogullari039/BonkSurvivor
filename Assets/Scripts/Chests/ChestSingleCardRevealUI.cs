@@ -403,7 +403,10 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         lockedBorder = data.RarityBorder.a > 0.01f
             ? data.RarityBorder
             : ChestLootRarityPalette.CommonBorder;
-        lockedRarityLabel = ChestLootSelectionUI.BuildRewardHeaderLabel(data.RarityLabel, data.CategoryLabel);
+        lockedRarityLabel = ChestLootSelectionUI.BuildRewardHeaderLabel(
+            data.RarityLabel,
+            data.CategoryLabel,
+            data.BuildLabel);
         currentAccent = lockedAccent;
 
         if (cardView.RarityText != null)

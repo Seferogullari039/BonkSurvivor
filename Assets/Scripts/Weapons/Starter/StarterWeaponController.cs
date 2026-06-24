@@ -49,6 +49,8 @@ public class StarterWeaponController : MonoBehaviour
     private FPSViewModel fpsViewModel;
     private StarterWeaponType activeWeapon = StarterWeaponType.HunterBow;
 
+    public StarterWeaponType ActiveWeapon => activeWeapon;
+
     private float nextPrimaryTime;
     private float nextSkillTime;
     private int swordComboIndex;

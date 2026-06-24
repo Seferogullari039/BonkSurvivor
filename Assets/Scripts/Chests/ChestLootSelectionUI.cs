@@ -9,6 +9,7 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
     {
         public string RarityLabel;
         public string CategoryLabel;
+        public string BuildLabel;
         public Color RarityAccent;
         public Color RarityBackground;
         public Color RarityBorder;
@@ -19,6 +20,7 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
         public static SlotData FromUpgrade(
             UpgradeRarity rarity,
             RewardCategory category,
+            WeaponBuildType buildType,
             string title,
             string description,
             string iconKey)
@@ -29,6 +31,7 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
             {
                 RarityLabel = label,
                 CategoryLabel = UpgradeOptionCatalog.GetCategoryLabel(category),
+                BuildLabel = UpgradeOptionCatalog.GetBuildLabel(buildType),
                 RarityAccent = accent,
                 RarityBackground = background,
                 RarityBorder = border,
@@ -152,7 +155,7 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
 
         if (slot.RarityText != null)
         {
-            slot.RarityText.text = BuildRewardHeaderLabel(data.RarityLabel, data.CategoryLabel);
+            slot.RarityText.text = BuildRewardHeaderLabel(data.RarityLabel, data.CategoryLabel, data.BuildLabel);
             slot.RarityText.color = data.RarityAccent;
         }
 
@@ -453,16 +456,22 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
         }
     }
 
-    internal static string BuildRewardHeaderLabel(string rarityLabel, string categoryLabel)
+    internal static string BuildRewardHeaderLabel(string rarityLabel, string categoryLabel, string buildLabel = "")
     {
         string rarity = string.IsNullOrEmpty(rarityLabel) ? "COMMON" : rarityLabel;
+        string header = rarity;
 
-        if (string.IsNullOrEmpty(categoryLabel))
+        if (!string.IsNullOrEmpty(categoryLabel))
         {
-            return rarity;
+            header += "  ·  " + categoryLabel;
         }
 
-        return rarity + "  ·  " + categoryLabel;
+        if (!string.IsNullOrEmpty(buildLabel))
+        {
+            header += "  ·  " + buildLabel;
+        }
+
+        return header;
     }
 }
 
