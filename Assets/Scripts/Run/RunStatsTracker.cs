@@ -119,19 +119,13 @@ public static class RunStatsSummaryFormatter
             }
         }
 
-        if (!string.IsNullOrEmpty(snapshot.BuildSummary))
-        {
-            builder.AppendLine();
-            builder.AppendLine("BUILD");
-            builder.AppendLine(snapshot.BuildSummary);
-        }
+        builder.AppendLine();
+        builder.AppendLine("BUILD");
+        builder.AppendLine(snapshot.BuildSummary);
 
-        if (!string.IsNullOrEmpty(snapshot.ChestBuffSummary))
-        {
-            builder.AppendLine();
-            builder.AppendLine("CHEST BUFFS");
-            builder.AppendLine(snapshot.ChestBuffSummary);
-        }
+        builder.AppendLine();
+        builder.AppendLine("CHEST BUFFS");
+        builder.AppendLine(snapshot.ChestBuffSummary);
 
         return builder.ToString().TrimEnd();
     }
@@ -412,8 +406,8 @@ public class RunStatsTracker : MonoBehaviour
             damageTaken,
             evolutionNameCache,
             topDamageCache,
-            BuildBuildSummary(),
-            BuildChestBuffSummary());
+            RunSummaryTextFormatter.BuildBuildSummary(),
+            RunSummaryTextFormatter.BuildChestBuffSummary());
     }
 
     public void ClearRun()
@@ -492,100 +486,5 @@ public class RunStatsTracker : MonoBehaviour
         {
             topDamageCache.RemoveRange(TopDamageSourceCount, topDamageCache.Count - TopDamageSourceCount);
         }
-    }
-
-    private static string BuildBuildSummary()
-    {
-        RunBuildTracker tracker = RunBuildTracker.Instance;
-
-        if (tracker == null)
-        {
-            tracker = RunBuildTracker.GetOrCreate();
-        }
-
-        StringBuilder builder = new StringBuilder();
-        builder.Append("Skills: ");
-        AppendSlotSummary(builder, tracker, RewardCategory.Skill);
-        builder.AppendLine();
-        builder.Append("Passives: ");
-        AppendSlotSummary(builder, tracker, RewardCategory.Passive);
-        return builder.ToString().TrimEnd();
-    }
-
-    private static void AppendSlotSummary(StringBuilder builder, RunBuildTracker tracker, RewardCategory category)
-    {
-        bool any = false;
-
-        for (int i = 0; i < RunBuildTracker.MaxSlotsPerCategory; i++)
-        {
-            RunBuildSlotEntry entry = category == RewardCategory.Skill
-                ? tracker.GetSkillSlot(i)
-                : tracker.GetPassiveSlot(i);
-
-            if (entry == null)
-            {
-                continue;
-            }
-
-            if (any)
-            {
-                builder.Append(" | ");
-            }
-
-            builder.Append(FormatBuildSlotLine(entry));
-            any = true;
-        }
-
-        if (!any)
-        {
-            builder.Append("empty");
-        }
-    }
-
-    private static string FormatBuildSlotLine(RunBuildSlotEntry entry)
-    {
-        int maxLevel = UpgradeOptionCatalog.GetMaxLevel(entry.UpgradeIndex);
-        bool flameOrbitEvolved = entry.UpgradeIndex == 6
-            && RunBuildTracker.Instance != null
-            && RunBuildTracker.Instance.HasEvolution(BuildEvolutionId.FlameOrbit);
-        string displayName = flameOrbitEvolved ? "Flame Orbit" : entry.DisplayName;
-
-        if (entry.Level >= maxLevel)
-        {
-            return displayName + " MAX";
-        }
-
-        return displayName + " Lv." + entry.Level + "/" + maxLevel;
-    }
-
-    private static string BuildChestBuffSummary()
-    {
-        ChestStatBuffTracker tracker = ChestStatBuffTracker.Instance;
-
-        if (tracker == null)
-        {
-            return string.Empty;
-        }
-
-        IReadOnlyList<ChestStatBuffEntry> buffs = tracker.GetActiveBuffs();
-
-        if (buffs == null || buffs.Count == 0)
-        {
-            return string.Empty;
-        }
-
-        StringBuilder builder = new StringBuilder();
-
-        for (int i = 0; i < buffs.Count; i++)
-        {
-            if (i > 0)
-            {
-                builder.AppendLine();
-            }
-
-            builder.Append(ChestStatBuffTracker.FormatPauseSummaryLine(buffs[i]));
-        }
-
-        return builder.ToString();
     }
 }
