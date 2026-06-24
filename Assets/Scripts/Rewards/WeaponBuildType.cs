@@ -3,5 +3,7 @@ public enum WeaponBuildType
     General,
     FireStaff,
     Bow,
-    Sword
+    Sword,
+    Blunderbuss,
+    ThunderSpear
 }

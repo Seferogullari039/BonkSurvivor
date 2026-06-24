@@ -321,6 +321,18 @@ public class RunBuildHud : MonoBehaviour
             return "Abyss Singularity";
         }
 
+        if (entry.UpgradeIndex == UpgradeOptionCatalog.ShrapnelStormIndex
+            && tracker.HasEvolution(BuildEvolutionId.DragonmouthBlunderbuss))
+        {
+            return "Dragonmouth Blunderbuss";
+        }
+
+        if (entry.UpgradeIndex == UpgradeOptionCatalog.StormConduitIndex
+            && tracker.HasEvolution(BuildEvolutionId.StormcallerSpear))
+        {
+            return "Stormcaller Spear";
+        }
+
         return entry.DisplayName;
     }
 }

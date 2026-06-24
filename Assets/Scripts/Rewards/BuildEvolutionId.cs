@@ -6,5 +6,7 @@ public enum BuildEvolutionId
     StormArrows,
     BladeTempestEvolution,
     GlacialPrison,
-    AbyssSingularity
+    AbyssSingularity,
+    DragonmouthBlunderbuss,
+    StormcallerSpear
 }

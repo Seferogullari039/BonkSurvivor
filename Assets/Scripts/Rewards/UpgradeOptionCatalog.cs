@@ -13,6 +13,10 @@ public static class UpgradeOptionCatalog
     public const int CryoCoreIndex = 16;
     public const int ShadowRiftIndex = 17;
     public const int VoidCatalystIndex = 18;
+    public const int ShrapnelStormIndex = 19;
+    public const int PowderKegIndex = 20;
+    public const int StormConduitIndex = 21;
+    public const int ConductiveCoreIndex = 22;
 
     public static int OptionCount => Options.Length;
 
@@ -82,7 +86,11 @@ public static class UpgradeOptionCatalog
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Rare, WeaponBuildType.General),       // 15 Frost Sigil
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.General, 5), // 16 Cryo Core
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Rare, WeaponBuildType.General),       // 17 Shadow Rift
-        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.General, 5)   // 18 Void Catalyst
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.General, 5), // 18 Void Catalyst
+        new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Rare, WeaponBuildType.Blunderbuss),       // 19 Shrapnel Storm
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.Blunderbuss, 5), // 20 Powder Keg
+        new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Rare, WeaponBuildType.ThunderSpear),     // 21 Storm Conduit
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.ThunderSpear, 5) // 22 Conductive Core
     };
 
     private static readonly EvolutionRequirement[] EvolutionRequirements =
@@ -128,7 +136,21 @@ public static class UpgradeOptionCatalog
             DefaultEvolutionRequiredSkillLevel,
             VoidCatalystIndex,
             DefaultEvolutionRequiredPassiveLevel,
-            "Abyss Singularity")
+            "Abyss Singularity"),
+        new EvolutionRequirement(
+            BuildEvolutionId.DragonmouthBlunderbuss,
+            ShrapnelStormIndex,
+            DefaultEvolutionRequiredSkillLevel,
+            PowderKegIndex,
+            DefaultEvolutionRequiredPassiveLevel,
+            "Dragonmouth Blunderbuss"),
+        new EvolutionRequirement(
+            BuildEvolutionId.StormcallerSpear,
+            StormConduitIndex,
+            DefaultEvolutionRequiredSkillLevel,
+            ConductiveCoreIndex,
+            DefaultEvolutionRequiredPassiveLevel,
+            "Stormcaller Spear")
     };
 
     public static bool CanOfferInRewardPool(int upgradeIndex)
@@ -219,6 +241,8 @@ public static class UpgradeOptionCatalog
             WeaponBuildType.FireStaff => "FIRE STAFF",
             WeaponBuildType.Bow => "BOW",
             WeaponBuildType.Sword => "SWORD",
+            WeaponBuildType.Blunderbuss => "BLUNDERBUSS",
+            WeaponBuildType.ThunderSpear => "THUNDER SPEAR",
             _ => "GENERAL"
         };
     }
@@ -230,6 +254,8 @@ public static class UpgradeOptionCatalog
             WeaponBuildType.FireStaff => new Color(1f, 0.52f, 0.22f, 1f),
             WeaponBuildType.Bow => new Color(0.42f, 0.88f, 0.48f, 1f),
             WeaponBuildType.Sword => new Color(0.72f, 0.8f, 0.92f, 1f),
+            WeaponBuildType.Blunderbuss => new Color(0.85f, 0.55f, 0.28f, 1f),
+            WeaponBuildType.ThunderSpear => new Color(0.35f, 0.82f, 1f, 1f),
             _ => new Color(0.86f, 0.88f, 0.92f, 1f)
         };
     }
@@ -241,6 +267,8 @@ public static class UpgradeOptionCatalog
             StarterWeaponType.FireStaff => WeaponBuildType.FireStaff,
             StarterWeaponType.KnightSword => WeaponBuildType.Sword,
             StarterWeaponType.HunterBow => WeaponBuildType.Bow,
+            StarterWeaponType.Blunderbuss => WeaponBuildType.Blunderbuss,
+            StarterWeaponType.ThunderSpear => WeaponBuildType.ThunderSpear,
             _ => WeaponBuildType.General
         };
     }
@@ -391,6 +419,10 @@ public static class UpgradeOptionCatalog
         "Frost Sigil",
         "Cryo Core",
         "Shadow Rift",
-        "Void Catalyst"
+        "Void Catalyst",
+        "Shrapnel Storm",
+        "Powder Keg",
+        "Storm Conduit",
+        "Conductive Core"
     };
 }

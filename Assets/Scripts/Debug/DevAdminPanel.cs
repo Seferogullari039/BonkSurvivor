@@ -181,6 +181,10 @@ public class DevAdminPanel : MonoBehaviour
         CreateButton(scrollContent, "Give Cryo Core", GiveCryoCore);
         CreateButton(scrollContent, "Give Shadow Rift", GiveShadowRift);
         CreateButton(scrollContent, "Give Void Catalyst", GiveVoidCatalyst);
+        CreateButton(scrollContent, "Give Shrapnel Storm", GiveShrapnelStorm);
+        CreateButton(scrollContent, "Give Powder Keg", GivePowderKeg);
+        CreateButton(scrollContent, "Give Storm Conduit", GiveStormConduit);
+        CreateButton(scrollContent, "Give Conductive Core", GiveConductiveCore);
         CreateButton(scrollContent, "Unlock All Weapons", UnlockAllWeapons);
         CreateButton(scrollContent, "Heal Full", HealFull);
         CreateButton(scrollContent, "Kill All Enemies", KillAllEnemies);
@@ -719,6 +723,26 @@ public class DevAdminPanel : MonoBehaviour
     private void GiveVoidCatalyst()
     {
         RunBuildTracker.GetOrCreate().RecordUpgrade(UpgradeOptionCatalog.VoidCatalystIndex);
+    }
+
+    private void GiveShrapnelStorm()
+    {
+        RunBuildTracker.GetOrCreate().RecordUpgrade(UpgradeOptionCatalog.ShrapnelStormIndex);
+    }
+
+    private void GivePowderKeg()
+    {
+        RunBuildTracker.GetOrCreate().RecordUpgrade(UpgradeOptionCatalog.PowderKegIndex);
+    }
+
+    private void GiveStormConduit()
+    {
+        RunBuildTracker.GetOrCreate().RecordUpgrade(UpgradeOptionCatalog.StormConduitIndex);
+    }
+
+    private void GiveConductiveCore()
+    {
+        RunBuildTracker.GetOrCreate().RecordUpgrade(UpgradeOptionCatalog.ConductiveCoreIndex);
     }
 
     private void UnlockAllWeapons()

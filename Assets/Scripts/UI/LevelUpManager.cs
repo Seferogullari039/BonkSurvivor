@@ -1142,7 +1142,13 @@ public class LevelUpManager : MonoBehaviour
                 break;
             case 16:
             case 18:
+            case 20:
+            case 22:
                 weight = earlyGame ? 8 : (midGame ? 6 : 5);
+                break;
+            case 19:
+            case 21:
+                weight = earlyGame ? 2 : (midGame ? 3 : 4);
                 break;
             case 10:
             case 11:
@@ -1327,6 +1333,26 @@ public class LevelUpManager : MonoBehaviour
                     "Void Catalyst",
                     "Boosts Shadow Rift damage, duration, and radius.",
                     "void_catalyst");
+            case 19:
+                return MakeContent(
+                    "Shrapnel Storm",
+                    "Strengthens Blunderbuss attacks with extra shrapnel and pellet pressure.",
+                    "shrapnel_storm");
+            case 20:
+                return MakeContent(
+                    "Powder Keg",
+                    "Supports Blast Shell and explosive Blunderbuss upgrades.",
+                    "powder_keg");
+            case 21:
+                return MakeContent(
+                    "Storm Conduit",
+                    "Strengthens Thunder Spear pierce and chain potential.",
+                    "storm_conduit");
+            case 22:
+                return MakeContent(
+                    "Conductive Core",
+                    "Supports Thunder Spear chain and shock upgrades.",
+                    "conductive_core");
             default:
                 return MakeContent(string.Empty, string.Empty, string.Empty);
         }
@@ -1757,6 +1783,10 @@ public class LevelUpManager : MonoBehaviour
             case 16:
             case 17:
             case 18:
+            case 19:
+            case 20:
+            case 21:
+            case 22:
                 break;
         }
 
