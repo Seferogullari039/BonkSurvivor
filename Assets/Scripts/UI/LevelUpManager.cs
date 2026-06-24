@@ -933,7 +933,7 @@ public class LevelUpManager : MonoBehaviour
         }
 
         shownUpgradeIndices[slotIndex] = pick;
-        shownUpgradeRarities[slotIndex] = RollUpgradeRarity();
+        shownUpgradeRarities[slotIndex] = UpgradeOptionCatalog.ResolveOfferRarity(pick);
         availableIndices.Remove(pick);
         return true;
     }
@@ -951,7 +951,7 @@ public class LevelUpManager : MonoBehaviour
 
         int pick = PickWeightedUpgradeIndex(offerableIndices, unpurchasedWeapons, slotIndex);
         shownUpgradeIndices[slotIndex] = pick;
-        shownUpgradeRarities[slotIndex] = RollUpgradeRarity();
+        shownUpgradeRarities[slotIndex] = UpgradeOptionCatalog.ResolveOfferRarity(pick);
         availableIndices.Remove(pick);
     }
 
@@ -1041,6 +1041,11 @@ public class LevelUpManager : MonoBehaviour
             case 19:
             case 21:
                 weight = earlyGame ? 2 : (midGame ? 3 : 4);
+                break;
+            case UpgradeOptionCatalog.GoldenMagnetIndex:
+            case UpgradeOptionCatalog.StormCrownIndex:
+            case UpgradeOptionCatalog.DeathMarkIndex:
+                weight = 1;
                 break;
             case 10:
             case 11:
@@ -1234,6 +1239,21 @@ public class LevelUpManager : MonoBehaviour
                     "Conductive Core",
                     "Supports Thunder Spear chain and shock upgrades.",
                     "conductive_core");
+            case 23:
+                return MakeContent(
+                    "Golden Magnet",
+                    "Pulls all EXP and coins from across the map.",
+                    "magnet_sense");
+            case 24:
+                return MakeContent(
+                    "Storm Crown",
+                    "Every 6s, lightning strikes up to 3 nearby enemies.",
+                    "chain");
+            case 25:
+                return MakeContent(
+                    "Death Mark",
+                    "Your attacks have a 2% chance to instantly kill nearby normal enemies.",
+                    "sharp_instinct");
             default:
                 return MakeContent(string.Empty, string.Empty, string.Empty);
         }
@@ -1668,7 +1688,15 @@ public class LevelUpManager : MonoBehaviour
             case 20:
             case 21:
             case 22:
+            case 23:
+            case 24:
+            case 25:
                 break;
+        }
+
+        if (upgradeIndex == UpgradeOptionCatalog.StormCrownIndex)
+        {
+            LegendaryPassiveEffectManager.GetOrCreate();
         }
 
         if (upgradeIndex >= 0)

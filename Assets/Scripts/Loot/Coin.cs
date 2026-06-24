@@ -38,6 +38,8 @@ public class Coin : MonoBehaviour
             finalAttractionRange *= UpgradeManager.Instance.PickupRangeMultiplier;
         }
 
+        finalAttractionRange = LegendaryPassiveEffectManager.ResolvePickupRange(finalAttractionRange);
+
         if (distance <= finalAttractionRange)
         {
             transform.position = Vector3.MoveTowards(

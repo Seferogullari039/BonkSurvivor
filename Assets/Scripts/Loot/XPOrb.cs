@@ -42,6 +42,8 @@ public class XPOrb : MonoBehaviour
 
         finalAttractionRange *= RelicManager.PickupRangeMultiplier;
 
+        finalAttractionRange = LegendaryPassiveEffectManager.ResolvePickupRange(finalAttractionRange);
+
         if (distance <= finalAttractionRange)
         {
             transform.position = Vector3.MoveTowards(

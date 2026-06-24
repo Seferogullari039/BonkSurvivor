@@ -683,6 +683,7 @@ public static class StarterWeaponDamageUtility
         if (takeDamageInt != null)
         {
             takeDamageInt.Invoke(enemy, new object[] { finalDamage });
+            LegendaryPassiveEffectManager.TryProcDeathMarkOnPlayerHit(enemy);
             return;
         }
 
@@ -696,6 +697,7 @@ public static class StarterWeaponDamageUtility
         if (takeDamageFloat != null)
         {
             takeDamageFloat.Invoke(enemy, new object[] { (float)finalDamage });
+            LegendaryPassiveEffectManager.TryProcDeathMarkOnPlayerHit(enemy);
         }
     }
 }

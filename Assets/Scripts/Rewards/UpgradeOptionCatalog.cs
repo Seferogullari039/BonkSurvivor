@@ -17,6 +17,9 @@ public static class UpgradeOptionCatalog
     public const int PowderKegIndex = 20;
     public const int StormConduitIndex = 21;
     public const int ConductiveCoreIndex = 22;
+    public const int GoldenMagnetIndex = 23;
+    public const int StormCrownIndex = 24;
+    public const int DeathMarkIndex = 25;
 
     public static int OptionCount => Options.Length;
 
@@ -90,7 +93,10 @@ public static class UpgradeOptionCatalog
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Rare, WeaponBuildType.Blunderbuss),       // 19 Shrapnel Storm
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.Blunderbuss, 5), // 20 Powder Keg
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Rare, WeaponBuildType.ThunderSpear),     // 21 Storm Conduit
-        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.ThunderSpear, 5) // 22 Conductive Core
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.ThunderSpear, 5), // 22 Conductive Core
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 23 Golden Magnet
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 24 Storm Crown
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1) // 25 Death Mark
     };
 
     private static readonly EvolutionRequirement[] EvolutionRequirements =
@@ -345,6 +351,16 @@ public static class UpgradeOptionCatalog
         return UpgradeRarity.Common;
     }
 
+    public static UpgradeRarity ResolveOfferRarity(int upgradeIndex)
+    {
+        if (GetAssignedRarity(upgradeIndex) == UpgradeRarity.Legendary)
+        {
+            return UpgradeRarity.Legendary;
+        }
+
+        return RollDisplayRarity();
+    }
+
     public static string GetRarityLabel(UpgradeRarity rarity)
     {
         return rarity switch
@@ -423,6 +439,9 @@ public static class UpgradeOptionCatalog
         "Shrapnel Storm",
         "Powder Keg",
         "Storm Conduit",
-        "Conductive Core"
+        "Conductive Core",
+        "Golden Magnet",
+        "Storm Crown",
+        "Death Mark"
     };
 }
