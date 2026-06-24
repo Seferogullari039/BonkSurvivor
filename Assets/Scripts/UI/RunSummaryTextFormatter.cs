@@ -22,6 +22,15 @@ public static class RunSummaryTextFormatter
         AppendCategorySlots(builder, tracker, RewardCategory.Skill);
         builder.AppendLine("Passives");
         AppendCategorySlots(builder, tracker, RewardCategory.Passive);
+
+        string synergySummary = ItemSynergyManager.GetActiveSynergySummary();
+
+        if (!string.IsNullOrEmpty(synergySummary))
+        {
+            builder.AppendLine("Synergies");
+            builder.AppendLine(synergySummary);
+        }
+
         return builder.ToString().TrimEnd();
     }
 

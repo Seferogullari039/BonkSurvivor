@@ -8,15 +8,20 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
     private const float StormCrownCooldown = 6f;
     private const float StormCrownRadius = 14f;
     private const int StormCrownMaxTargets = 3;
+    private const int StormCrownThunderKingMaxTargets = 4;
     private const int StormCrownDamage = 18;
     private const float DeathMarkProcChance = 0.02f;
+    private const float DeathMarkReaperSightProcChance = 0.025f;
     private const float DeathMarkRadius = 8f;
     private const int DeathMarkMaxTargets = 4;
+    private const int DeathMarkReaperSightMaxTargets = 5;
     private const int DeathMarkExecuteDamage = 9999;
     private const float GoldenMagnetPickupRange = 9999f;
     private const float VoidBellCooldown = 10f;
     private const float VoidBellRadius = 8f;
+    private const float VoidBellBlackHoleRadius = 10f;
     private const int VoidBellDamage = 22;
+    private const int VoidBellBlackHoleDamage = 26;
 
     private float stormCrownTimer;
     private float voidBellTimer;
@@ -62,7 +67,7 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
             return;
         }
 
-        if (Random.value >= DeathMarkProcChance)
+        if (Random.value >= GetDeathMarkProcChance())
         {
             return;
         }
@@ -113,7 +118,7 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
 
         int hitCount = 0;
 
-        for (int i = 0; i < candidates.Count && hitCount < DeathMarkMaxTargets; i++)
+        for (int i = 0; i < candidates.Count && hitCount < GetDeathMarkMaxTargets(); i++)
         {
             Enemy enemy = candidates[i].Enemy;
 
@@ -235,7 +240,7 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
 
         int hitCount = 0;
 
-        for (int i = 0; i < candidates.Count && hitCount < StormCrownMaxTargets; i++)
+        for (int i = 0; i < candidates.Count && hitCount < GetStormCrownMaxTargets(); i++)
         {
             Enemy enemy = candidates[i].Enemy;
 
@@ -261,6 +266,8 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
 
         Vector3 origin = playerObject.transform.position;
         GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        float pulseRadius = GetVoidBellRadius();
+        int pulseDamage = GetVoidBellDamage();
 
         for (int i = 0; i < enemies.Length; i++)
         {
@@ -280,14 +287,49 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
 
             float distance = Vector3.Distance(origin, enemyObject.transform.position);
 
-            if (distance > VoidBellRadius)
+            if (distance > pulseRadius)
             {
                 continue;
             }
 
-            RunStatsTracker.GetOrCreate().RecordDamageDealt("Void Bell", VoidBellDamage);
-            enemy.TakeDamage(VoidBellDamage);
+            RunStatsTracker.GetOrCreate().RecordDamageDealt("Void Bell", pulseDamage);
+            enemy.TakeDamage(pulseDamage);
         }
+    }
+
+    private static float GetDeathMarkProcChance()
+    {
+        return ItemSynergyManager.IsReaperSightActive()
+            ? DeathMarkReaperSightProcChance
+            : DeathMarkProcChance;
+    }
+
+    private static int GetDeathMarkMaxTargets()
+    {
+        return ItemSynergyManager.IsReaperSightActive()
+            ? DeathMarkReaperSightMaxTargets
+            : DeathMarkMaxTargets;
+    }
+
+    private static int GetStormCrownMaxTargets()
+    {
+        return ItemSynergyManager.IsThunderKingActive()
+            ? StormCrownThunderKingMaxTargets
+            : StormCrownMaxTargets;
+    }
+
+    private static float GetVoidBellRadius()
+    {
+        return ItemSynergyManager.IsBlackHoleBellActive()
+            ? VoidBellBlackHoleRadius
+            : VoidBellRadius;
+    }
+
+    private static int GetVoidBellDamage()
+    {
+        return ItemSynergyManager.IsBlackHoleBellActive()
+            ? VoidBellBlackHoleDamage
+            : VoidBellDamage;
     }
 
     private static bool HasUpgrade(int upgradeIndex)
