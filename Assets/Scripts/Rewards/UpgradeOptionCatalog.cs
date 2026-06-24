@@ -214,4 +214,33 @@ public static class UpgradeOptionCatalog
             _ => 1
         };
     }
+
+    public static string GetDisplayName(int upgradeIndex)
+    {
+        if (upgradeIndex < 0 || upgradeIndex >= DisplayNames.Length)
+        {
+            return "Upgrade";
+        }
+
+        return DisplayNames[upgradeIndex];
+    }
+
+    private static readonly string[] DisplayNames =
+    {
+        "Rapid",
+        "Swift",
+        "Magnet",
+        "Sharp",
+        "Spread",
+        "Pierce",
+        "Orbit",
+        "Rocket",
+        "Chain",
+        "Laser",
+        "Meteor",
+        "Whirlwind",
+        "Arrow",
+        "Inferno",
+        "Blade"
+    };
 }

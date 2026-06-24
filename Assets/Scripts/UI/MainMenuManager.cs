@@ -606,6 +606,8 @@ public class MainMenuManager : MonoBehaviour
         {
             chestSpawner.ResetRun();
         }
+
+        RunBuildTracker.GetOrCreate().ClearRun();
     }
 
     private void ResetPlayerRun()

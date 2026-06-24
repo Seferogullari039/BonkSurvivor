@@ -1466,6 +1466,8 @@ public class LevelUpManager : MonoBehaviour
                 ApplySwordSkillDamageUpgrade(0.15f * multiplier);
                 break;
         }
+
+        RunBuildTracker.GetOrCreate().RecordUpgrade(upgradeIndex);
     }
 
     private void ApplyFireRateUpgrade(float percent)
