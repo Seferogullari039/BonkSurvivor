@@ -10,11 +10,72 @@ public static class ChestStatRewardCatalog
         ChestStatRewardType.PickupRange,
         ChestStatRewardType.CoinGain,
         ChestStatRewardType.XpGain,
+        ChestStatRewardType.CritChance,
+        ChestStatRewardType.CritDamage,
+        ChestStatRewardType.DashCooldown,
+        ChestStatRewardType.SkillArea,
         ChestStatRewardType.Heal
     };
 
     public static ChestStatRewardType RollRandomReward()
     {
+        int roll = Random.Range(0, 100);
+
+        if (roll < 10)
+        {
+            return ChestStatRewardType.Heal;
+        }
+
+        if (roll < 18)
+        {
+            return ChestStatRewardType.MaxHealth;
+        }
+
+        if (roll < 26)
+        {
+            return ChestStatRewardType.MoveSpeed;
+        }
+
+        if (roll < 34)
+        {
+            return ChestStatRewardType.AttackCooldown;
+        }
+
+        if (roll < 42)
+        {
+            return ChestStatRewardType.PickupRange;
+        }
+
+        if (roll < 50)
+        {
+            return ChestStatRewardType.CoinGain;
+        }
+
+        if (roll < 58)
+        {
+            return ChestStatRewardType.XpGain;
+        }
+
+        if (roll < 66)
+        {
+            return ChestStatRewardType.CritChance;
+        }
+
+        if (roll < 74)
+        {
+            return ChestStatRewardType.SkillArea;
+        }
+
+        if (roll < 82)
+        {
+            return ChestStatRewardType.DashCooldown;
+        }
+
+        if (roll < 90)
+        {
+            return ChestStatRewardType.CritDamage;
+        }
+
         return RewardPool[Random.Range(0, RewardPool.Length)];
     }
 
@@ -51,6 +112,22 @@ public static class ChestStatRewardCatalog
             case ChestStatRewardType.XpGain:
                 title = "Wisdom Spark";
                 description = "XP gain +" + Mathf.RoundToInt(percent * 100f) + "%.";
+                break;
+            case ChestStatRewardType.CritChance:
+                title = "Keen Edge";
+                description = "Crit chance +" + Mathf.RoundToInt(percent * 100f) + "%.";
+                break;
+            case ChestStatRewardType.CritDamage:
+                title = "Lethal Focus";
+                description = "Crit damage +" + Mathf.RoundToInt(percent * 100f) + "%.";
+                break;
+            case ChestStatRewardType.DashCooldown:
+                title = "Swift Step";
+                description = "Dash cooldown -" + Mathf.RoundToInt(percent * 100f) + "%.";
+                break;
+            case ChestStatRewardType.SkillArea:
+                title = "Wide Arcana";
+                description = "Skill area +" + Mathf.RoundToInt(percent * 100f) + "%.";
                 break;
             default:
                 title = "Recovery";
@@ -89,6 +166,11 @@ public static class ChestStatRewardCatalog
             case ChestStatRewardType.XpGain:
                 playerStats.ApplyChestXpGainBonus(percent);
                 break;
+            case ChestStatRewardType.CritChance:
+            case ChestStatRewardType.CritDamage:
+            case ChestStatRewardType.DashCooldown:
+            case ChestStatRewardType.SkillArea:
+                break;
             case ChestStatRewardType.Heal:
                 ApplyHeal(rarity, playerStats);
                 break;
@@ -116,6 +198,10 @@ public static class ChestStatRewardCatalog
             ChestStatRewardType.PickupRange => "magnet_sense",
             ChestStatRewardType.CoinGain => "chest_stat_coins",
             ChestStatRewardType.XpGain => "chest_stat_xp",
+            ChestStatRewardType.CritChance => "sharp_instinct",
+            ChestStatRewardType.CritDamage => "sharp_instinct",
+            ChestStatRewardType.DashCooldown => "chest_stat_speed",
+            ChestStatRewardType.SkillArea => "meteor_focus",
             _ => "chest_stat_heal"
         };
     }
@@ -164,6 +250,34 @@ public static class ChestStatRewardCatalog
                 UpgradeRarity.Legendary => 0.35f,
                 UpgradeRarity.Epic => 0.20f,
                 UpgradeRarity.Rare => 0.10f,
+                _ => 0.05f
+            },
+            ChestStatRewardType.CritChance => rarity switch
+            {
+                UpgradeRarity.Legendary => 0.03f,
+                UpgradeRarity.Epic => 0.025f,
+                UpgradeRarity.Rare => 0.02f,
+                _ => 0.015f
+            },
+            ChestStatRewardType.CritDamage => rarity switch
+            {
+                UpgradeRarity.Legendary => 0.20f,
+                UpgradeRarity.Epic => 0.15f,
+                UpgradeRarity.Rare => 0.10f,
+                _ => 0.08f
+            },
+            ChestStatRewardType.DashCooldown => rarity switch
+            {
+                UpgradeRarity.Legendary => 0.08f,
+                UpgradeRarity.Epic => 0.06f,
+                UpgradeRarity.Rare => 0.05f,
+                _ => 0.04f
+            },
+            ChestStatRewardType.SkillArea => rarity switch
+            {
+                UpgradeRarity.Legendary => 0.10f,
+                UpgradeRarity.Epic => 0.08f,
+                UpgradeRarity.Rare => 0.06f,
                 _ => 0.05f
             },
             _ => 0f

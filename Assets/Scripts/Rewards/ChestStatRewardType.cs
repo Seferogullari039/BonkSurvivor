@@ -6,5 +6,9 @@ public enum ChestStatRewardType
     PickupRange,
     CoinGain,
     XpGain,
+    CritChance,
+    CritDamage,
+    DashCooldown,
+    SkillArea,
     Heal
 }

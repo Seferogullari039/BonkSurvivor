@@ -6,12 +6,12 @@ using UnityEngine.UI;
 
 public class ChestStatBuffHud : MonoBehaviour
 {
-    private const int MaxVisibleBadges = 7;
+    private const int MaxVisibleBadges = 9;
 
     private const float PanelInsetX = 24f;
     private const float PanelInsetY = 118f;
     private const float PanelHeight = 28f;
-    private const float ChipWidth = 52f;
+    private const float ChipWidth = 58f;
     private const float ChipHeight = 22f;
     private const float ChipGap = 4f;
     private const float ContentPadding = 6f;

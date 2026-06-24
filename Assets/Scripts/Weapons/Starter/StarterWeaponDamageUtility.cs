@@ -41,11 +41,13 @@ public static class StarterWeaponDamageUtility
 
     public static void DamageEnemiesInRadius(Vector3 center, float radius, int damage)
     {
-        DamageEnemiesInRadiusWithCount(center, radius, damage);
+        DamageEnemiesInRadiusWithCount(center, ChestStatCombatModifiers.ScaleSkillRadius(radius), damage);
     }
 
     public static int DamageEnemiesInRadiusWithCount(Vector3 center, float radius, int damage)
     {
+        radius = ChestStatCombatModifiers.ScaleSkillRadius(radius);
+
         if (radius <= 0f || damage <= 0) return 0;
 
         Collider[] hits = Physics.OverlapSphere(center, radius, ~0, QueryTriggerInteraction.Collide);
@@ -114,6 +116,8 @@ public static class StarterWeaponDamageUtility
 
     public static int DamageEnemiesInRadiusWithSource(Vector3 center, float radius, int damage, string damageSource)
     {
+        radius = ChestStatCombatModifiers.ScaleSkillRadius(radius);
+
         if (radius <= 0f || damage <= 0) return 0;
 
         Collider[] hits = Physics.OverlapSphere(center, radius, ~0, QueryTriggerInteraction.Collide);
@@ -223,6 +227,8 @@ public static class StarterWeaponDamageUtility
         int maxPierce,
         string damageSource)
     {
+        lineRadius = ChestStatCombatModifiers.ScaleSkillRadius(lineRadius);
+
         if (range <= 0f || lineRadius <= 0f || damage <= 0 || maxPierce <= 0 || direction.sqrMagnitude < 0.001f)
         {
             return 0;
@@ -347,6 +353,8 @@ public static class StarterWeaponDamageUtility
 
         impactPoint = primaryTarget.position + Vector3.up * 0.5f;
         TryApplyDamage(primaryEnemy, primaryDamage, primaryDamageSource);
+
+        shockRadius = ChestStatCombatModifiers.ScaleSkillRadius(shockRadius);
 
         if (shockRadius <= 0f || chainDamage <= 0 || maxChainTargets <= 0)
         {
@@ -559,6 +567,8 @@ public static class StarterWeaponDamageUtility
         int damage,
         int maxTargets = 10)
     {
+        sphereRadius = ChestStatCombatModifiers.ScaleSkillRadius(sphereRadius);
+
         if (range <= 0f || damage <= 0 || forward.sqrMagnitude < 0.001f) return 0;
 
         forward.Normalize();
@@ -658,6 +668,8 @@ public static class StarterWeaponDamageUtility
         {
             finalDamage = Mathf.Max(1, Mathf.RoundToInt(damage * RelicManager.EliteDamageMultiplier));
         }
+
+        finalDamage = ChestStatCombatModifiers.ApplyCritToDamage(finalDamage);
 
         RunStatsTracker.GetOrCreate().RecordDamageDealt(sourceName, finalDamage);
 
