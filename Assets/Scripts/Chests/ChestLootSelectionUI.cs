@@ -241,6 +241,11 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
             slot.IconImage.enabled = true;
             slot.IconImage.color = Color.white;
 
+            if (UpgradeCardIconUtility.TryGetIconFrameColor(iconKey, out Color themeColor) && slot.IconFrame != null)
+            {
+                slot.IconFrame.color = Color.Lerp(slot.IconFrame.color, themeColor, 0.55f);
+            }
+
             if (slot.PlaceholderIcon != null)
             {
                 slot.PlaceholderIcon.gameObject.SetActive(false);
@@ -260,6 +265,20 @@ public sealed class ChestLootSelectionUI : MonoBehaviour
             slot.PlaceholderIcon.sprite = GetPlaceholderSprite();
             slot.PlaceholderIcon.enabled = true;
             slot.PlaceholderIcon.gameObject.SetActive(true);
+
+            if (UpgradeCardIconUtility.TryGetIconFrameColor(iconKey, out Color themeColor))
+            {
+                slot.PlaceholderIcon.color = themeColor;
+
+                if (slot.IconFrame != null)
+                {
+                    slot.IconFrame.color = Color.Lerp(slot.IconFrame.color, themeColor, 0.65f);
+                }
+            }
+            else
+            {
+                slot.PlaceholderIcon.color = Color.white;
+            }
         }
     }
 

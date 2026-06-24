@@ -447,6 +447,12 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         {
             cardView.IconImage.sprite = iconSprite;
             cardView.IconImage.enabled = true;
+            cardView.IconImage.color = Color.white;
+
+            if (UpgradeCardIconUtility.TryGetIconFrameColor(iconKey, out Color themeColor) && cardView.IconFrame != null)
+            {
+                cardView.IconFrame.color = Color.Lerp(cardView.IconFrame.color, themeColor, 0.55f);
+            }
 
             if (cardView.PlaceholderIcon != null)
             {
@@ -466,6 +472,20 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         {
             cardView.PlaceholderIcon.sprite = GetPlaceholderSprite();
             cardView.PlaceholderIcon.gameObject.SetActive(true);
+
+            if (UpgradeCardIconUtility.TryGetIconFrameColor(iconKey, out Color themeColor))
+            {
+                cardView.PlaceholderIcon.color = themeColor;
+
+                if (cardView.IconFrame != null)
+                {
+                    cardView.IconFrame.color = Color.Lerp(cardView.IconFrame.color, themeColor, 0.65f);
+                }
+            }
+            else
+            {
+                cardView.PlaceholderIcon.color = Color.white;
+            }
         }
     }
 

@@ -674,7 +674,7 @@ public class LevelUpManager : MonoBehaviour
             }
 
             ApplyCardIcon(card, iconKey);
-            ApplyCardRarityVisuals(card, rarity);
+            ApplyCardRarityVisuals(card, rarity, iconKey);
             return;
         }
 
@@ -726,7 +726,7 @@ public class LevelUpManager : MonoBehaviour
         }
 
         ApplyCardIcon(card, content.IconKey);
-        ApplyCardRarityVisuals(card, rarity);
+        ApplyCardRarityVisuals(card, rarity, content.IconKey);
     }
 
     private static void ApplyCardIcon(UpgradeCardView card, string iconKey)
@@ -742,6 +742,7 @@ public class LevelUpManager : MonoBehaviour
         {
             card.IconImage.sprite = iconSprite;
             card.IconImage.enabled = true;
+            card.IconImage.color = Color.white;
             card.IconRoot.gameObject.SetActive(true);
             return;
         }
@@ -757,7 +758,7 @@ public class LevelUpManager : MonoBehaviour
         }
     }
 
-    private static void ApplyCardRarityVisuals(UpgradeCardView card, UpgradeRarity rarity)
+    private static void ApplyCardRarityVisuals(UpgradeCardView card, UpgradeRarity rarity, string iconKey = null)
     {
         if (card == null)
         {
@@ -773,6 +774,13 @@ public class LevelUpManager : MonoBehaviour
             UpgradeRarity.Rare => 0.2f,
             _ => 0.1f
         };
+
+        if (UpgradeCardIconUtility.TryGetIconFrameColor(iconKey, out Color themeColor))
+        {
+            accent = Color.Lerp(accent, themeColor, 0.32f);
+            background = Color.Lerp(background, new Color(themeColor.r * 0.12f, themeColor.g * 0.12f, themeColor.b * 0.14f, 1f), 0.45f);
+            glowAlpha = Mathf.Max(glowAlpha, 0.22f);
+        }
 
         if (card.BackgroundImage != null)
         {
