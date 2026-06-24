@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using TMPro;
 using UnityEngine;
@@ -170,8 +171,42 @@ public class PauseMenuManager : MonoBehaviour
 
         if (chestBuffsText != null)
         {
-            chestBuffsText.text = "CHEST BUFFS\nComing soon";
+            chestBuffsText.text = BuildChestBuffsText();
         }
+    }
+
+    private static string BuildChestBuffsText()
+    {
+        StringBuilder builder = new StringBuilder();
+        builder.AppendLine("CHEST BUFFS");
+
+        ChestStatBuffTracker tracker = ChestStatBuffTracker.Instance;
+
+        if (tracker == null)
+        {
+            tracker = FindFirstObjectByType<ChestStatBuffTracker>();
+        }
+
+        if (tracker == null)
+        {
+            builder.Append("None");
+            return builder.ToString();
+        }
+
+        IReadOnlyList<ChestStatBuffEntry> buffs = tracker.GetActiveBuffs();
+
+        if (buffs == null || buffs.Count == 0)
+        {
+            builder.Append("None");
+            return builder.ToString();
+        }
+
+        for (int i = 0; i < buffs.Count; i++)
+        {
+            builder.AppendLine(ChestStatBuffTracker.FormatPauseSummaryLine(buffs[i]));
+        }
+
+        return builder.ToString().TrimEnd();
     }
 
     private static string BuildRunInfoText()
@@ -304,12 +339,12 @@ public class PauseMenuManager : MonoBehaviour
         chestBuffsText = CreateText(
             pausePanel.transform,
             "ChestBuffsText",
-            "CHEST BUFFS\nComing soon",
-            18,
-            new Vector2(0f, -80f),
-            new Vector2(500f, 50f),
-            FontStyles.Italic,
-            TextAlignmentOptions.Center);
+            "CHEST BUFFS\nNone",
+            16,
+            new Vector2(0f, -70f),
+            new Vector2(500f, 90f),
+            FontStyles.Normal,
+            TextAlignmentOptions.TopLeft);
 
         CreateMenuButton(pausePanel.transform, "ResumeButton", "Resume", new Vector2(0f, -150f), OnResumeClicked);
         CreateMenuButton(pausePanel.transform, "RestartButton", "Restart Run", new Vector2(0f, -210f), OnRestartClicked);

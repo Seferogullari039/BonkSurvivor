@@ -93,6 +93,17 @@ public static class ChestStatRewardCatalog
                 ApplyHeal(rarity, playerStats);
                 break;
         }
+
+        if (rewardType != ChestStatRewardType.Heal)
+        {
+            GetDisplay(rewardType, rarity, out string title, out string description);
+            ChestStatBuffTracker.GetOrCreate().RecordBuff(rewardType, rarity, percent, title, description);
+        }
+    }
+
+    public static float GetPercentValue(ChestStatRewardType rewardType, UpgradeRarity rarity)
+    {
+        return GetPercent(rewardType, rarity);
     }
 
     public static string GetIconKey(ChestStatRewardType rewardType)
