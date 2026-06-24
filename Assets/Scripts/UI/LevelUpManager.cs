@@ -857,7 +857,22 @@ public class LevelUpManager : MonoBehaviour
             }
         }
 
-        return filtered.Count > 0 ? filtered : candidates;
+        if (filtered.Count > 0)
+        {
+            return filtered;
+        }
+
+        List<int> notMaxed = new List<int>(candidates.Count);
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            if (!tracker.IsMaxed(candidates[i]))
+            {
+                notMaxed.Add(candidates[i]);
+            }
+        }
+
+        return notMaxed.Count > 0 ? notMaxed : candidates;
     }
 
     private int PickWeightedUpgradeIndex(List<int> candidates, List<int> unpurchasedWeapons, int slotIndex)

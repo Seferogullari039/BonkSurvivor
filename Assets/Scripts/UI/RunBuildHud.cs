@@ -272,7 +272,17 @@ public class RunBuildHud : MonoBehaviour
 
         Color buildColor = UpgradeOptionCatalog.GetBuildColor(entry.BuildType);
         slotView.Background.color = new Color(buildColor.r, buildColor.g, buildColor.b, 0.28f);
-        slotView.Label.text = entry.DisplayName + " Lv." + entry.Level;
+        int maxLevel = UpgradeOptionCatalog.GetMaxLevel(entry.UpgradeIndex);
+
+        if (entry.Level >= maxLevel)
+        {
+            slotView.Label.text = entry.DisplayName + " MAX";
+        }
+        else
+        {
+            slotView.Label.text = entry.DisplayName + " Lv." + entry.Level + "/" + maxLevel;
+        }
+
         slotView.Label.color = buildColor;
         slotView.Label.fontStyle = FontStyles.Bold;
     }

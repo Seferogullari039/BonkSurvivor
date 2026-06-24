@@ -3,18 +3,26 @@ using UnityEngine;
 
 public static class UpgradeOptionCatalog
 {
+    public const int DefaultMaxLevel = 10;
+
     public readonly struct OptionMetadata
     {
-        public OptionMetadata(RewardCategory category, UpgradeRarity assignedRarity, WeaponBuildType buildType)
+        public OptionMetadata(
+            RewardCategory category,
+            UpgradeRarity assignedRarity,
+            WeaponBuildType buildType,
+            int maxLevel = DefaultMaxLevel)
         {
             Category = category;
             AssignedRarity = assignedRarity;
             BuildType = buildType;
+            MaxLevel = maxLevel;
         }
 
         public RewardCategory Category { get; }
         public UpgradeRarity AssignedRarity { get; }
         public WeaponBuildType BuildType { get; }
+        public int MaxLevel { get; }
     }
 
     private static readonly OptionMetadata[] Options =
@@ -59,6 +67,16 @@ public static class UpgradeOptionCatalog
     public static WeaponBuildType GetBuildType(int upgradeIndex)
     {
         return GetMetadata(upgradeIndex).BuildType;
+    }
+
+    public static int GetMaxLevel(int upgradeIndex)
+    {
+        if (upgradeIndex < 0 || upgradeIndex >= Options.Length)
+        {
+            return DefaultMaxLevel;
+        }
+
+        return Options[upgradeIndex].MaxLevel;
     }
 
     public static string GetBuildLabel(int upgradeIndex)

@@ -17,6 +17,7 @@ public class RunBuildTracker : MonoBehaviour
 
 #if UNITY_EDITOR
     public static bool LogOverflowIgnored = false;
+    public static bool LogMaxLevelIgnored = false;
 #endif
 
     public static RunBuildTracker Instance { get; private set; }
@@ -77,6 +78,17 @@ public class RunBuildTracker : MonoBehaviour
 
     public void RecordUpgrade(int upgradeIndex)
     {
+        if (IsMaxed(upgradeIndex))
+        {
+#if UNITY_EDITOR
+            if (LogMaxLevelIgnored)
+            {
+                Debug.Log("[RunBuildTracker] Max level ignored for upgrade index " + upgradeIndex + ".");
+            }
+#endif
+            return;
+        }
+
         RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
         WeaponBuildType buildType = UpgradeOptionCatalog.GetBuildType(upgradeIndex);
         RunBuildSlotEntry[] slots = category == RewardCategory.Skill ? skillSlots : passiveSlots;
@@ -87,6 +99,17 @@ public class RunBuildTracker : MonoBehaviour
 
             if (existing != null && existing.UpgradeIndex == upgradeIndex)
             {
+                if (existing.Level >= UpgradeOptionCatalog.GetMaxLevel(upgradeIndex))
+                {
+#if UNITY_EDITOR
+                    if (LogMaxLevelIgnored)
+                    {
+                        Debug.Log("[RunBuildTracker] Max level ignored for upgrade index " + upgradeIndex + ".");
+                    }
+#endif
+                    return;
+                }
+
                 existing.Level++;
                 OnBuildChanged?.Invoke();
                 return;
@@ -142,8 +165,35 @@ public class RunBuildTracker : MonoBehaviour
         return GetTrackedLevel(upgradeIndex) > 0;
     }
 
+    public bool IsMaxed(int upgradeIndex)
+    {
+        int level = GetTrackedLevel(upgradeIndex);
+
+        if (level <= 0)
+        {
+            return false;
+        }
+
+        return level >= UpgradeOptionCatalog.GetMaxLevel(upgradeIndex);
+    }
+
+    public bool CanLevelUpgrade(int upgradeIndex)
+    {
+        if (!IsTrackedUpgrade(upgradeIndex))
+        {
+            return true;
+        }
+
+        return !IsMaxed(upgradeIndex);
+    }
+
     public bool CanOfferUpgrade(int upgradeIndex)
     {
+        if (IsMaxed(upgradeIndex))
+        {
+            return false;
+        }
+
         if (IsTrackedUpgrade(upgradeIndex))
         {
             return true;
