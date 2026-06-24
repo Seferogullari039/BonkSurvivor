@@ -18,14 +18,17 @@ public class RunBuildTracker : MonoBehaviour
 #if UNITY_EDITOR
     public static bool LogOverflowIgnored = false;
     public static bool LogMaxLevelIgnored = false;
+    public static bool LogEvolutionUnlocks = true;
 #endif
 
     public static RunBuildTracker Instance { get; private set; }
 
     public event Action OnBuildChanged;
+    public event Action<BuildEvolutionId> OnEvolutionUnlocked;
 
     private readonly RunBuildSlotEntry[] skillSlots = new RunBuildSlotEntry[MaxSlotsPerCategory];
     private readonly RunBuildSlotEntry[] passiveSlots = new RunBuildSlotEntry[MaxSlotsPerCategory];
+    private readonly HashSet<BuildEvolutionId> unlockedEvolutions = new HashSet<BuildEvolutionId>();
 
     public static RunBuildTracker GetOrCreate()
     {
@@ -73,6 +76,7 @@ public class RunBuildTracker : MonoBehaviour
             passiveSlots[i] = null;
         }
 
+        unlockedEvolutions.Clear();
         OnBuildChanged?.Invoke();
     }
 
@@ -111,7 +115,7 @@ public class RunBuildTracker : MonoBehaviour
                 }
 
                 existing.Level++;
-                OnBuildChanged?.Invoke();
+                NotifyBuildChanged();
                 return;
             }
         }
@@ -132,7 +136,7 @@ public class RunBuildTracker : MonoBehaviour
                 Level = 1
             };
 
-            OnBuildChanged?.Invoke();
+            NotifyBuildChanged();
             return;
         }
 
@@ -153,6 +157,16 @@ public class RunBuildTracker : MonoBehaviour
     public RunBuildSlotEntry GetPassiveSlot(int slotIndex)
     {
         return GetSlot(passiveSlots, slotIndex);
+    }
+
+    public bool HasEvolution(BuildEvolutionId id)
+    {
+        return id != BuildEvolutionId.None && unlockedEvolutions.Contains(id);
+    }
+
+    public IReadOnlyCollection<BuildEvolutionId> GetUnlockedEvolutions()
+    {
+        return unlockedEvolutions;
     }
 
     public bool HasFreeSlot(RewardCategory category)
@@ -253,6 +267,47 @@ public class RunBuildTracker : MonoBehaviour
         }
 
         return count;
+    }
+
+    private void NotifyBuildChanged()
+    {
+        OnBuildChanged?.Invoke();
+        CheckEvolutionRequirements();
+    }
+
+    private void CheckEvolutionRequirements()
+    {
+        IReadOnlyList<EvolutionRequirement> requirements = UpgradeOptionCatalog.GetEvolutionRequirements();
+
+        for (int i = 0; i < requirements.Count; i++)
+        {
+            EvolutionRequirement requirement = requirements[i];
+
+            if (requirement.EvolutionId == BuildEvolutionId.None || HasEvolution(requirement.EvolutionId))
+            {
+                continue;
+            }
+
+            if (GetTrackedLevel(requirement.SkillUpgradeIndex) < requirement.RequiredSkillLevel)
+            {
+                continue;
+            }
+
+            if (GetTrackedLevel(requirement.PassiveUpgradeIndex) < requirement.RequiredPassiveLevel)
+            {
+                continue;
+            }
+
+            unlockedEvolutions.Add(requirement.EvolutionId);
+            OnEvolutionUnlocked?.Invoke(requirement.EvolutionId);
+
+#if UNITY_EDITOR
+            if (LogEvolutionUnlocks)
+            {
+                Debug.Log("EVOLUTION UNLOCKED: " + requirement.DisplayName);
+            }
+#endif
+        }
     }
 
     private RunBuildSlotEntry[] GetSlotsForCategory(RewardCategory category)

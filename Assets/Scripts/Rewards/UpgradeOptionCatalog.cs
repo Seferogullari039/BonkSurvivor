@@ -4,6 +4,8 @@ using UnityEngine;
 public static class UpgradeOptionCatalog
 {
     public const int DefaultMaxLevel = 10;
+    public const int DefaultEvolutionRequiredSkillLevel = 10;
+    public const int DefaultEvolutionRequiredPassiveLevel = 5;
 
     public readonly struct OptionMetadata
     {
@@ -25,6 +27,32 @@ public static class UpgradeOptionCatalog
         public int MaxLevel { get; }
     }
 
+    public readonly struct EvolutionRequirement
+    {
+        public EvolutionRequirement(
+            BuildEvolutionId evolutionId,
+            int skillUpgradeIndex,
+            int requiredSkillLevel,
+            int passiveUpgradeIndex,
+            int requiredPassiveLevel,
+            string displayName)
+        {
+            EvolutionId = evolutionId;
+            SkillUpgradeIndex = skillUpgradeIndex;
+            RequiredSkillLevel = requiredSkillLevel;
+            PassiveUpgradeIndex = passiveUpgradeIndex;
+            RequiredPassiveLevel = requiredPassiveLevel;
+            DisplayName = displayName;
+        }
+
+        public BuildEvolutionId EvolutionId { get; }
+        public int SkillUpgradeIndex { get; }
+        public int RequiredSkillLevel { get; }
+        public int PassiveUpgradeIndex { get; }
+        public int RequiredPassiveLevel { get; }
+        public string DisplayName { get; }
+    }
+
     private static readonly OptionMetadata[] Options =
     {
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Common, WeaponBuildType.General),     // 0 Rapid Mechanism
@@ -42,6 +70,38 @@ public static class UpgradeOptionCatalog
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Epic, WeaponBuildType.Bow),           // 12 Arrow Storm
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Epic, WeaponBuildType.FireStaff),     // 13 Inferno Ritual
         new OptionMetadata(RewardCategory.Skill, UpgradeRarity.Epic, WeaponBuildType.Sword)          // 14 Blade Tempest
+    };
+
+    private static readonly EvolutionRequirement[] EvolutionRequirements =
+    {
+        new EvolutionRequirement(
+            BuildEvolutionId.FlameOrbit,
+            6,
+            DefaultEvolutionRequiredSkillLevel,
+            0,
+            DefaultEvolutionRequiredPassiveLevel,
+            "Flame Orbit"),
+        new EvolutionRequirement(
+            BuildEvolutionId.CataclysmMeteor,
+            10,
+            DefaultEvolutionRequiredSkillLevel,
+            3,
+            DefaultEvolutionRequiredPassiveLevel,
+            "Cataclysm Meteor"),
+        new EvolutionRequirement(
+            BuildEvolutionId.StormArrows,
+            4,
+            DefaultEvolutionRequiredSkillLevel,
+            3,
+            DefaultEvolutionRequiredPassiveLevel,
+            "Storm Arrows"),
+        new EvolutionRequirement(
+            BuildEvolutionId.BladeTempestEvolution,
+            11,
+            DefaultEvolutionRequiredSkillLevel,
+            3,
+            DefaultEvolutionRequiredPassiveLevel,
+            "Blade Tempest Evolution")
     };
 
     public static OptionMetadata GetMetadata(int upgradeIndex)
@@ -77,6 +137,31 @@ public static class UpgradeOptionCatalog
         }
 
         return Options[upgradeIndex].MaxLevel;
+    }
+
+    public static IReadOnlyList<EvolutionRequirement> GetEvolutionRequirements()
+    {
+        return EvolutionRequirements;
+    }
+
+    public static string GetEvolutionDisplayName(BuildEvolutionId id)
+    {
+        if (id == BuildEvolutionId.None)
+        {
+            return "None";
+        }
+
+        for (int i = 0; i < EvolutionRequirements.Length; i++)
+        {
+            EvolutionRequirement requirement = EvolutionRequirements[i];
+
+            if (requirement.EvolutionId == id)
+            {
+                return requirement.DisplayName;
+            }
+        }
+
+        return id.ToString();
     }
 
     public static string GetBuildLabel(int upgradeIndex)
