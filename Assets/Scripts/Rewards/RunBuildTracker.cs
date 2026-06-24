@@ -76,8 +76,9 @@ public class RunBuildTracker : MonoBehaviour
 
     public void RecordUpgrade(int upgradeIndex)
     {
-        OptionMetadata metadata = UpgradeOptionCatalog.GetMetadata(upgradeIndex);
-        RunBuildSlotEntry[] slots = metadata.Category == RewardCategory.Skill ? skillSlots : passiveSlots;
+        RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
+        WeaponBuildType buildType = UpgradeOptionCatalog.GetBuildType(upgradeIndex);
+        RunBuildSlotEntry[] slots = category == RewardCategory.Skill ? skillSlots : passiveSlots;
 
         for (int i = 0; i < MaxSlotsPerCategory; i++)
         {
@@ -102,8 +103,8 @@ public class RunBuildTracker : MonoBehaviour
             {
                 UpgradeIndex = upgradeIndex,
                 DisplayName = UpgradeOptionCatalog.GetDisplayName(upgradeIndex),
-                Category = metadata.Category,
-                BuildType = metadata.BuildType,
+                Category = category,
+                BuildType = buildType,
                 Level = 1
             };
 
@@ -115,7 +116,7 @@ public class RunBuildTracker : MonoBehaviour
         if (LogOverflowIgnored)
         {
             Debug.Log("[RunBuildTracker] Overflow ignored for upgrade index " + upgradeIndex
-                + " (" + metadata.Category + "). All " + MaxSlotsPerCategory + " slots are full.");
+                + " (" + category + "). All " + MaxSlotsPerCategory + " slots are full.");
         }
 #endif
     }
