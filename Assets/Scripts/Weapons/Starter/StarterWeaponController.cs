@@ -893,7 +893,7 @@ public class StarterWeaponController : MonoBehaviour
             end = hit.point;
         }
 
-        WeaponFxUtility.SpawnLaserBeam(start, end, 0.1f);
+        SpawnThunderFxLine(start, end, new Color(0.2f, 0.95f, 1f, 0.9f), 0.045f, 0.1f);
 
         if (hadHits)
         {
@@ -929,7 +929,7 @@ public class StarterWeaponController : MonoBehaviour
 
         direction.Normalize();
         Vector3 start = origin + direction * 0.5f;
-        WeaponFxUtility.SpawnLaserBeam(start, impactPoint, 0.14f);
+        SpawnThunderFxLine(start, impactPoint, new Color(0.35f, 0.98f, 1f, 0.95f), 0.05f, 0.14f);
 
         GameObject ring = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         ring.name = "ThunderJavelinShockRing";
@@ -970,7 +970,32 @@ public class StarterWeaponController : MonoBehaviour
             }
 
             Vector3 chainPoint = chainEnemy.transform.position + Vector3.up * 0.5f;
-            WeaponFxUtility.SpawnChainLightning(impactPoint, chainPoint);
+            SpawnThunderFxLine(impactPoint, chainPoint, new Color(0.25f, 0.55f, 1f, 0.85f), 0.035f, 0.12f);
         }
+    }
+
+    private static void SpawnThunderFxLine(Vector3 start, Vector3 end, Color color, float width, float life)
+    {
+        GameObject lineObject = new GameObject("ThunderSpearLineFX");
+        LineRenderer line = lineObject.AddComponent<LineRenderer>();
+        line.useWorldSpace = true;
+        line.positionCount = 2;
+        line.SetPosition(0, start);
+        line.SetPosition(1, end);
+        line.startWidth = width;
+        line.endWidth = width * 0.45f;
+        line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        line.receiveShadows = false;
+
+        Shader shader = Shader.Find("Sprites/Default");
+
+        if (shader != null)
+        {
+            line.material = new Material(shader);
+        }
+
+        line.startColor = color;
+        line.endColor = new Color(color.r, color.g, color.b, 0f);
+        Object.Destroy(lineObject, life);
     }
 }
