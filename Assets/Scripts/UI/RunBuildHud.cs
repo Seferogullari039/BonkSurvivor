@@ -15,6 +15,9 @@ public class RunBuildHud : MonoBehaviour
     private readonly SlotView[] skillSlotViews = new SlotView[SlotCount];
     private readonly SlotView[] passiveSlotViews = new SlotView[SlotCount];
 
+    private TMP_Text skillsHeaderText;
+    private TMP_Text passivesHeaderText;
+
     private bool isBuilt;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -80,17 +83,17 @@ public class RunBuildHud : MonoBehaviour
         headerText.color = HeaderColor;
         headerText.alignment = TextAlignmentOptions.MidlineLeft;
 
-        TMP_Text skillsHeader = CreateLeftText(panelObject.transform, "SkillsHeader", 10f, -34f, 216f, 18f, 13f, FontStyles.Bold);
-        skillsHeader.text = "SKILLS";
-        skillsHeader.color = SectionColor;
-        skillsHeader.alignment = TextAlignmentOptions.MidlineLeft;
+        skillsHeaderText = CreateLeftText(panelObject.transform, "SkillsHeader", 10f, -34f, 216f, 18f, 13f, FontStyles.Bold);
+        skillsHeaderText.text = "SKILLS";
+        skillsHeaderText.color = SectionColor;
+        skillsHeaderText.alignment = TextAlignmentOptions.MidlineLeft;
 
         BuildSlotRow(panelObject.transform, skillSlotViews, -58f);
 
-        TMP_Text passivesHeader = CreateLeftText(panelObject.transform, "PassivesHeader", 10f, -98f, 216f, 18f, 13f, FontStyles.Bold);
-        passivesHeader.text = "PASSIVES";
-        passivesHeader.color = SectionColor;
-        passivesHeader.alignment = TextAlignmentOptions.MidlineLeft;
+        passivesHeaderText = CreateLeftText(panelObject.transform, "PassivesHeader", 10f, -98f, 216f, 18f, 13f, FontStyles.Bold);
+        passivesHeaderText.text = "PASSIVES";
+        passivesHeaderText.color = SectionColor;
+        passivesHeaderText.alignment = TextAlignmentOptions.MidlineLeft;
 
         BuildSlotRow(panelObject.transform, passiveSlotViews, -122f);
 
@@ -198,6 +201,16 @@ public class RunBuildHud : MonoBehaviour
         {
             ApplySlotView(skillSlotViews[i], tracker.GetSkillSlot(i));
             ApplySlotView(passiveSlotViews[i], tracker.GetPassiveSlot(i));
+        }
+
+        if (skillsHeaderText != null)
+        {
+            skillsHeaderText.text = "SKILLS " + tracker.GetFilledSlotCount(RewardCategory.Skill) + "/" + SlotCount;
+        }
+
+        if (passivesHeaderText != null)
+        {
+            passivesHeaderText.text = "PASSIVES " + tracker.GetFilledSlotCount(RewardCategory.Passive) + "/" + SlotCount;
         }
     }
 

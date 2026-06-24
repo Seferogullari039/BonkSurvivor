@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 
 public sealed class RunBuildSlotEntry
@@ -129,6 +130,84 @@ public class RunBuildTracker : MonoBehaviour
     public RunBuildSlotEntry GetPassiveSlot(int slotIndex)
     {
         return GetSlot(passiveSlots, slotIndex);
+    }
+
+    public bool HasFreeSlot(RewardCategory category)
+    {
+        return GetFilledSlotCount(category) < MaxSlotsPerCategory;
+    }
+
+    public bool IsTrackedUpgrade(int upgradeIndex)
+    {
+        return GetTrackedLevel(upgradeIndex) > 0;
+    }
+
+    public bool CanOfferUpgrade(int upgradeIndex)
+    {
+        if (IsTrackedUpgrade(upgradeIndex))
+        {
+            return true;
+        }
+
+        RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
+        return HasFreeSlot(category);
+    }
+
+    public IReadOnlyList<int> GetTrackedUpgradeIndices(RewardCategory category)
+    {
+        List<int> indices = new List<int>(MaxSlotsPerCategory);
+        RunBuildSlotEntry[] slots = GetSlotsForCategory(category);
+
+        for (int i = 0; i < MaxSlotsPerCategory; i++)
+        {
+            RunBuildSlotEntry entry = slots[i];
+
+            if (entry != null)
+            {
+                indices.Add(entry.UpgradeIndex);
+            }
+        }
+
+        return indices;
+    }
+
+    public int GetTrackedLevel(int upgradeIndex)
+    {
+        RewardCategory category = UpgradeOptionCatalog.GetCategory(upgradeIndex);
+        RunBuildSlotEntry[] slots = GetSlotsForCategory(category);
+
+        for (int i = 0; i < MaxSlotsPerCategory; i++)
+        {
+            RunBuildSlotEntry entry = slots[i];
+
+            if (entry != null && entry.UpgradeIndex == upgradeIndex)
+            {
+                return entry.Level;
+            }
+        }
+
+        return 0;
+    }
+
+    public int GetFilledSlotCount(RewardCategory category)
+    {
+        RunBuildSlotEntry[] slots = GetSlotsForCategory(category);
+        int count = 0;
+
+        for (int i = 0; i < MaxSlotsPerCategory; i++)
+        {
+            if (slots[i] != null)
+            {
+                count++;
+            }
+        }
+
+        return count;
+    }
+
+    private RunBuildSlotEntry[] GetSlotsForCategory(RewardCategory category)
+    {
+        return category == RewardCategory.Skill ? skillSlots : passiveSlots;
     }
 
     private static RunBuildSlotEntry GetSlot(RunBuildSlotEntry[] slots, int slotIndex)

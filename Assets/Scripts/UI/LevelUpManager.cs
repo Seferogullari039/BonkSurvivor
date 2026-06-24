@@ -504,7 +504,8 @@ public class LevelUpManager : MonoBehaviour
     {
         List<int> availableIndices = new List<int> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
         List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
-        int pick = PickWeightedUpgradeIndex(availableIndices, unpurchasedWeapons, 0);
+        List<int> offerableIndices = GetBuildLockEligibleCandidates(availableIndices);
+        int pick = PickWeightedUpgradeIndex(offerableIndices, unpurchasedWeapons, 0);
         shownUpgradeIndices[0] = pick;
         shownUpgradeRarities[0] = RollUpgradeRarity();
     }
@@ -810,7 +811,9 @@ public class LevelUpManager : MonoBehaviour
         WeaponBuildType preferredBuild,
         RewardCategory category)
     {
-        if (!UpgradeOptionCatalog.TryPickEligibleUpgradeByBuild(availableIndices, preferredBuild, category, out int pick))
+        List<int> offerableIndices = GetBuildLockEligibleCandidates(availableIndices);
+
+        if (!UpgradeOptionCatalog.TryPickEligibleUpgradeByBuild(offerableIndices, preferredBuild, category, out int pick))
         {
             return false;
         }
@@ -823,10 +826,38 @@ public class LevelUpManager : MonoBehaviour
 
     private void AssignWeightedOption(int slotIndex, List<int> availableIndices, List<int> unpurchasedWeapons)
     {
-        int pick = PickWeightedUpgradeIndex(availableIndices, unpurchasedWeapons, slotIndex);
+        List<int> offerableIndices = GetBuildLockEligibleCandidates(availableIndices);
+        int pick = PickWeightedUpgradeIndex(offerableIndices, unpurchasedWeapons, slotIndex);
         shownUpgradeIndices[slotIndex] = pick;
         shownUpgradeRarities[slotIndex] = RollUpgradeRarity();
         availableIndices.Remove(pick);
+    }
+
+    private static List<int> GetBuildLockEligibleCandidates(List<int> candidates)
+    {
+        if (candidates == null || candidates.Count == 0)
+        {
+            return candidates;
+        }
+
+        RunBuildTracker tracker = RunBuildTracker.Instance;
+
+        if (tracker == null)
+        {
+            tracker = RunBuildTracker.GetOrCreate();
+        }
+
+        List<int> filtered = new List<int>(candidates.Count);
+
+        for (int i = 0; i < candidates.Count; i++)
+        {
+            if (tracker.CanOfferUpgrade(candidates[i]))
+            {
+                filtered.Add(candidates[i]);
+            }
+        }
+
+        return filtered.Count > 0 ? filtered : candidates;
     }
 
     private int PickWeightedUpgradeIndex(List<int> candidates, List<int> unpurchasedWeapons, int slotIndex)
