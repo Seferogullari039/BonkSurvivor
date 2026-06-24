@@ -41,6 +41,7 @@ public class MainMenuManager : MonoBehaviour
 
         ApplyMenuPresentationState();
         HideMenuWeaponVisuals();
+        PauseMenuManager.HidePauseMenuIfExists();
     }
 
     public void PlayGame()
@@ -76,6 +77,7 @@ public class MainMenuManager : MonoBehaviour
         gameStarted = true;
         IsRunActive = true;
         Time.timeScale = 1f;
+        PauseMenuManager.HidePauseMenuIfExists();
 
         ApplyGameplayPresentationState();
 
@@ -145,6 +147,7 @@ public class MainMenuManager : MonoBehaviour
         CloseUpgrades();
         ShowMainMenuPanel();
         HUDManager.HideGameplayHud();
+        PauseMenuManager.HidePauseMenuIfExists();
 
         ApplyMenuPresentationState();
         HideMenuWeaponVisuals();

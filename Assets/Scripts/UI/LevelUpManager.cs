@@ -477,6 +477,36 @@ public class LevelUpManager : MonoBehaviour
         chestSingleCardRevealUI.Show(header, headerColor, cardData, CollectChestSingleReward);
     }
 
+    public bool IsLevelUpOpen => levelUpPanel != null && levelUpPanel.activeSelf;
+
+    public bool BlocksGameplayPause
+    {
+        get
+        {
+            if (IsLevelUpOpen)
+            {
+                return true;
+            }
+
+            if (IsAwaitingChestRewardCollect())
+            {
+                return true;
+            }
+
+            if (chestLootSelectionUI != null && chestLootSelectionUI.IsShowing)
+            {
+                return true;
+            }
+
+            if (chestSingleCardRevealUI != null && chestSingleCardRevealUI.IsShowing)
+            {
+                return true;
+            }
+
+            return false;
+        }
+    }
+
     public bool IsAwaitingChestRewardCollect()
     {
         return useChestSingleCardReveal && !chestRewardCollected;

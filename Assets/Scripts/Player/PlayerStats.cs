@@ -53,6 +53,9 @@ public class PlayerStats : MonoBehaviour
     public bool IsDead => isDead;
 
     public int CurrentLevel => currentLevel;
+    public int CurrentHealth => currentHealth;
+    public int CurrentXP => currentXP;
+    public int XPToNextLevel => xpToNextLevel;
     public int Coins => coins;
 
     public static bool LogEffectiveDamage = false;
