@@ -1045,7 +1045,12 @@ public class LevelUpManager : MonoBehaviour
             case UpgradeOptionCatalog.GoldenMagnetIndex:
             case UpgradeOptionCatalog.StormCrownIndex:
             case UpgradeOptionCatalog.DeathMarkIndex:
+            case UpgradeOptionCatalog.VoidBellIndex:
                 weight = 1;
+                break;
+            case UpgradeOptionCatalog.HuntersEyeIndex:
+            case UpgradeOptionCatalog.GravityStoneIndex:
+                weight = earlyGame ? 6 : (midGame ? 5 : 4);
                 break;
             case 10:
             case 11:
@@ -1254,6 +1259,21 @@ public class LevelUpManager : MonoBehaviour
                     "Death Mark",
                     "Your attacks have a 2% chance to instantly kill nearby normal enemies.",
                     "sharp_instinct");
+            case 26:
+                return MakeContent(
+                    "Hunter's Eye",
+                    "Improves precision and mark-based effects.",
+                    "sharp_instinct");
+            case 27:
+                return MakeContent(
+                    "Gravity Stone",
+                    "Strengthens area and gravity-based effects.",
+                    "void_catalyst");
+            case 28:
+                return MakeContent(
+                    "Void Bell",
+                    "Every 10s, releases a void pulse that damages nearby enemies.",
+                    "shadow_rift");
             default:
                 return MakeContent(string.Empty, string.Empty, string.Empty);
         }
@@ -1691,10 +1711,14 @@ public class LevelUpManager : MonoBehaviour
             case 23:
             case 24:
             case 25:
+            case 26:
+            case 27:
+            case 28:
                 break;
         }
 
-        if (upgradeIndex == UpgradeOptionCatalog.StormCrownIndex)
+        if (upgradeIndex == UpgradeOptionCatalog.StormCrownIndex
+            || upgradeIndex == UpgradeOptionCatalog.VoidBellIndex)
         {
             LegendaryPassiveEffectManager.GetOrCreate();
         }

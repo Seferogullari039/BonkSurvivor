@@ -14,8 +14,12 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
     private const int DeathMarkMaxTargets = 4;
     private const int DeathMarkExecuteDamage = 9999;
     private const float GoldenMagnetPickupRange = 9999f;
+    private const float VoidBellCooldown = 10f;
+    private const float VoidBellRadius = 8f;
+    private const int VoidBellDamage = 22;
 
     private float stormCrownTimer;
+    private float voidBellTimer;
 
     public static LegendaryPassiveEffectManager GetOrCreate()
     {
@@ -39,6 +43,7 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
     public static bool HasGoldenMagnet => HasUpgrade(UpgradeOptionCatalog.GoldenMagnetIndex);
     public static bool HasStormCrown => HasUpgrade(UpgradeOptionCatalog.StormCrownIndex);
     public static bool HasDeathMark => HasUpgrade(UpgradeOptionCatalog.DeathMarkIndex);
+    public static bool HasVoidBell => HasUpgrade(UpgradeOptionCatalog.VoidBellIndex);
 
     public static float ResolvePickupRange(float calculatedRange)
     {
@@ -154,20 +159,32 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
 
     private void Update()
     {
-        if (!HasStormCrown || !MainMenuManager.IsRunActive || Time.timeScale <= 0f)
+        if (!MainMenuManager.IsRunActive || Time.timeScale <= 0f)
         {
             return;
         }
 
-        stormCrownTimer += Time.deltaTime;
-
-        if (stormCrownTimer < StormCrownCooldown)
+        if (HasStormCrown)
         {
-            return;
+            stormCrownTimer += Time.deltaTime;
+
+            if (stormCrownTimer >= StormCrownCooldown)
+            {
+                stormCrownTimer = 0f;
+                TriggerStormCrown();
+            }
         }
 
-        stormCrownTimer = 0f;
-        TriggerStormCrown();
+        if (HasVoidBell)
+        {
+            voidBellTimer += Time.deltaTime;
+
+            if (voidBellTimer >= VoidBellCooldown)
+            {
+                voidBellTimer = 0f;
+                TriggerVoidBell();
+            }
+        }
     }
 
     private void TriggerStormCrown()
@@ -233,6 +250,46 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
         }
     }
 
+    private void TriggerVoidBell()
+    {
+        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+
+        if (playerObject == null)
+        {
+            return;
+        }
+
+        Vector3 origin = playerObject.transform.position;
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            GameObject enemyObject = enemies[i];
+
+            if (enemyObject == null)
+            {
+                continue;
+            }
+
+            Enemy enemy = enemyObject.GetComponent<Enemy>() ?? enemyObject.GetComponentInParent<Enemy>();
+
+            if (!IsLegendaryPulseTarget(enemy))
+            {
+                continue;
+            }
+
+            float distance = Vector3.Distance(origin, enemyObject.transform.position);
+
+            if (distance > VoidBellRadius)
+            {
+                continue;
+            }
+
+            RunStatsTracker.GetOrCreate().RecordDamageDealt("Void Bell", VoidBellDamage);
+            enemy.TakeDamage(VoidBellDamage);
+        }
+    }
+
     private static bool HasUpgrade(int upgradeIndex)
     {
         RunBuildTracker tracker = RunBuildTracker.Instance;
@@ -246,6 +303,11 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
     }
 
     private static bool IsStormCrownTarget(Enemy enemy)
+    {
+        return IsLegendaryPulseTarget(enemy);
+    }
+
+    private static bool IsLegendaryPulseTarget(Enemy enemy)
     {
         if (enemy == null)
         {

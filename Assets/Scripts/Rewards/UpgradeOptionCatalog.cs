@@ -20,6 +20,9 @@ public static class UpgradeOptionCatalog
     public const int GoldenMagnetIndex = 23;
     public const int StormCrownIndex = 24;
     public const int DeathMarkIndex = 25;
+    public const int HuntersEyeIndex = 26;
+    public const int GravityStoneIndex = 27;
+    public const int VoidBellIndex = 28;
 
     public static int OptionCount => Options.Length;
 
@@ -96,7 +99,10 @@ public static class UpgradeOptionCatalog
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.ThunderSpear, 5), // 22 Conductive Core
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 23 Golden Magnet
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 24 Storm Crown
-        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1) // 25 Death Mark
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 25 Death Mark
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Epic, WeaponBuildType.General, 3), // 26 Hunter's Eye
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Epic, WeaponBuildType.General, 3), // 27 Gravity Stone
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1) // 28 Void Bell
     };
 
     private static readonly EvolutionRequirement[] EvolutionRequirements =
@@ -353,9 +359,11 @@ public static class UpgradeOptionCatalog
 
     public static UpgradeRarity ResolveOfferRarity(int upgradeIndex)
     {
-        if (GetAssignedRarity(upgradeIndex) == UpgradeRarity.Legendary)
+        UpgradeRarity assigned = GetAssignedRarity(upgradeIndex);
+
+        if (assigned == UpgradeRarity.Legendary || assigned == UpgradeRarity.Epic)
         {
-            return UpgradeRarity.Legendary;
+            return assigned;
         }
 
         return RollDisplayRarity();
@@ -442,6 +450,9 @@ public static class UpgradeOptionCatalog
         "Conductive Core",
         "Golden Magnet",
         "Storm Crown",
-        "Death Mark"
+        "Death Mark",
+        "Hunter's Eye",
+        "Gravity Stone",
+        "Void Bell"
     };
 }
