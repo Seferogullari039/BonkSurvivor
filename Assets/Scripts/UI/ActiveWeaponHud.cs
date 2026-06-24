@@ -4,20 +4,28 @@ using UnityEngine.UI;
 
 public class ActiveWeaponHud : MonoBehaviour
 {
-    private const float PanelInsetX = -14f;
-    private const float PanelInsetY = 14f;
-    private const float PanelWidth = 232f;
-    private const float PanelHeight = 80f;
-    private const float ContentPadding = 8f;
-    private const float RowHeight = 18f;
-    private const float BarWidth = 62f;
-    private const float BarHeight = 5f;
+    private const float PanelInsetX = -18f;
+    private const float PanelInsetY = 82f;
+    private const float PanelWidth = 290f;
+    private const float PanelHeight = 104f;
+    private const float ContentPadding = 10f;
+    private const float RowHeight = 24f;
+    private const float HeaderHeight = 22f;
+    private const float LabelWidth = 168f;
+    private const float BarWidth = 72f;
+    private const float BarHeight = 7f;
+    private const float BarOffsetX = 174f;
+    private const float TimeWidth = 38f;
+    private const float HeaderFontSize = 14f;
+    private const float RowFontSize = 11f;
+    private const float TimeFontSize = 10.5f;
 
-    private static readonly Color PanelBackground = new Color(0.04f, 0.05f, 0.08f, 0.74f);
-    private static readonly Color HeaderColor = new Color(0.9f, 0.92f, 0.96f, 1f);
-    private static readonly Color AbilityLabelColor = new Color(0.72f, 0.76f, 0.84f, 1f);
-    private static readonly Color TimeReadyColor = new Color(0.55f, 0.78f, 0.58f, 0.9f);
-    private static readonly Color TimeCooldownColor = new Color(0.62f, 0.66f, 0.72f, 0.85f);
+    private static readonly Color PanelBackground = new Color(0.04f, 0.05f, 0.08f, 0.8f);
+    private static readonly Color PanelBorderColor = new Color(0.22f, 0.28f, 0.38f, 0.42f);
+    private static readonly Color HeaderColor = new Color(0.94f, 0.95f, 0.98f, 1f);
+    private static readonly Color AbilityLabelColor = new Color(0.78f, 0.82f, 0.9f, 1f);
+    private static readonly Color TimeReadyColor = new Color(0.52f, 0.86f, 0.58f, 1f);
+    private static readonly Color TimeCooldownColor = new Color(0.72f, 0.76f, 0.84f, 0.95f);
     private static readonly Color BarBackgroundColor = new Color(0.1f, 0.11f, 0.14f, 0.85f);
     private static readonly Color BarReadyColor = new Color(0.35f, 0.75f, 0.45f, 0.9f);
     private static readonly Color BarCooldownColor = new Color(0.45f, 0.5f, 0.58f, 0.65f);
@@ -203,7 +211,7 @@ public class ActiveWeaponHud : MonoBehaviour
 
         if (row.LabelText != null)
         {
-            row.LabelText.text = inputLabel + " " + abilityName;
+            row.LabelText.text = inputLabel + "  " + abilityName;
         }
 
         bool onCooldown = remainingSeconds > 0.05f;
@@ -220,11 +228,13 @@ public class ActiveWeaponHud : MonoBehaviour
             {
                 row.TimeText.text = remainingSeconds.ToString("0.0") + "s";
                 row.TimeText.color = TimeCooldownColor;
+                row.TimeText.fontStyle = FontStyles.Normal;
             }
             else
             {
-                row.TimeText.text = string.Empty;
+                row.TimeText.text = "READY";
                 row.TimeText.color = TimeReadyColor;
+                row.TimeText.fontStyle = FontStyles.Bold;
             }
         }
     }
@@ -250,14 +260,26 @@ public class ActiveWeaponHud : MonoBehaviour
         RectTransform panelRect = panelObject.AddComponent<RectTransform>();
         UiLayoutUtility.SetAnchorBottomRight(panelRect, PanelInsetX, PanelInsetY, PanelWidth, PanelHeight);
 
+        Image borderImage = CreatePanelBorder(panelObject.transform);
+        borderImage.color = PanelBorderColor;
+
         Image panelImage = panelObject.AddComponent<Image>();
         panelImage.raycastTarget = false;
         panelImage.color = PanelBackground;
 
-        weaponHeaderText = CreateLeftText(panelObject.transform, "WeaponHeader", ContentPadding, PanelHeight - 20f, PanelWidth - (ContentPadding * 2f), 16f, 12f, FontStyles.Bold);
+        float headerBottom = PanelHeight - HeaderHeight - 6f;
+        weaponHeaderText = CreateLeftText(
+            panelObject.transform,
+            "WeaponHeader",
+            ContentPadding,
+            headerBottom,
+            PanelWidth - (ContentPadding * 2f),
+            HeaderHeight,
+            HeaderFontSize,
+            FontStyles.Bold);
         weaponHeaderText.color = HeaderColor;
 
-        primaryRow = BuildAbilityRow(panelObject.transform, "PrimaryRow", 34f);
+        primaryRow = BuildAbilityRow(panelObject.transform, "PrimaryRow", 44f);
         secondaryRow = BuildAbilityRow(panelObject.transform, "SecondaryRow", 14f);
 
         isBuilt = true;
@@ -271,13 +293,14 @@ public class ActiveWeaponHud : MonoBehaviour
         RectTransform rowRect = rowObject.AddComponent<RectTransform>();
         UiLayoutUtility.SetAnchorBottomLeft(rowRect, ContentPadding, bottomOffset, PanelWidth - (ContentPadding * 2f), RowHeight);
 
-        TMP_Text labelText = CreateLeftText(rowObject.transform, "Label", 0f, 0f, 132f, RowHeight, 10f, FontStyles.Normal);
+        TMP_Text labelText = CreateLeftText(rowObject.transform, "Label", 0f, 0f, LabelWidth, RowHeight, RowFontSize, FontStyles.Normal);
         labelText.color = AbilityLabelColor;
 
-        Image barBackground = CreateBarBackground(rowObject.transform, 136f);
+        Image barBackground = CreateBarBackground(rowObject.transform, BarOffsetX);
         Image barFill = CreateBarFill(barBackground.transform);
 
-        TMP_Text timeText = CreateLeftText(rowObject.transform, "Time", 202f, 0f, 28f, RowHeight, 9f, FontStyles.Normal);
+        float timeOffsetX = PanelWidth - (ContentPadding * 2f) - TimeWidth;
+        TMP_Text timeText = CreateLeftText(rowObject.transform, "Time", timeOffsetX, 0f, TimeWidth, RowHeight, TimeFontSize, FontStyles.Normal);
         timeText.alignment = TextAlignmentOptions.MidlineRight;
         timeText.color = TimeReadyColor;
 
@@ -295,7 +318,7 @@ public class ActiveWeaponHud : MonoBehaviour
         barObject.transform.SetParent(parent, false);
 
         RectTransform barRect = barObject.AddComponent<RectTransform>();
-        UiLayoutUtility.SetAnchorBottomLeft(barRect, x, 6f, BarWidth, BarHeight);
+        UiLayoutUtility.SetAnchorBottomLeft(barRect, x, 8f, BarWidth, BarHeight);
 
         Image background = barObject.AddComponent<Image>();
         background.raycastTarget = false;
@@ -322,6 +345,23 @@ public class ActiveWeaponHud : MonoBehaviour
         fill.color = BarReadyColor;
         fill.fillAmount = 1f;
         return fill;
+    }
+
+    private static Image CreatePanelBorder(Transform parent)
+    {
+        GameObject borderObject = new GameObject("PanelBorder");
+        borderObject.transform.SetParent(parent, false);
+        borderObject.transform.SetAsFirstSibling();
+
+        RectTransform borderRect = borderObject.AddComponent<RectTransform>();
+        borderRect.anchorMin = Vector2.zero;
+        borderRect.anchorMax = Vector2.one;
+        borderRect.offsetMin = new Vector2(-1f, -1f);
+        borderRect.offsetMax = new Vector2(1f, 1f);
+
+        Image borderImage = borderObject.AddComponent<Image>();
+        borderImage.raycastTarget = false;
+        return borderImage;
     }
 
     private static TMP_Text CreateLeftText(
