@@ -285,6 +285,11 @@ public class FPSPlayerController : MonoBehaviour
         cameraTransform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
     }
 
+    private float GetEffectiveDashCooldown()
+    {
+        return DashCooldown * ChestStatCombatModifiers.GetDashCooldownMultiplier();
+    }
+
     private bool HandleDash()
     {
         if (dashCooldownTimer > 0f)
@@ -327,7 +332,7 @@ public class FPSPlayerController : MonoBehaviour
 
         isDashing = true;
         dashTimer = DashDuration;
-        dashCooldownTimer = DashCooldown;
+        dashCooldownTimer = GetEffectiveDashCooldown();
         dashSpeed = DashDistance / DashDuration;
         horizontalVelocity = dashDirection * dashSpeed;
         IsInvulnerable = true;
