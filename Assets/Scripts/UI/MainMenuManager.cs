@@ -117,7 +117,7 @@ public class MainMenuManager : MonoBehaviour
             HUDManager.ShowGameplayHud();
         }
 
-        RunBuildHud.ShowHud();
+        RunBuildHud.EnsureVisibleForRun();
         ChestStatBuffHud.OnGameplayRunStarted();
         ActiveWeaponHud.ShowHud();
 

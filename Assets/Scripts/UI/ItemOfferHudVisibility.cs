@@ -12,7 +12,7 @@ public static class ItemOfferHudVisibility
         }
 
         HUDManager.ShowGameplayHud();
-        RunBuildHud.ShowHud();
+        RunBuildHud.EnsureVisibleForRun();
         ActiveWeaponHud.ShowHud();
         ChestStatBuffHud.OnGameplayRunStarted();
     }

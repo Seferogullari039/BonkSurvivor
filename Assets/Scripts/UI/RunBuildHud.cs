@@ -29,8 +29,21 @@ public class RunBuildHud : MonoBehaviour
 
     private GameObject panelRoot;
     private bool isBuilt;
+    private bool runHudVisible;
 
     private static RunBuildHud instance;
+
+    public static void EnsureVisibleForRun()
+    {
+        RunBuildHud hud = ResolveInstance();
+
+        if (hud == null)
+        {
+            return;
+        }
+
+        hud.EnsureVisibleForRunInternal();
+    }
 
     public static void ShowHud()
     {
@@ -44,12 +57,17 @@ public class RunBuildHud : MonoBehaviour
 
     public static void SetVisible(bool visible)
     {
+        ResolveInstance()?.ApplyRunVisibility(visible);
+    }
+
+    private static RunBuildHud ResolveInstance()
+    {
         if (instance == null)
         {
-            instance = FindFirstObjectByType<RunBuildHud>();
+            instance = FindFirstObjectByType<RunBuildHud>(FindObjectsInactive.Include);
         }
 
-        instance?.ApplyVisibility(visible);
+        return instance;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -78,7 +96,7 @@ public class RunBuildHud : MonoBehaviour
         tracker.OnBuildChanged += Refresh;
         tracker.OnEvolutionUnlocked += OnEvolutionUnlocked;
         Refresh();
-        ApplyVisibility(false);
+        ApplyRunVisibility(false);
     }
 
     private void OnDestroy()
@@ -89,10 +107,28 @@ public class RunBuildHud : MonoBehaviour
             RunBuildTracker.Instance.OnEvolutionUnlocked -= OnEvolutionUnlocked;
         }
 
+        if (panelRoot != null)
+        {
+            Destroy(panelRoot);
+            panelRoot = null;
+        }
+
+        isBuilt = false;
+
         if (instance == this)
         {
             instance = null;
         }
+    }
+
+    private void Update()
+    {
+        if (!isBuilt || panelRoot == null)
+        {
+            return;
+        }
+
+        panelRoot.SetActive(runHudVisible && ShouldShowDuringGameplay());
     }
 
     private void OnEvolutionUnlocked(BuildEvolutionId evolutionId)
@@ -100,12 +136,86 @@ public class RunBuildHud : MonoBehaviour
         Refresh();
     }
 
-    private void ApplyVisibility(bool visible)
+    private void EnsureVisibleForRunInternal()
+    {
+        if (!gameObject.activeSelf)
+        {
+            gameObject.SetActive(true);
+        }
+
+        EnsurePanelBuilt();
+        runHudVisible = true;
+        Refresh();
+        ApplyPanelVisibility();
+    }
+
+    private void ApplyRunVisibility(bool visible)
+    {
+        runHudVisible = visible;
+        EnsurePanelBuilt();
+        ApplyPanelVisibility();
+    }
+
+    private void ApplyPanelVisibility()
+    {
+        if (panelRoot == null)
+        {
+            return;
+        }
+
+        panelRoot.SetActive(runHudVisible && ShouldShowDuringGameplay());
+    }
+
+    private static bool ShouldShowDuringGameplay()
+    {
+        if (!MainMenuManager.IsRunActive)
+        {
+            return false;
+        }
+
+        if (DevAdminPanel.IsOpen)
+        {
+            return false;
+        }
+
+        if (GameOverManager.Instance != null && GameOverManager.Instance.IsGameOverActive)
+        {
+            return false;
+        }
+
+        if (PauseMenuManager.IsGameplayPaused)
+        {
+            return false;
+        }
+
+        if (MerchantShrineUI.IsOpen)
+        {
+            return false;
+        }
+
+        LevelUpManager levelUpManager = LevelUpManager.Instance;
+
+        if (levelUpManager != null && levelUpManager.IsLevelUpOpen)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    private void EnsurePanelBuilt()
     {
         if (panelRoot != null)
         {
-            panelRoot.SetActive(visible);
+            return;
         }
+
+        if (isBuilt)
+        {
+            isBuilt = false;
+        }
+
+        BuildPanel();
     }
 
     private void BuildPanel()
