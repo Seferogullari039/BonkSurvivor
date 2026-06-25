@@ -33,6 +33,10 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
     private const float StarfallSigilRadius = 16f;
     private const int StarfallSigilMaxTargets = 3;
     private const int StarfallSigilDamage = 20;
+    private const float CelestialShieldRechargeSeconds = 20f;
+
+    private static float celestialShieldTimer;
+    private static bool celestialShieldReady;
 
     private float stormCrownTimer;
     private float voidBellTimer;
@@ -77,6 +81,18 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
         }
 
         return calculatedRange;
+    }
+
+    public static bool TryConsumeCelestialShieldBlock()
+    {
+        if (!HasCelestialShield || !celestialShieldReady)
+        {
+            return false;
+        }
+
+        celestialShieldReady = false;
+        celestialShieldTimer = 0f;
+        return true;
     }
 
     public static void TryProcDeathMarkOnPlayerHit(Enemy struckEnemy)
@@ -154,6 +170,9 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
 
     public static void ResetRun()
     {
+        celestialShieldTimer = 0f;
+        celestialShieldReady = false;
+
         if (Instance == null)
         {
             return;
@@ -241,6 +260,24 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
                 starfallSigilTimer = 0f;
                 TriggerStarfallSigil();
             }
+        }
+
+        if (HasCelestialShield)
+        {
+            if (!celestialShieldReady)
+            {
+                celestialShieldTimer += Time.deltaTime;
+
+                if (celestialShieldTimer >= CelestialShieldRechargeSeconds)
+                {
+                    celestialShieldReady = true;
+                }
+            }
+        }
+        else
+        {
+            celestialShieldTimer = 0f;
+            celestialShieldReady = false;
         }
     }
 

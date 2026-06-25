@@ -1999,7 +1999,8 @@ public class LevelUpManager : MonoBehaviour
             || upgradeIndex == UpgradeOptionCatalog.VoidBellIndex
             || upgradeIndex == UpgradeOptionCatalog.DragonHeartIndex
             || upgradeIndex == UpgradeOptionCatalog.TitanGauntletIndex
-            || upgradeIndex == UpgradeOptionCatalog.StarfallSigilIndex)
+            || upgradeIndex == UpgradeOptionCatalog.StarfallSigilIndex
+            || upgradeIndex == UpgradeOptionCatalog.CelestialShieldIndex)
         {
             LegendaryPassiveEffectManager.GetOrCreate();
         }

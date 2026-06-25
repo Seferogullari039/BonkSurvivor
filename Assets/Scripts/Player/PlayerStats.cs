@@ -391,6 +391,10 @@ public class PlayerStats : MonoBehaviour
     {
         if (isGodMode) return;
         if (FPSPlayerController.IsInvulnerable) return;
+        if (LegendaryPassiveEffectManager.TryConsumeCelestialShieldBlock())
+        {
+            return;
+        }
 
         RunStatsTracker.GetOrCreate().RecordDamageTaken(damage);
 
