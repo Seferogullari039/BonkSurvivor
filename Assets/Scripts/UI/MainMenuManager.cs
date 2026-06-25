@@ -7,6 +7,7 @@ public class MainMenuManager : MonoBehaviour
 {
     public static MainMenuManager Instance { get; private set; }
     public static bool IsRunActive { get; private set; }
+    public static bool RequestPlayAfterSceneLoad { get; set; }
 
     private GameObject mainMenuPanel;
     private GameObject upgradesPanel;
@@ -46,6 +47,18 @@ public class MainMenuManager : MonoBehaviour
         ApplyMenuPresentationState();
         HideMenuWeaponVisuals();
         PauseMenuManager.HidePauseMenuIfExists();
+
+        if (RequestPlayAfterSceneLoad)
+        {
+            RequestPlayAfterSceneLoad = false;
+            StartCoroutine(AutoStartRunAfterSceneLoadRoutine());
+        }
+    }
+
+    private IEnumerator AutoStartRunAfterSceneLoadRoutine()
+    {
+        yield return null;
+        PlayGame();
     }
 
     public void PlayGame()
@@ -96,14 +109,25 @@ public class MainMenuManager : MonoBehaviour
             StopCoroutine(forceGameplayHudRoutine);
         }
 
-        forceGameplayHudRoutine = StartCoroutine(ForceGameplayHUDNextFrame());
+        forceGameplayHudRoutine = StartCoroutine(RestoreGameplayHudAfterRunRoutine());
     }
 
-    private IEnumerator ForceGameplayHUDNextFrame()
+    private IEnumerator RestoreGameplayHudAfterRunRoutine()
     {
         yield return null;
+        RestoreGameplayHudFrame();
+        yield return null;
+        RestoreGameplayHudFrame();
+        yield return null;
+        RestoreGameplayHudFrame();
         yield return new WaitForEndOfFrame();
+        RestoreGameplayHudFrame();
 
+        forceGameplayHudRoutine = null;
+    }
+
+    private static void RestoreGameplayHudFrame()
+    {
         HUDManager hud = FindFirstObjectByType<HUDManager>();
 
         if (hud != null)
@@ -120,8 +144,6 @@ public class MainMenuManager : MonoBehaviour
         RunBuildHud.EnsureVisibleForRun();
         ChestStatBuffHud.OnGameplayRunStarted();
         ActiveWeaponHud.ShowHud();
-
-        forceGameplayHudRoutine = null;
     }
 
     private static void HideLevelUpPanelForGameplay()

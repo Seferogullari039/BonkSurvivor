@@ -2,6 +2,8 @@ public static class ItemOfferHudVisibility
 {
     private static bool isSuppressed;
 
+    public static bool IsGameplaySuppressed => isSuppressed;
+
     public static void ResetStateForNewRun()
     {
         isSuppressed = false;

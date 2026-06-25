@@ -33,16 +33,16 @@ public class RunBuildHud : MonoBehaviour
 
     private static RunBuildHud instance;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        instance = null;
+    }
+
     public static void EnsureVisibleForRun()
     {
-        RunBuildHud hud = ResolveInstance();
-
-        if (hud == null)
-        {
-            return;
-        }
-
-        hud.EnsureVisibleForRunInternal();
+        RunBuildHud hud = ResolveOrCreateInstance();
+        hud?.EnsureVisibleForRunInternal();
     }
 
     public static void ShowHud()
@@ -57,14 +57,20 @@ public class RunBuildHud : MonoBehaviour
 
     public static void SetVisible(bool visible)
     {
-        ResolveInstance()?.ApplyRunVisibility(visible);
+        ResolveOrCreateInstance()?.ApplyRunVisibility(visible);
     }
 
-    private static RunBuildHud ResolveInstance()
+    private static RunBuildHud ResolveOrCreateInstance()
     {
         if (instance == null)
         {
             instance = FindFirstObjectByType<RunBuildHud>(FindObjectsInactive.Include);
+        }
+
+        if (instance == null)
+        {
+            GameObject hudObject = new GameObject("RunBuildHud");
+            instance = hudObject.AddComponent<RunBuildHud>();
         }
 
         return instance;
@@ -73,13 +79,7 @@ public class RunBuildHud : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
-        if (FindFirstObjectByType<RunBuildHud>() != null)
-        {
-            return;
-        }
-
-        GameObject hudObject = new GameObject("RunBuildHud");
-        hudObject.AddComponent<RunBuildHud>();
+        ResolveOrCreateInstance();
     }
 
     private sealed class SlotView
@@ -123,6 +123,18 @@ public class RunBuildHud : MonoBehaviour
 
     private void Update()
     {
+        if (MainMenuManager.IsRunActive
+            && ShouldShowDuringGameplay()
+            && !ItemOfferHudVisibility.IsGameplaySuppressed)
+        {
+            if (!runHudVisible)
+            {
+                runHudVisible = true;
+            }
+
+            EnsurePanelBuilt();
+        }
+
         if (!isBuilt || panelRoot == null)
         {
             return;
@@ -215,7 +227,30 @@ public class RunBuildHud : MonoBehaviour
             isBuilt = false;
         }
 
+        Canvas canvas = UiLayoutUtility.GetGameplayCanvas();
+
+        if (canvas != null)
+        {
+            ClearOrphanPanels(canvas);
+        }
+
         BuildPanel();
+    }
+
+    private static void ClearOrphanPanels(Canvas canvas)
+    {
+        if (canvas == null)
+        {
+            return;
+        }
+
+        Transform orphan = canvas.transform.Find("RunBuildPanel");
+
+        while (orphan != null)
+        {
+            Destroy(orphan.gameObject);
+            orphan = canvas.transform.Find("RunBuildPanel");
+        }
     }
 
     private void BuildPanel()
@@ -231,6 +266,8 @@ public class RunBuildHud : MonoBehaviour
         {
             return;
         }
+
+        ClearOrphanPanels(canvas);
 
         GameObject panelObject = new GameObject("RunBuildPanel");
         panelObject.transform.SetParent(canvas.transform, false);
