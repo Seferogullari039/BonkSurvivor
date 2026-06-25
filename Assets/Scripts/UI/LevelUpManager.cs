@@ -1263,6 +1263,11 @@ public class LevelUpManager : MonoBehaviour
             case UpgradeOptionCatalog.StormCrownIndex:
             case UpgradeOptionCatalog.DeathMarkIndex:
             case UpgradeOptionCatalog.VoidBellIndex:
+            case UpgradeOptionCatalog.DragonHeartIndex:
+            case UpgradeOptionCatalog.TitanGauntletIndex:
+            case UpgradeOptionCatalog.StarfallSigilIndex:
+            case UpgradeOptionCatalog.CelestialShieldIndex:
+            case UpgradeOptionCatalog.BloodPactIndex:
                 weight = 1;
                 break;
             case UpgradeOptionCatalog.HuntersEyeIndex:
@@ -1506,6 +1511,31 @@ public class LevelUpManager : MonoBehaviour
                 return MakeContent(
                     "Luck",
                     "Improves chest reward odds.",
+                    "sharp_instinct");
+            case UpgradeOptionCatalog.DragonHeartIndex:
+                return MakeContent(
+                    "Dragon Heart",
+                    "Every 8s, unleashes a fire burst in front of you.",
+                    "inferno");
+            case UpgradeOptionCatalog.TitanGauntletIndex:
+                return MakeContent(
+                    "Titan Gauntlet",
+                    "Every 9s, stomps nearby enemies with crushing force.",
+                    "blade");
+            case UpgradeOptionCatalog.StarfallSigilIndex:
+                return MakeContent(
+                    "Starfall Sigil",
+                    "Every 12s, calls down star strikes on nearby enemies.",
+                    "meteor");
+            case UpgradeOptionCatalog.CelestialShieldIndex:
+                return MakeContent(
+                    "Celestial Shield",
+                    "Periodically protects you from danger.",
+                    "orbit");
+            case UpgradeOptionCatalog.BloodPactIndex:
+                return MakeContent(
+                    "Blood Pact",
+                    "Gain more power as your health gets lower.",
                     "sharp_instinct");
             default:
                 return MakeContent(string.Empty, string.Empty, string.Empty);
@@ -1957,11 +1987,19 @@ public class LevelUpManager : MonoBehaviour
             case 28:
             case UpgradeOptionCatalog.KeyIndex:
             case UpgradeOptionCatalog.LuckIndex:
+            case UpgradeOptionCatalog.DragonHeartIndex:
+            case UpgradeOptionCatalog.TitanGauntletIndex:
+            case UpgradeOptionCatalog.StarfallSigilIndex:
+            case UpgradeOptionCatalog.CelestialShieldIndex:
+            case UpgradeOptionCatalog.BloodPactIndex:
                 break;
         }
 
         if (upgradeIndex == UpgradeOptionCatalog.StormCrownIndex
-            || upgradeIndex == UpgradeOptionCatalog.VoidBellIndex)
+            || upgradeIndex == UpgradeOptionCatalog.VoidBellIndex
+            || upgradeIndex == UpgradeOptionCatalog.DragonHeartIndex
+            || upgradeIndex == UpgradeOptionCatalog.TitanGauntletIndex
+            || upgradeIndex == UpgradeOptionCatalog.StarfallSigilIndex)
         {
             LegendaryPassiveEffectManager.GetOrCreate();
         }

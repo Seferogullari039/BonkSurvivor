@@ -25,6 +25,11 @@ public static class UpgradeOptionCatalog
     public const int VoidBellIndex = 28;
     public const int KeyIndex = 29;
     public const int LuckIndex = 30;
+    public const int DragonHeartIndex = 31;
+    public const int TitanGauntletIndex = 32;
+    public const int StarfallSigilIndex = 33;
+    public const int CelestialShieldIndex = 34;
+    public const int BloodPactIndex = 35;
 
     public static int OptionCount => Options.Length;
 
@@ -106,7 +111,12 @@ public static class UpgradeOptionCatalog
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Epic, WeaponBuildType.General, 3), // 27 Gravity Stone
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 28 Void Bell
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Rare, WeaponBuildType.General, 30), // 29 Key
-        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Epic, WeaponBuildType.General, 10) // 30 Luck
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Epic, WeaponBuildType.General, 10), // 30 Luck
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 31 Dragon Heart
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 32 Titan Gauntlet
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 33 Starfall Sigil
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 34 Celestial Shield
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1) // 35 Blood Pact
     };
 
     private static readonly EvolutionRequirement[] EvolutionRequirements =
@@ -459,6 +469,11 @@ public static class UpgradeOptionCatalog
         "Gravity Stone",
         "Void Bell",
         "Key",
-        "Luck"
+        "Luck",
+        "Dragon Heart",
+        "Titan Gauntlet",
+        "Starfall Sigil",
+        "Celestial Shield",
+        "Blood Pact"
     };
 }

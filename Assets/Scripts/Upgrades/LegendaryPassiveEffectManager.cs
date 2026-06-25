@@ -22,9 +22,23 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
     private const float VoidBellBlackHoleRadius = 10f;
     private const int VoidBellDamage = 22;
     private const int VoidBellBlackHoleDamage = 26;
+    private const float DragonHeartCooldown = 8f;
+    private const float DragonHeartForwardOffset = 4f;
+    private const float DragonHeartRadius = 5f;
+    private const int DragonHeartDamage = 24;
+    private const float TitanGauntletCooldown = 9f;
+    private const float TitanGauntletRadius = 6f;
+    private const int TitanGauntletDamage = 28;
+    private const float StarfallSigilCooldown = 12f;
+    private const float StarfallSigilRadius = 16f;
+    private const int StarfallSigilMaxTargets = 3;
+    private const int StarfallSigilDamage = 20;
 
     private float stormCrownTimer;
     private float voidBellTimer;
+    private float dragonHeartTimer;
+    private float titanGauntletTimer;
+    private float starfallSigilTimer;
 
     public static LegendaryPassiveEffectManager GetOrCreate()
     {
@@ -49,6 +63,11 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
     public static bool HasStormCrown => HasUpgrade(UpgradeOptionCatalog.StormCrownIndex);
     public static bool HasDeathMark => HasUpgrade(UpgradeOptionCatalog.DeathMarkIndex);
     public static bool HasVoidBell => HasUpgrade(UpgradeOptionCatalog.VoidBellIndex);
+    public static bool HasDragonHeart => HasUpgrade(UpgradeOptionCatalog.DragonHeartIndex);
+    public static bool HasTitanGauntlet => HasUpgrade(UpgradeOptionCatalog.TitanGauntletIndex);
+    public static bool HasStarfallSigil => HasUpgrade(UpgradeOptionCatalog.StarfallSigilIndex);
+    public static bool HasCelestialShield => HasUpgrade(UpgradeOptionCatalog.CelestialShieldIndex);
+    public static bool HasBloodPact => HasUpgrade(UpgradeOptionCatalog.BloodPactIndex);
 
     public static float ResolvePickupRange(float calculatedRange)
     {
@@ -190,6 +209,39 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
                 TriggerVoidBell();
             }
         }
+
+        if (HasDragonHeart)
+        {
+            dragonHeartTimer += Time.deltaTime;
+
+            if (dragonHeartTimer >= DragonHeartCooldown)
+            {
+                dragonHeartTimer = 0f;
+                TriggerDragonHeart();
+            }
+        }
+
+        if (HasTitanGauntlet)
+        {
+            titanGauntletTimer += Time.deltaTime;
+
+            if (titanGauntletTimer >= TitanGauntletCooldown)
+            {
+                titanGauntletTimer = 0f;
+                TriggerTitanGauntlet();
+            }
+        }
+
+        if (HasStarfallSigil)
+        {
+            starfallSigilTimer += Time.deltaTime;
+
+            if (starfallSigilTimer >= StarfallSigilCooldown)
+            {
+                starfallSigilTimer = 0f;
+                TriggerStarfallSigil();
+            }
+        }
     }
 
     private void TriggerStormCrown()
@@ -294,6 +346,152 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
 
             RunStatsTracker.GetOrCreate().RecordDamageDealt("Void Bell", pulseDamage);
             enemy.TakeDamage(pulseDamage);
+        }
+    }
+
+    private void TriggerDragonHeart()
+    {
+        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+
+        if (playerObject == null)
+        {
+            return;
+        }
+
+        Vector3 forward = playerObject.transform.forward;
+        forward.y = 0f;
+
+        if (forward.sqrMagnitude < 0.0001f)
+        {
+            forward = Vector3.forward;
+        }
+        else
+        {
+            forward.Normalize();
+        }
+
+        Vector3 origin = playerObject.transform.position + forward * DragonHeartForwardOffset;
+        DamageEnemiesInRadius(origin, DragonHeartRadius, DragonHeartDamage, "Dragon Heart");
+    }
+
+    private void TriggerTitanGauntlet()
+    {
+        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+
+        if (playerObject == null)
+        {
+            return;
+        }
+
+        DamageEnemiesInRadius(playerObject.transform.position, TitanGauntletRadius, TitanGauntletDamage, "Titan Gauntlet");
+    }
+
+    private void TriggerStarfallSigil()
+    {
+        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+
+        if (playerObject == null)
+        {
+            return;
+        }
+
+        DamageNearestEnemies(
+            playerObject.transform.position,
+            StarfallSigilRadius,
+            StarfallSigilMaxTargets,
+            StarfallSigilDamage,
+            "Starfall Sigil");
+    }
+
+    private static void DamageEnemiesInRadius(Vector3 origin, float radius, int damage, string source)
+    {
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            GameObject enemyObject = enemies[i];
+
+            if (enemyObject == null)
+            {
+                continue;
+            }
+
+            Enemy enemy = enemyObject.GetComponent<Enemy>() ?? enemyObject.GetComponentInParent<Enemy>();
+
+            if (!IsLegendaryPulseTarget(enemy))
+            {
+                continue;
+            }
+
+            float distance = Vector3.Distance(origin, enemyObject.transform.position);
+
+            if (distance > radius)
+            {
+                continue;
+            }
+
+            RunStatsTracker.GetOrCreate().RecordDamageDealt(source, damage);
+            enemy.TakeDamage(damage);
+        }
+    }
+
+    private static void DamageNearestEnemies(
+        Vector3 origin,
+        float radius,
+        int maxTargets,
+        int damage,
+        string source)
+    {
+        GameObject[] enemies = GameObject.FindGameObjectsWithTag("Enemy");
+        List<EnemyDistanceCandidate> candidates = new List<EnemyDistanceCandidate>(enemies.Length);
+
+        for (int i = 0; i < enemies.Length; i++)
+        {
+            GameObject enemyObject = enemies[i];
+
+            if (enemyObject == null)
+            {
+                continue;
+            }
+
+            Enemy enemy = enemyObject.GetComponent<Enemy>() ?? enemyObject.GetComponentInParent<Enemy>();
+
+            if (!IsLegendaryPulseTarget(enemy))
+            {
+                continue;
+            }
+
+            float distance = Vector3.Distance(origin, enemyObject.transform.position);
+
+            if (distance > radius)
+            {
+                continue;
+            }
+
+            candidates.Add(new EnemyDistanceCandidate(enemy, distance));
+        }
+
+        if (candidates.Count == 0)
+        {
+            return;
+        }
+
+        candidates.Sort((a, b) => a.Distance.CompareTo(b.Distance));
+
+        int hitCount = 0;
+
+        for (int i = 0; i < candidates.Count && hitCount < maxTargets; i++)
+        {
+            Enemy enemy = candidates[i].Enemy;
+
+            if (enemy == null)
+            {
+                continue;
+            }
+
+            RunStatsTracker.GetOrCreate().RecordDamageDealt(source, damage);
+            enemy.TakeDamage(damage);
+            hitCount++;
         }
     }
 
