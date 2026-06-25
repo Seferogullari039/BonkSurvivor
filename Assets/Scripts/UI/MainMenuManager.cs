@@ -35,6 +35,7 @@ public class MainMenuManager : MonoBehaviour
         IsRunActive = false;
         Time.timeScale = 0f;
         gameStarted = false;
+        ItemOfferHudVisibility.ResetStateForNewRun();
         CloseUpgrades();
         ShowMainMenuPanel();
         HUDManager.HideGameplayHud();
@@ -82,6 +83,7 @@ public class MainMenuManager : MonoBehaviour
         gameStarted = true;
         IsRunActive = true;
         Time.timeScale = 1f;
+        ItemOfferHudVisibility.ResetStateForNewRun();
         PauseMenuManager.HidePauseMenuIfExists();
 
         ApplyGameplayPresentationState();
@@ -144,6 +146,7 @@ public class MainMenuManager : MonoBehaviour
         gameStarted = false;
         IsRunActive = false;
         Time.timeScale = 0f;
+        ItemOfferHudVisibility.ResetStateForNewRun();
 
         if (GameOverManager.Instance != null)
         {

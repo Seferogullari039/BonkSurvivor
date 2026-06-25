@@ -144,8 +144,8 @@ public class HUDManager : MonoBehaviour
 
         Transform canvasTransform = canvas.transform;
 
-        SetupHudText(hpText, canvasTransform, new Vector2(20f, -20f));
-        SetupHudText(xpText, canvasTransform, new Vector2(20f, -60f));
+        SetupHudText(hpText, canvasTransform, new Vector2(24f, 52f));
+        SetupHudText(xpText, canvasTransform, new Vector2(24f, 88f));
         HideLegacyPrototypeTexts();
         SetupHudBars(canvasTransform);
         BuildPolishedLevelCoinHud(canvas);
@@ -156,6 +156,8 @@ public class HUDManager : MonoBehaviour
         {
             NeutralizeOverlayPanel(canvasTransform, "HUDPanel");
         }
+
+        EnsureGameplayHudLayout();
     }
 
     private static void SetupHudText(TMP_Text text, Transform canvasTransform, Vector2 anchoredPosition)
@@ -168,12 +170,12 @@ public class HUDManager : MonoBehaviour
         text.transform.SetParent(canvasTransform, false);
 
         RectTransform rectTransform = text.rectTransform;
-        rectTransform.anchorMin = new Vector2(0f, 1f);
-        rectTransform.anchorMax = new Vector2(0f, 1f);
-        rectTransform.pivot = new Vector2(0f, 1f);
-        rectTransform.sizeDelta = new Vector2(400f, 40f);
+        rectTransform.anchorMin = new Vector2(0f, 0f);
+        rectTransform.anchorMax = new Vector2(0f, 0f);
+        rectTransform.pivot = new Vector2(0f, 0f);
+        rectTransform.sizeDelta = new Vector2(420f, 28f);
         rectTransform.anchoredPosition = anchoredPosition;
-        text.fontSize = 24f;
+        text.fontSize = 22f;
         text.alignment = TextAlignmentOptions.MidlineLeft;
         text.color = Color.white;
         text.raycastTarget = false;
@@ -182,8 +184,8 @@ public class HUDManager : MonoBehaviour
 
     private void SetupHudBars(Transform canvasTransform)
     {
-        SetupBarBackground(hpBarBackground, canvasTransform, new Vector2(20f, -210f), new Vector2(260f, 18f));
-        SetupBarBackground(xpBarBackground, canvasTransform, new Vector2(20f, -235f), new Vector2(260f, 14f));
+        SetupBarBackground(hpBarBackground, canvasTransform, new Vector2(24f, 24f), new Vector2(260f, 22f));
+        SetupBarBackground(xpBarBackground, canvasTransform, new Vector2(24f, 8f), new Vector2(260f, 14f));
         EnsureBarFillVisible(hpBarFill, new Color(0.88f, 0.22f, 0.22f, 1f));
         EnsureBarFillVisible(xpBarFill, new Color(0.28f, 0.58f, 1f, 1f));
     }
@@ -198,9 +200,9 @@ public class HUDManager : MonoBehaviour
         barBackground.transform.SetParent(canvasTransform, false);
 
         RectTransform rectTransform = barBackground.GetComponent<RectTransform>();
-        rectTransform.anchorMin = new Vector2(0f, 1f);
-        rectTransform.anchorMax = new Vector2(0f, 1f);
-        rectTransform.pivot = new Vector2(0f, 1f);
+        rectTransform.anchorMin = new Vector2(0f, 0f);
+        rectTransform.anchorMax = new Vector2(0f, 0f);
+        rectTransform.pivot = new Vector2(0f, 0f);
         rectTransform.anchoredPosition = anchoredPosition;
         rectTransform.sizeDelta = size;
         barBackground.SetActive(true);
@@ -257,6 +259,23 @@ public class HUDManager : MonoBehaviour
         EnsureTextVisible(xpText);
         HideLegacyPrototypeTexts();
         EnsurePolishedHudVisible();
+        EnsureGameplayHudLayout();
+    }
+
+    private void EnsureGameplayHudLayout()
+    {
+        Canvas canvas = UiLayoutUtility.GetGameplayCanvas();
+
+        if (canvas == null)
+        {
+            return;
+        }
+
+        Transform canvasTransform = canvas.transform;
+        ForceBottomLeftText(hpText, canvasTransform, new Vector2(24f, 52f));
+        ForceBottomLeftText(xpText, canvasTransform, new Vector2(24f, 88f));
+        ForceHpBarLayout(canvasTransform);
+        ForceXpBarLayout(canvasTransform);
     }
 
     private static void EnsureTextVisible(TMP_Text text)
@@ -294,6 +313,8 @@ public class HUDManager : MonoBehaviour
 
     public void UpdateHP(int currentHP, int maxHP)
     {
+        EnsureGameplayHudLayout();
+
         if (hpText != null)
         {
             hpText.text = "HP " + currentHP + " / " + maxHP;
@@ -307,6 +328,8 @@ public class HUDManager : MonoBehaviour
 
     public void UpdateXPBar(int currentXP, int xpToNextLevel)
     {
+        EnsureGameplayHudLayout();
+
         if (xpBarFill == null)
         {
             return;
@@ -323,6 +346,8 @@ public class HUDManager : MonoBehaviour
 
     public void UpdateXP(int currentXP, int xpToNextLevel)
     {
+        EnsureGameplayHudLayout();
+
         if (xpText == null)
         {
             return;
@@ -485,11 +510,7 @@ public class HUDManager : MonoBehaviour
         BuildPolishedLevelCoinHud(canvas);
         HideLegacyPrototypeTexts();
 
-        ForceBottomLeftText(hpText, canvasTransform, new Vector2(24f, 52f));
-        ForceBottomLeftText(xpText, canvasTransform, new Vector2(24f, 88f));
-
-        ForceHpBarLayout(canvasTransform);
-        ForceXpBarLayout(canvasTransform);
+        EnsureGameplayHudLayout();
 
         BringHudElementsToFront(canvasTransform);
 
@@ -625,10 +646,10 @@ public class HUDManager : MonoBehaviour
         RectTransform rectTransform = xpBarBackground.GetComponent<RectTransform>();
         rectTransform.localScale = Vector3.one;
         rectTransform.anchorMin = new Vector2(0f, 0f);
-        rectTransform.anchorMax = new Vector2(1f, 0f);
-        rectTransform.pivot = new Vector2(0.5f, 0f);
-        rectTransform.offsetMin = new Vector2(32f, 8f);
-        rectTransform.offsetMax = new Vector2(-32f, 14f);
+        rectTransform.anchorMax = new Vector2(0f, 0f);
+        rectTransform.pivot = new Vector2(0f, 0f);
+        rectTransform.anchoredPosition = new Vector2(24f, 8f);
+        rectTransform.sizeDelta = new Vector2(260f, 14f);
         xpBarBackground.SetActive(true);
 
         Image backgroundImage = xpBarBackground.GetComponent<Image>();

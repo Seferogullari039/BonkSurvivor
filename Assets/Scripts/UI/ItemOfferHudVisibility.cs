@@ -2,6 +2,21 @@ public static class ItemOfferHudVisibility
 {
     private static bool isSuppressed;
 
+    public static void ResetStateForNewRun()
+    {
+        isSuppressed = false;
+
+        if (!ShouldRestoreGameplayHud())
+        {
+            return;
+        }
+
+        HUDManager.ShowGameplayHud();
+        RunBuildHud.ShowHud();
+        ActiveWeaponHud.ShowHud();
+        ChestStatBuffHud.OnGameplayRunStarted();
+    }
+
     public static void HideForItemOffer()
     {
         if (isSuppressed)
@@ -30,10 +45,7 @@ public static class ItemOfferHudVisibility
             return;
         }
 
-        HUDManager.ShowGameplayHud();
-        RunBuildHud.ShowHud();
-        ActiveWeaponHud.ShowHud();
-        ChestStatBuffHud.OnGameplayRunStarted();
+        ResetStateForNewRun();
     }
 
     private static bool ShouldRestoreGameplayHud()
