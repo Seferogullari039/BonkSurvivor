@@ -684,6 +684,7 @@ public class MainMenuManager : MonoBehaviour
 
         RunBuildTracker.GetOrCreate().ClearRun();
         ChestStatBuffTracker.GetOrCreate().ClearRun();
+        RewardOfferActionState.ResetForNewRun();
         LegendaryPassiveEffectManager.ResetRun();
         RunStatsTracker.GetOrCreate().ClearRun();
         MerchantShrineUI.ForceClose();

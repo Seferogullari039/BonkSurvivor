@@ -195,6 +195,26 @@ public static class UpgradeOptionCatalog
         return true;
     }
 
+    public static bool IsLevelUpEligible(int upgradeIndex)
+    {
+        if (!CanOfferInRewardPool(upgradeIndex))
+        {
+            return false;
+        }
+
+        return upgradeIndex >= 0 && upgradeIndex <= ConductiveCoreIndex;
+    }
+
+    public static bool IsChestSpecialEligible(int upgradeIndex)
+    {
+        if (!CanOfferInRewardPool(upgradeIndex))
+        {
+            return false;
+        }
+
+        return upgradeIndex >= GoldenMagnetIndex && upgradeIndex <= BloodPactIndex;
+    }
+
     public static OptionMetadata GetMetadata(int upgradeIndex)
     {
         if (upgradeIndex < 0 || upgradeIndex >= Options.Length)

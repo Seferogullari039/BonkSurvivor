@@ -38,11 +38,31 @@ public static class RunBuildRewardFilter
 
     public static List<int> BuildPoolIndices()
     {
+        return BuildLevelUpPoolIndices();
+    }
+
+    public static List<int> BuildLevelUpPoolIndices()
+    {
         List<int> indices = new List<int>(UpgradeOptionCatalog.OptionCount);
 
         for (int i = 0; i < UpgradeOptionCatalog.OptionCount; i++)
         {
-            if (UpgradeOptionCatalog.CanOfferInRewardPool(i))
+            if (UpgradeOptionCatalog.IsLevelUpEligible(i))
+            {
+                indices.Add(i);
+            }
+        }
+
+        return indices;
+    }
+
+    public static List<int> BuildChestSpecialPoolIndices()
+    {
+        List<int> indices = new List<int>();
+
+        for (int i = 0; i < UpgradeOptionCatalog.OptionCount; i++)
+        {
+            if (UpgradeOptionCatalog.IsChestSpecialEligible(i))
             {
                 indices.Add(i);
             }
@@ -125,6 +145,13 @@ public static class RunBuildRewardFilter
 
         for (int i = 0; i < candidates.Count; i++)
         {
+            int candidate = candidates[i];
+
+            if (RewardOfferActionState.IsBanished(candidate))
+            {
+                continue;
+            }
+
             if (predicate(candidates[i]))
             {
                 filtered.Add(candidates[i]);

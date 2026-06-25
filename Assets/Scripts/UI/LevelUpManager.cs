@@ -32,6 +32,7 @@ public class LevelUpManager : MonoBehaviour
     private const int BonusRewardCoin = -1;
     private const int BonusRewardHeal = -2;
     private ChestStatRewardType shownChestStatReward;
+    private bool chestRewardIsSpecialUpgrade;
 
     private void Awake()
     {
@@ -648,7 +649,16 @@ public class LevelUpManager : MonoBehaviour
         AudioManager.Instance?.PlayUpgradeSelect();
 
         PlayerStats playerStats = FindPlayerStats();
-        ChestStatRewardCatalog.Apply(shownChestStatReward, shownUpgradeRarities[0], playerStats);
+
+        if (chestRewardIsSpecialUpgrade)
+        {
+            ApplySelectedUpgrade(shownUpgradeIndices[0], shownUpgradeRarities[0]);
+        }
+        else
+        {
+            ChestStatRewardCatalog.Apply(shownChestStatReward, shownUpgradeRarities[0], playerStats);
+        }
+
         RunStatsTracker.GetOrCreate().RecordChestOpened();
 
         if (chestSingleCardRevealUI != null)
@@ -658,12 +668,25 @@ public class LevelUpManager : MonoBehaviour
 
         isChestUpgradeMenu = false;
         useChestSingleCardReveal = false;
+        chestRewardIsSpecialUpgrade = false;
         remainingUpgradeSelections = 0;
         ChestRevealPause.End();
     }
 
     private void AssignSingleChestReward()
     {
+        chestRewardIsSpecialUpgrade = ChestSpecialRewardRoller.TryRollSpecialUpgrade(
+            currentChestRarity,
+            out int specialUpgradeIndex,
+            out UpgradeRarity specialRarity);
+
+        if (chestRewardIsSpecialUpgrade)
+        {
+            shownUpgradeIndices[0] = specialUpgradeIndex;
+            shownUpgradeRarities[0] = specialRarity;
+            return;
+        }
+
         shownChestStatReward = ChestStatRewardCatalog.RollRandomReward();
         UpgradeRarity baseRarity = MapChestRarityToUpgradeRarity(currentChestRarity);
         shownUpgradeRarities[0] = ChestEconomyModifiers.ApplyLuckToChestStatRarity(baseRarity);
@@ -671,6 +694,29 @@ public class LevelUpManager : MonoBehaviour
 
     private ChestLootSelectionUI.SlotData BuildChestSingleCardData()
     {
+        if (chestRewardIsSpecialUpgrade)
+        {
+            int upgradeIndex = shownUpgradeIndices[0];
+            UpgradeRarity rarity = shownUpgradeRarities[0];
+            int multiplier = GetRarityMultiplier(rarity);
+            UpgradeCardContent content = GetUpgradeCardContent(upgradeIndex, multiplier, FindPlayerStats());
+            string displayTitle = RewardCardTextFormatter.GetDisplayTitle(upgradeIndex, content.Title);
+            string description = content.Description;
+
+            if (RewardCardTextFormatter.TryGetEvolutionRequirementLine(upgradeIndex, out string requirementLine))
+            {
+                description = requirementLine + "\n" + description;
+            }
+
+            return ChestLootSelectionUI.SlotData.FromUpgrade(
+                rarity,
+                UpgradeOptionCatalog.GetCategory(upgradeIndex),
+                UpgradeOptionCatalog.GetBuildType(upgradeIndex),
+                displayTitle,
+                description,
+                content.IconKey);
+        }
+
         return ChestLootSelectionUI.SlotData.FromChestStat(shownChestStatReward, shownUpgradeRarities[0]);
     }
 
