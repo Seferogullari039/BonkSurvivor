@@ -95,6 +95,49 @@ public class LegendaryPassiveEffectManager : MonoBehaviour
         return true;
     }
 
+    public static int ApplyBloodPactStarterDamageBonus(int damage)
+    {
+        if (!HasBloodPact || damage <= 0)
+        {
+            return damage;
+        }
+
+        GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
+
+        if (playerObject == null)
+        {
+            return damage;
+        }
+
+        PlayerStats playerStats = playerObject.GetComponent<PlayerStats>();
+
+        if (playerStats == null)
+        {
+            return damage;
+        }
+
+        int effectiveMaxHealth = playerStats.EffectiveMaxHealth;
+
+        if (effectiveMaxHealth <= 0)
+        {
+            return damage;
+        }
+
+        float healthRatio = (float)playerStats.CurrentHealth / effectiveMaxHealth;
+
+        if (healthRatio > 0.50f)
+        {
+            return damage;
+        }
+
+        if (healthRatio > 0.25f)
+        {
+            return Mathf.Max(1, Mathf.RoundToInt(damage * 1.15f));
+        }
+
+        return Mathf.Max(1, Mathf.RoundToInt(damage * 1.30f));
+    }
+
     public static void TryProcDeathMarkOnPlayerHit(Enemy struckEnemy)
     {
         if (!HasDeathMark || struckEnemy == null)
