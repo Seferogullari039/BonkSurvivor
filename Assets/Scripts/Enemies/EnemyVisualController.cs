@@ -449,17 +449,18 @@ public sealed class EnemyVisualController : MonoBehaviour
 
     private void EnsureGroundShadow()
     {
+        RemoveExistingGroundShadow();
+
+        if (!ShouldCreateGroundShadow())
+        {
+            return;
+        }
+
         Transform shadowParent = ResolveStableDecorParent();
 
         if (shadowParent == null)
         {
             return;
-        }
-
-        if (groundShadow != null)
-        {
-            Destroy(groundShadow);
-            groundShadow = null;
         }
 
         float diameter = currentType switch
@@ -490,6 +491,42 @@ public sealed class EnemyVisualController : MonoBehaviour
             0f,
             true);
         groundShadow.transform.SetAsFirstSibling();
+    }
+
+    private bool ShouldCreateGroundShadow()
+    {
+        return currentType != Enemy.EnemyType.Normal;
+    }
+
+    private void RemoveExistingGroundShadow()
+    {
+        if (groundShadow != null)
+        {
+            Destroy(groundShadow);
+            groundShadow = null;
+        }
+
+        DestroyAllGroundShadows(transform);
+    }
+
+    private static void DestroyAllGroundShadows(Transform root)
+    {
+        if (root == null)
+        {
+            return;
+        }
+
+        Transform[] descendants = root.GetComponentsInChildren<Transform>(true);
+
+        for (int i = descendants.Length - 1; i >= 0; i--)
+        {
+            Transform descendant = descendants[i];
+
+            if (descendant != null && descendant.name == "EnemyGroundShadow")
+            {
+                Destroy(descendant.gameObject);
+            }
+        }
     }
 
     private void EnsureEliteRing()
