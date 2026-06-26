@@ -77,67 +77,39 @@ public static class RunStatsSummaryFormatter
         return FormatLeftColumn(snapshot) + "\n\n" + FormatRightColumn(snapshot);
     }
 
+    private const string SectionHeaderColor = "#B8C0CC";
+    private const string CoinHeaderColor = "#D4AF55";
+    private const string CoinValueColor = "#F0D080";
+
     public static string FormatLeftColumn(RunStatsSnapshot snapshot)
     {
         StringBuilder builder = new StringBuilder();
-        builder.AppendLine("RUN");
-        builder.AppendLine("Time: " + FormatTime(snapshot.TimeSurvived));
-        builder.AppendLine("Wave: " + snapshot.WaveReached);
-        builder.AppendLine("Level: " + snapshot.LevelReached);
+        builder.AppendLine("Survived: " + FormatTime(snapshot.TimeSurvived));
+        builder.AppendLine("Reached Wave: " + snapshot.WaveReached);
+        builder.AppendLine("Enemies Defeated: " + FormatNumber(snapshot.EnemiesKilled));
+        builder.AppendLine("Chests Opened: " + snapshot.ChestsOpened);
         builder.AppendLine();
-        builder.AppendLine("KILLS");
-        builder.AppendLine("Enemies: " + snapshot.EnemiesKilled);
-        builder.AppendLine("Elites: " + snapshot.ElitesKilled);
-        builder.AppendLine("Bosses: " + snapshot.BossesKilled);
-        builder.AppendLine();
-        builder.AppendLine("LOOT");
-        builder.AppendLine("Coins: " + FormatNumber(snapshot.CoinsEarned));
-        builder.AppendLine("Added to Total Coins: +" + FormatNumber(GetMetaCoinsAddedForSummary(snapshot)));
-        builder.AppendLine("XP: " + FormatNumber(snapshot.XpCollected));
-        builder.AppendLine("Chests: " + snapshot.ChestsOpened);
-        builder.AppendLine("Relics: " + snapshot.RelicsCollected);
-        builder.AppendLine("Evolutions: " + FormatEvolutionList(snapshot.EvolutionNames));
+        builder.AppendLine("<color=" + CoinHeaderColor + ">COINS</color>");
+        builder.AppendLine(
+            "Earned This Run: <color=" + CoinValueColor + ">"
+            + FormatNumber(snapshot.CoinsEarned)
+            + "</color>");
+        builder.AppendLine(
+            "Added to Total: <color=" + CoinValueColor + ">"
+            + FormatNumber(GetMetaCoinsAddedForSummary(snapshot))
+            + "</color>");
         return builder.ToString().TrimEnd();
     }
 
     public static string FormatRightColumn(RunStatsSnapshot snapshot)
     {
         StringBuilder builder = new StringBuilder();
-        builder.AppendLine("COMBAT");
-        builder.AppendLine("Damage Dealt: " + FormatNumber(Mathf.RoundToInt(snapshot.DamageDealt)));
-        builder.AppendLine("Damage Taken: " + FormatNumber(Mathf.RoundToInt(snapshot.DamageTaken)));
-
-        if (snapshot.TopDamageSources != null && snapshot.TopDamageSources.Count > 0)
-        {
-            builder.AppendLine();
-            builder.AppendLine("TOP DAMAGE");
-
-            for (int i = 0; i < snapshot.TopDamageSources.Count; i++)
-            {
-                KeyValuePair<string, float> entry = snapshot.TopDamageSources[i];
-                builder.AppendLine((i + 1) + ". " + entry.Key + " — " + FormatNumber(Mathf.RoundToInt(entry.Value)));
-            }
-        }
-
-        builder.AppendLine();
-        builder.AppendLine("BUILD");
+        builder.AppendLine("<color=" + SectionHeaderColor + ">BUILD</color>");
         builder.AppendLine(snapshot.BuildSummary);
-
         builder.AppendLine();
-        builder.AppendLine("CHEST BUFFS");
+        builder.AppendLine("<color=" + SectionHeaderColor + ">CHEST BUFFS</color>");
         builder.AppendLine(snapshot.ChestBuffSummary);
-
         return builder.ToString().TrimEnd();
-    }
-
-    private static string FormatEvolutionList(IReadOnlyList<string> evolutionNames)
-    {
-        if (evolutionNames == null || evolutionNames.Count == 0)
-        {
-            return "None";
-        }
-
-        return string.Join(", ", evolutionNames);
     }
 
     public static string FormatTime(float seconds)

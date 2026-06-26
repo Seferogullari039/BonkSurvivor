@@ -9,15 +9,15 @@ public class GameOverManager : MonoBehaviour
 {
     public static GameOverManager Instance { get; private set; }
 
-    private const float PanelWidth = 860f;
-    private const float PanelHeight = 680f;
+    private const float PanelWidth = 900f;
+    private const float PanelHeight = 660f;
     private const float ButtonBarHeight = 58f;
-    private const float TitleAreaHeight = 56f;
+    private const float TitleAreaHeight = 78f;
     private const float ContentPadding = 20f;
-    private const float ColumnWidth = 390f;
-    private const float DimOverlayAlpha = 0.78f;
-    private const float TransitionDimAlpha = 0.88f;
-    private const float PanelBackgroundAlpha = 0.92f;
+    private const float ColumnWidth = 410f;
+    private const float DimOverlayAlpha = 0.62f;
+    private const float TransitionDimAlpha = 0.78f;
+    private const float PanelBackgroundAlpha = 0.90f;
     private const float RedFlashPeakAlpha = 0.30f;
     private const float RunEndedFadeInDelay = 0.15f;
     private const float RunEndedFadeInDuration = 0.22f;
@@ -30,6 +30,7 @@ public class GameOverManager : MonoBehaviour
 
     [SerializeField] private GameObject gameOverPanel;
     [SerializeField] private TMP_Text titleText;
+    [SerializeField] private TMP_Text subtitleText;
     [SerializeField] private TMP_Text waveText;
     [SerializeField] private TMP_Text levelText;
     [SerializeField] private TMP_Text coinsText;
@@ -110,9 +111,20 @@ public class GameOverManager : MonoBehaviour
 
         if (titleText != null)
         {
-            LayoutGameOverText(titleText, new Vector2(0f, PanelHeight * 0.5f - TitleAreaHeight * 0.5f - 8f), new Vector2(PanelWidth - 40f, TitleAreaHeight), 34f);
+            LayoutGameOverText(titleText, new Vector2(0f, PanelHeight * 0.5f - TitleAreaHeight * 0.5f + 10f), new Vector2(PanelWidth - 40f, 44f), 40f);
             titleText.alignment = TextAlignmentOptions.Center;
             titleText.fontStyle = FontStyles.Bold;
+            titleText.color = new Color(0.96f, 0.94f, 0.90f, 1f);
+            titleText.characterSpacing = 4f;
+        }
+
+        if (subtitleText != null)
+        {
+            LayoutGameOverText(subtitleText, new Vector2(0f, PanelHeight * 0.5f - TitleAreaHeight * 0.5f - 28f), new Vector2(PanelWidth - 40f, 24f), 15f);
+            subtitleText.alignment = TextAlignmentOptions.Center;
+            subtitleText.fontStyle = FontStyles.Normal;
+            subtitleText.color = new Color(0.62f, 0.66f, 0.72f, 1f);
+            subtitleText.characterSpacing = 6f;
         }
 
         if (summaryScrollRect != null)
@@ -197,6 +209,7 @@ public class GameOverManager : MonoBehaviour
         Transform panelRoot = gameOverPanel.transform;
 
         titleText ??= FindText(panelRoot, "GameOverTitleText");
+        subtitleText ??= FindText(panelRoot, "GameOverSubtitleText");
         waveText ??= FindText(panelRoot, "GameOverWaveText");
         levelText ??= FindText(panelRoot, "GameOverLevelText");
         coinsText ??= FindText(panelRoot, "GameOverCoinsText");
@@ -261,6 +274,7 @@ public class GameOverManager : MonoBehaviour
         EnsureDimOverlay(canvas);
         EnsureDeathTransitionUi(canvas);
         EnsurePanelBackground(panelRoot);
+        EnsureTitleTexts(panelRoot);
         EnsureScrollSummary(panelRoot);
         EnsureButtonBar(panelRoot);
 
@@ -444,6 +458,65 @@ public class GameOverManager : MonoBehaviour
         panelImage.raycastTarget = true;
     }
 
+    private void EnsureTitleTexts(Transform panelRoot)
+    {
+        if (titleText == null)
+        {
+            titleText = CreateHeaderText(
+                panelRoot,
+                "GameOverTitleText",
+                "GAME OVER",
+                40f,
+                new Vector2(0f, PanelHeight * 0.5f - TitleAreaHeight * 0.5f + 10f),
+                new Color(0.96f, 0.94f, 0.90f, 1f),
+                FontStyles.Bold,
+                4f);
+        }
+
+        if (subtitleText == null)
+        {
+            subtitleText = CreateHeaderText(
+                panelRoot,
+                "GameOverSubtitleText",
+                "RUN SUMMARY",
+                15f,
+                new Vector2(0f, PanelHeight * 0.5f - TitleAreaHeight * 0.5f - 28f),
+                new Color(0.62f, 0.66f, 0.72f, 1f),
+                FontStyles.Normal,
+                6f);
+        }
+    }
+
+    private TMP_Text CreateHeaderText(
+        Transform parent,
+        string objectName,
+        string text,
+        float fontSize,
+        Vector2 position,
+        Color color,
+        FontStyles fontStyle,
+        float characterSpacing)
+    {
+        GameObject textObject = new GameObject(objectName);
+        textObject.transform.SetParent(parent, false);
+
+        RectTransform rectTransform = textObject.AddComponent<RectTransform>();
+        UiLayoutUtility.SetAnchorCenter(rectTransform, position, new Vector2(PanelWidth - 40f, fontSize + 12f));
+
+        TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
+        textMesh.text = text;
+        textMesh.fontSize = fontSize;
+        textMesh.fontStyle = fontStyle;
+        textMesh.alignment = TextAlignmentOptions.Center;
+        textMesh.color = color;
+        textMesh.characterSpacing = characterSpacing;
+        textMesh.raycastTarget = false;
+        textMesh.richText = true;
+        EnsureTmpFont(textMesh);
+
+        return textMesh;
+    }
+
     private void EnsureScrollSummary(Transform panelRoot)
     {
         if (summaryScrollRect != null)
@@ -511,12 +584,20 @@ public class GameOverManager : MonoBehaviour
 
         if (restartButton == null)
         {
-            restartButton = CreatePanelButton(barObject.transform, "RestartButton", "Restart Run", new Color(0.72f, 0.28f, 0.18f, 0.96f));
+            restartButton = CreatePanelButton(barObject.transform, "RestartButton", "RESTART RUN", new Color(0.72f, 0.28f, 0.18f, 0.96f));
+        }
+        else
+        {
+            SetButtonLabel(restartButton, "RESTART RUN");
         }
 
         if (mainMenuButton == null)
         {
-            mainMenuButton = CreatePanelButton(barObject.transform, "MainMenuButton", "Main Menu", new Color(0.22f, 0.38f, 0.58f, 0.96f));
+            mainMenuButton = CreatePanelButton(barObject.transform, "MainMenuButton", "MAIN MENU", new Color(0.22f, 0.38f, 0.58f, 0.96f));
+        }
+        else
+        {
+            SetButtonLabel(mainMenuButton, "MAIN MENU");
         }
 
         if (quitButton == null)
@@ -643,7 +724,12 @@ public class GameOverManager : MonoBehaviour
 
         if (titleText != null)
         {
-            titleText.text = "RUN SUMMARY";
+            titleText.text = "GAME OVER";
+        }
+
+        if (subtitleText != null)
+        {
+            subtitleText.text = "RUN SUMMARY";
         }
 
         if (leftSummaryText != null)
@@ -1016,13 +1102,14 @@ public class GameOverManager : MonoBehaviour
         UiLayoutUtility.SetAnchorTopLeft(rectTransform, x, 0f, ColumnWidth, 100f);
 
         TextMeshProUGUI textMesh = textObject.AddComponent<TextMeshProUGUI>();
-        textMesh.fontSize = 16f;
+        textMesh.fontSize = 17f;
         textMesh.alignment = TextAlignmentOptions.TopLeft;
-        textMesh.color = new Color(0.92f, 0.94f, 0.97f, 1f);
+        textMesh.color = new Color(0.90f, 0.92f, 0.96f, 1f);
         textMesh.raycastTarget = false;
         textMesh.textWrappingMode = TextWrappingModes.Normal;
         textMesh.overflowMode = TextOverflowModes.Overflow;
-        textMesh.lineSpacing = 2f;
+        textMesh.lineSpacing = 4f;
+        textMesh.richText = true;
 
         ContentSizeFitter fitter = textObject.AddComponent<ContentSizeFitter>();
         fitter.horizontalFit = ContentSizeFitter.FitMode.Unconstrained;
@@ -1056,11 +1143,28 @@ public class GameOverManager : MonoBehaviour
 
         TextMeshProUGUI labelText = labelObject.AddComponent<TextMeshProUGUI>();
         labelText.text = label;
-        labelText.fontSize = 19f;
+        labelText.fontSize = 17f;
+        labelText.fontStyle = FontStyles.Bold;
         labelText.alignment = TextAlignmentOptions.Center;
         labelText.color = Color.white;
         EnsureTmpFont(labelText);
 
         return button;
+    }
+
+    private static void SetButtonLabel(Button button, string label)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        TMP_Text labelText = button.GetComponentInChildren<TMP_Text>();
+
+        if (labelText != null)
+        {
+            labelText.text = label;
+            labelText.fontStyle = FontStyles.Bold;
+        }
     }
 }

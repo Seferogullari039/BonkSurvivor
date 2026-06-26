@@ -4,9 +4,9 @@ using UnityEngine;
 
 public static class RunSummaryTextFormatter
 {
-    private const int MaxBuffCount = 6;
-    private const string EmptySlotLabel = "—";
-    private const string NoBuffsLabel = "None";
+    private const string NoSkillsLabel = "No skills selected";
+    private const string NoPassivesLabel = "No passives selected";
+    private const string NoBuffsLabel = "No chest buffs";
 
     public static string BuildBuildSummary()
     {
@@ -18,16 +18,16 @@ public static class RunSummaryTextFormatter
         }
 
         StringBuilder builder = new StringBuilder();
-        builder.AppendLine("Skills");
-        AppendCategorySlots(builder, tracker, RewardCategory.Skill);
-        builder.AppendLine("Passives");
-        AppendCategorySlots(builder, tracker, RewardCategory.Passive);
+        builder.AppendLine("Skills:");
+        AppendCategorySlots(builder, tracker, RewardCategory.Skill, NoSkillsLabel);
+        builder.AppendLine("Passives:");
+        AppendCategorySlots(builder, tracker, RewardCategory.Passive, NoPassivesLabel);
 
         string synergySummary = ItemSynergyManager.GetActiveSynergySummary();
 
         if (!string.IsNullOrEmpty(synergySummary))
         {
-            builder.AppendLine("Synergies");
+            builder.AppendLine("Synergies:");
             builder.AppendLine(synergySummary);
         }
 
@@ -51,31 +51,43 @@ public static class RunSummaryTextFormatter
         }
 
         StringBuilder builder = new StringBuilder();
-        int visibleCount = Mathf.Min(buffs.Count, MaxBuffCount);
 
-        for (int i = 0; i < visibleCount; i++)
+        for (int i = 0; i < buffs.Count; i++)
         {
-            if (i > 0)
-            {
-                builder.Append("   ");
-            }
-
-            builder.Append(ChestStatBuffTracker.FormatHudBadgeText(buffs[i]));
+            builder.Append("- ");
+            builder.AppendLine(ChestStatBuffTracker.FormatTotalSummary(buffs[i]));
         }
 
-        return builder.ToString();
+        return builder.ToString().TrimEnd();
     }
 
-    private static void AppendCategorySlots(StringBuilder builder, RunBuildTracker tracker, RewardCategory category)
+    private static void AppendCategorySlots(
+        StringBuilder builder,
+        RunBuildTracker tracker,
+        RewardCategory category,
+        string emptyLabel)
     {
+        bool hasEntries = false;
+
         for (int i = 0; i < RunBuildTracker.MaxSlotsPerCategory; i++)
         {
             RunBuildSlotEntry entry = category == RewardCategory.Skill
                 ? tracker.GetSkillSlot(i)
                 : tracker.GetPassiveSlot(i);
 
-            builder.Append("• ");
+            if (entry == null)
+            {
+                continue;
+            }
+
+            hasEntries = true;
+            builder.Append("- ");
             builder.AppendLine(FormatSlotLine(entry));
+        }
+
+        if (!hasEntries)
+        {
+            builder.AppendLine(emptyLabel);
         }
     }
 
@@ -83,19 +95,36 @@ public static class RunSummaryTextFormatter
     {
         if (entry == null)
         {
-            return EmptySlotLabel;
+            return string.Empty;
         }
 
         int maxLevel = UpgradeOptionCatalog.GetMaxLevel(entry.UpgradeIndex);
-        string displayName = string.IsNullOrEmpty(entry.DisplayName)
-            ? UpgradeOptionCatalog.GetDisplayName(entry.UpgradeIndex)
-            : entry.DisplayName;
+        string displayName = GetDisplayName(entry);
 
-        if (entry.Level >= maxLevel)
+        if (maxLevel <= 1)
         {
-            return displayName + " — MAX";
+            return displayName;
         }
 
-        return displayName + " — Lv. " + entry.Level + "/" + maxLevel;
+        return displayName + " Lv. " + entry.Level + "/" + maxLevel;
+    }
+
+    private static string GetDisplayName(RunBuildSlotEntry entry)
+    {
+        bool flameOrbitEvolved = entry.UpgradeIndex == 6
+            && RunBuildTracker.Instance != null
+            && RunBuildTracker.Instance.HasEvolution(BuildEvolutionId.FlameOrbit);
+
+        if (flameOrbitEvolved)
+        {
+            return "Flame Orbit";
+        }
+
+        if (!string.IsNullOrEmpty(entry.DisplayName))
+        {
+            return entry.DisplayName;
+        }
+
+        return UpgradeOptionCatalog.GetDisplayName(entry.UpgradeIndex);
     }
 }
