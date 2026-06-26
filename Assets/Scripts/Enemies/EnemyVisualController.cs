@@ -6,9 +6,10 @@ public sealed class EnemyVisualController : MonoBehaviour
 {
     public const string VisualRootName = "EnemyVisualRoot";
 
-    private const float HitFlashDuration = 0.12f;
-    private const float DeathPuffDuration = 0.24f;
-    private const float DeathPuffScale = 0.1f;
+    private const float HitFlashDuration = 0.1f;
+    private const float ScalePunchDuration = 0.1f;
+    private const float DeathPuffDuration = 0.32f;
+    private const float DeathPuffScale = 0.12f;
 
     private static readonly Color HitFlashColor = new Color(1f, 0.58f, 0.48f);
     private static readonly Color DeathPuffColor = new Color(0.95f, 0.25f, 0.2f);
@@ -27,6 +28,8 @@ public sealed class EnemyVisualController : MonoBehaviour
     private bool baseGlow;
     private bool usingPrefabView;
     private float hitFlashTimer;
+    private Coroutine scalePunchRoutine;
+    private Vector3 visualRootBaseScale = Vector3.one;
 
     private void Awake()
     {
@@ -84,6 +87,74 @@ public sealed class EnemyVisualController : MonoBehaviour
         }
 
         hitFlashTimer = HitFlashDuration;
+        PlayScalePunch();
+    }
+
+    private void PlayScalePunch()
+    {
+        Transform punchTarget = ResolveVisualPunchTarget();
+
+        if (punchTarget == null)
+        {
+            return;
+        }
+
+        if (scalePunchRoutine != null)
+        {
+            StopCoroutine(scalePunchRoutine);
+        }
+
+        visualRootBaseScale = punchTarget.localScale;
+        scalePunchRoutine = StartCoroutine(ScalePunchRoutine(punchTarget));
+    }
+
+    private Transform ResolveVisualPunchTarget()
+    {
+        if (visualRoot != null)
+        {
+            return visualRoot;
+        }
+
+        Transform enhancerRoot = transform.Find(VisualRootName);
+
+        if (enhancerRoot != null)
+        {
+            return enhancerRoot;
+        }
+
+        return null;
+    }
+
+    private IEnumerator ScalePunchRoutine(Transform punchTarget)
+    {
+        float elapsed = 0f;
+
+        while (elapsed < ScalePunchDuration)
+        {
+            if (punchTarget == null)
+            {
+                yield break;
+            }
+
+            elapsed += Time.deltaTime;
+            float progress = Mathf.Clamp01(elapsed / ScalePunchDuration);
+            float wave = Mathf.Sin(progress * Mathf.PI);
+            float widthScale = 1f + wave * 0.1f;
+            float heightScale = 1f - wave * 0.05f;
+            punchTarget.localScale = new Vector3(
+                visualRootBaseScale.x * widthScale,
+                visualRootBaseScale.y * heightScale,
+                visualRootBaseScale.z * widthScale);
+
+            yield return null;
+        }
+
+        if (punchTarget != null)
+        {
+            punchTarget.localScale = visualRootBaseScale;
+        }
+
+        scalePunchRoutine = null;
     }
 
     public void PlayDeathPuff(Vector3 position)
@@ -125,6 +196,7 @@ public sealed class EnemyVisualController : MonoBehaviour
             SanitizeVisualInstance(viewInstance);
             EnsureActiveVisualRenderers(visualRoot);
             ApplySilhouetteScale(visualRoot, currentType);
+            visualRootBaseScale = visualRoot.localScale;
             ApplyPrefabViewColors(viewInstance, visualRoot);
             EnsureEliteRing(visualRoot);
             CacheFlashRenderers(GetVisualRenderers(visualRoot));
@@ -535,6 +607,38 @@ public sealed class EnemyVisualController : MonoBehaviour
                 GameVisualStyle.ApplyColor(flashRenderer, color, 0.55f, true, 0.45f);
             }
 
+            const int particleCount = 4;
+            GameObject[] particles = new GameObject[particleCount];
+            Vector3[] velocities = new Vector3[particleCount];
+            float[] sizes = new float[particleCount];
+
+            for (int i = 0; i < particleCount; i++)
+            {
+                GameObject particle = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                particle.name = "DeathPuffParticle";
+                particle.transform.SetParent(transform, false);
+                sizes[i] = Random.Range(0.05f, 0.09f);
+                particle.transform.localScale = Vector3.one * sizes[i];
+
+                Collider particleCollider = particle.GetComponent<Collider>();
+
+                if (particleCollider != null)
+                {
+                    Destroy(particleCollider);
+                }
+
+                Renderer particleRenderer = particle.GetComponent<Renderer>();
+
+                if (particleRenderer != null)
+                {
+                    GameVisualStyle.ApplyColor(particleRenderer, color, 0.62f, true, 0.4f);
+                }
+
+                Vector2 spread = Random.insideUnitCircle.normalized;
+                velocities[i] = new Vector3(spread.x, Random.Range(0.2f, 0.55f), spread.y) * Random.Range(0.9f, 1.6f);
+                particles[i] = particle;
+            }
+
             float elapsed = 0f;
 
             while (elapsed < duration)
@@ -544,8 +648,22 @@ public sealed class EnemyVisualController : MonoBehaviour
 
                 if (flashObject != null)
                 {
-                    flashObject.transform.localScale = Vector3.one * (scale * (0.85f + fade * 0.35f));
+                    flashObject.transform.localScale = Vector3.one * (scale * (0.8f + fade * 0.45f));
                     SetRendererAlpha(flashRenderer, fade);
+                }
+
+                for (int i = 0; i < particleCount; i++)
+                {
+                    GameObject particle = particles[i];
+
+                    if (particle == null)
+                    {
+                        continue;
+                    }
+
+                    particle.transform.localPosition += velocities[i] * Time.deltaTime;
+                    velocities[i] += Vector3.down * 2.2f * Time.deltaTime;
+                    particle.transform.localScale = Vector3.one * sizes[i] * fade;
                 }
 
                 yield return null;

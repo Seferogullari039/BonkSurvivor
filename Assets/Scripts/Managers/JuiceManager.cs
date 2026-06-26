@@ -60,6 +60,11 @@ public class JuiceManager : MonoBehaviour
         StartEffect(RocketExplosionRoutine(position));
     }
 
+    public void PlayHeartPickup(Vector3 position)
+    {
+        StartEffect(FlashRoutine(position, new Color(1f, 0.38f, 0.58f), 0.16f, 0.42f, 0.2f));
+    }
+
     public void PlayGameOver()
     {
     }

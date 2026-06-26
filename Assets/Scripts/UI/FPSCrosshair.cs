@@ -81,8 +81,8 @@ public class FPSCrosshair : MonoBehaviour
 
     public void PlayHitFeedback(bool isKill = false)
     {
-        hitFeedbackDuration = isKill ? 0.1f : 0.08f;
-        hitPeakScale = isKill ? 1.2f : 1.15f;
+        hitFeedbackDuration = isKill ? 0.12f : 0.09f;
+        hitPeakScale = isKill ? 1.24f : 1.16f;
         hitFeedbackTimer = hitFeedbackDuration;
     }
 
@@ -122,7 +122,9 @@ public class FPSCrosshair : MonoBehaviour
         {
             hitFeedbackTimer -= Time.deltaTime;
             float progress = 1f - Mathf.Clamp01(hitFeedbackTimer / hitFeedbackDuration);
+            float dip = Mathf.Sin(progress * Mathf.PI);
             float scale = Mathf.Lerp(hitPeakScale, baseScale, progress);
+            scale = Mathf.Lerp(scale, hitPeakScale * 0.9f, dip * 0.35f);
             crosshairRoot.transform.localScale = Vector3.one * scale;
             return;
         }

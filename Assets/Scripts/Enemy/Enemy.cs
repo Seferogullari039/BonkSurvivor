@@ -80,6 +80,11 @@ public class Enemy : MonoBehaviour
         {
             visualController = gameObject.AddComponent<EnemyVisualController>();
         }
+
+        if (GetComponent<EnemyHitFeedback>() == null)
+        {
+            gameObject.AddComponent<EnemyHitFeedback>();
+        }
     }
 
     private void Start()
@@ -513,7 +518,10 @@ public class Enemy : MonoBehaviour
             Vector3 dropPosition = transform.position;
 
             visualController?.PlayDeathPuff(dropPosition);
-            hitFeedback?.PlayDeath(dropPosition);
+            if (visualController == null)
+            {
+                hitFeedback?.PlayDeath(dropPosition);
+            }
 
             if (FPSPlayerController.IsFpsModeActive)
             {

@@ -9,12 +9,14 @@ public class FloatingDamage : MonoBehaviour
     private static bool faceCameraLogShown;
 
     [SerializeField] private TMP_Text textMesh;
-    [SerializeField] private float lifetime = 0.72f;
-    [SerializeField] private float moveSpeed = 1.25f;
+    [SerializeField] private float lifetime = 0.68f;
+    [SerializeField] private float moveSpeed = 1.45f;
 
     private Color startColor = Color.white;
     private float age;
     private float startFontSize;
+    private float horizontalDrift;
+    private Vector3 startScale;
 
     private void Start()
     {
@@ -29,6 +31,8 @@ public class FloatingDamage : MonoBehaviour
             startFontSize = textMesh.fontSize;
         }
 
+        startScale = transform.localScale;
+        horizontalDrift = Random.Range(-0.28f, 0.28f);
         FaceCamera();
 
         if (LogDamageNumberDebug && !faceCameraLogShown)
@@ -52,18 +56,35 @@ public class FloatingDamage : MonoBehaviour
             return;
         }
 
-        transform.rotation = Quaternion.LookRotation(transform.position - camera.transform.position, Vector3.up);
+        transform.rotation = camera.transform.rotation;
     }
 
     private void Update()
     {
         age += Time.deltaTime;
-        transform.position += Vector3.up * moveSpeed * Time.deltaTime;
-
-        if (textMesh == null) return;
-
         float fade = 1f - Mathf.Clamp01(age / lifetime);
-        textMesh.color = new Color(startColor.r, startColor.g, startColor.b, fade);
+        float riseEase = 1f - fade * fade;
+
+        transform.position += new Vector3(
+            horizontalDrift * Time.deltaTime,
+            moveSpeed * riseEase * Time.deltaTime,
+            0f);
+
+        float scale = Mathf.Lerp(0.82f, 1f, fade);
+        transform.localScale = startScale * scale;
+
+        if (textMesh == null)
+        {
+            if (age >= lifetime)
+            {
+                Destroy(gameObject);
+            }
+
+            return;
+        }
+
+        textMesh.color = new Color(startColor.r, startColor.g, startColor.b, fade * fade);
+        textMesh.fontSize = startFontSize * Mathf.Lerp(0.92f, 1f, fade);
 
         if (age >= lifetime)
         {
@@ -78,21 +99,25 @@ public class FloatingDamage : MonoBehaviour
             textMesh = GetComponentInChildren<TMP_Text>();
         }
 
-        if (textMesh == null) return;
+        if (textMesh == null)
+        {
+            return;
+        }
 
         textMesh.text = "-" + damageAmount;
-        startFontSize = textMesh.fontSize * 0.82f;
+        startFontSize = textMesh.fontSize * 0.88f;
         textMesh.fontSize = startFontSize;
 
         if (isCrit)
         {
-            textMesh.fontSize = startFontSize * 1.22f;
+            textMesh.fontSize = startFontSize * 1.18f;
             startColor = new Color(1f, 0.86f, 0.28f, 1f);
             textMesh.color = startColor;
         }
         else
         {
-            startColor = textMesh.color;
+            startColor = new Color(0.96f, 0.96f, 0.98f, 1f);
+            textMesh.color = startColor;
         }
     }
 }

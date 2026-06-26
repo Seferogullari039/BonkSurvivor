@@ -8,6 +8,7 @@ public class Coin : MonoBehaviour
     [SerializeField] private float lifeTime = 30f;
 
     private Transform player;
+    private bool collected;
 
     private void Awake()
     {
@@ -52,21 +53,25 @@ public class Coin : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (!other.CompareTag("Player")) return;
+        if (collected || !other.CompareTag("Player")) return;
 
         PlayerStats playerStats = other.GetComponent<PlayerStats>();
 
         if (playerStats != null)
         {
+            collected = true;
             AudioManager.Instance?.PlayCoinPickup();
-            playerStats.AddCoins(coinAmount);
 
             if (JuiceManager.Instance != null)
             {
                 JuiceManager.Instance.PlayCoinPickup(transform.position);
             }
 
-            Destroy(gameObject);
+            PickupCollectFeedback.Play(this, () =>
+            {
+                playerStats.AddCoins(coinAmount);
+                Destroy(gameObject);
+            });
             return;
         }
 

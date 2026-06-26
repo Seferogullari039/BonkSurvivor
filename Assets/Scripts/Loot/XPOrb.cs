@@ -8,6 +8,7 @@ public class XPOrb : MonoBehaviour
     [SerializeField] private float lifeTime = 30f;
 
     private Transform player;
+    private bool collected;
 
     private void Awake()
     {
@@ -56,21 +57,25 @@ public class XPOrb : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (!other.CompareTag("Player")) return;
+        if (collected || !other.CompareTag("Player")) return;
 
         PlayerStats playerStats = other.GetComponent<PlayerStats>();
 
         if (playerStats != null)
         {
+            collected = true;
             AudioManager.Instance?.PlayXpPickup();
-            playerStats.AddXP(xpAmount);
 
             if (JuiceManager.Instance != null)
             {
                 JuiceManager.Instance.PlayXPPickup(transform.position);
             }
 
-            Destroy(gameObject);
+            PickupCollectFeedback.Play(this, () =>
+            {
+                playerStats.AddXP(xpAmount);
+                Destroy(gameObject);
+            });
             return;
         }
 

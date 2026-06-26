@@ -14,6 +14,7 @@ public class HeartPickup : MonoBehaviour
 
     private Vector3 basePosition;
     private float bobPhase;
+    private bool collected;
 
     public static void TrySpawnAt(Vector3 position, float dropChance)
     {
@@ -52,7 +53,7 @@ public class HeartPickup : MonoBehaviour
 
     private void Update()
     {
-        if (Time.timeScale <= 0f)
+        if (collected || Time.timeScale <= 0f)
         {
             return;
         }
@@ -76,9 +77,19 @@ public class HeartPickup : MonoBehaviour
             return;
         }
 
+        collected = true;
         int healAmount = Mathf.Max(8, Mathf.RoundToInt(playerStats.EffectiveMaxHealth * 0.10f));
-        playerStats.HealAmount(healAmount);
-        Destroy(gameObject);
+
+        if (JuiceManager.Instance != null)
+        {
+            JuiceManager.Instance.PlayHeartPickup(transform.position);
+        }
+
+        PickupCollectFeedback.Play(this, () =>
+        {
+            playerStats.HealAmount(healAmount);
+            Destroy(gameObject);
+        });
     }
 
     private void BuildVisual()
