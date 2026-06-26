@@ -196,7 +196,7 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         cardRect.localScale = Vector3.one * 0.38f;
         ApplyRoulettePaletteIndex(0);
 
-        const float targetPanelAlpha = 0.9f;
+        const float targetPanelAlpha = 0.94f;
 
         if (cardView.CollectHintText != null)
         {
@@ -558,7 +558,7 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         UiLayoutUtility.SetAnchorCenter(panelRect, Vector2.zero, new Vector2(860f, 520f));
 
         Image panelImageComponent = rootPanel.AddComponent<Image>();
-        panelImageComponent.color = new Color(0.02f, 0.03f, 0.05f, 0.9f);
+        panelImageComponent.color = new Color(0.02f, 0.03f, 0.05f, 0.94f);
         panelImageComponent.raycastTarget = true;
         panelImage = panelImageComponent;
 

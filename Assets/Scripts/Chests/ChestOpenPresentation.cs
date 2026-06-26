@@ -20,6 +20,7 @@ public static class ChestOpenPresentation
 
         BeginOpeningGlow(chestTransform);
         yield return ChestOpeningPresentation.PlayPhysicalOpening(chestTransform);
+        ChestOpeningPresentation.ApplyRevealOcclusionSoftening(chestTransform);
 
         UpgradeRarity rewardRarity = levelUpManager.PrepareChestSingleReward(chestRarity);
 
