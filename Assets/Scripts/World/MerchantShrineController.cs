@@ -48,8 +48,18 @@ public class MerchantShrineController : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.E))
         {
-            OpenShop();
+            TryOpenShop();
         }
+    }
+
+    private void TryOpenShop()
+    {
+        if (!CanInteract())
+        {
+            return;
+        }
+
+        OpenShop();
     }
 
     private void OnDestroy()
@@ -59,18 +69,31 @@ public class MerchantShrineController : MonoBehaviour
 
     private void CachePlayer()
     {
-        if (playerTransform != null)
+        if (playerTransform != null && cachedPlayerStats != null)
         {
             return;
         }
 
         GameObject playerObject = GameObject.FindGameObjectWithTag("Player");
 
-        if (playerObject != null)
+        if (playerObject == null)
         {
-            playerTransform = playerObject.transform;
-            cachedPlayerStats = playerObject.GetComponent<PlayerStats>();
+            FPSPlayerController fpsController = FindFirstObjectByType<FPSPlayerController>();
+
+            if (fpsController != null)
+            {
+                playerObject = fpsController.gameObject;
+            }
         }
+
+        if (playerObject == null)
+        {
+            return;
+        }
+
+        playerTransform = playerObject.transform;
+        cachedPlayerStats = playerObject.GetComponent<PlayerStats>()
+            ?? playerObject.GetComponentInChildren<PlayerStats>(true);
     }
 
     private bool CanShowPrompt()

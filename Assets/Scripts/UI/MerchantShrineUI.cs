@@ -47,31 +47,48 @@ public class MerchantShrineUI : MonoBehaviour
 
     public static bool IsOpen => instance != null && instance.isOpen;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        instance = null;
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
-        if (FindFirstObjectByType<MerchantShrineUI>() != null)
-        {
-            return;
-        }
-
-        GameObject host = new GameObject("MerchantShrineUI");
-        host.AddComponent<MerchantShrineUI>();
+        EnsureInstance();
     }
 
     public static void Open(MerchantShrineController shrine, PlayerStats stats)
     {
-        if (instance == null)
-        {
-            Bootstrap();
-        }
-
-        instance?.Show(shrine, stats);
+        MerchantShrineUI ui = EnsureInstance();
+        ui?.Show(shrine, stats);
     }
 
     public static void ForceClose()
     {
-        instance?.Close();
+        if (instance != null)
+        {
+            instance.Close();
+        }
+    }
+
+    private static MerchantShrineUI EnsureInstance()
+    {
+        if (instance != null)
+        {
+            return instance;
+        }
+
+        instance = FindFirstObjectByType<MerchantShrineUI>(FindObjectsInactive.Include);
+
+        if (instance != null)
+        {
+            return instance;
+        }
+
+        GameObject host = new GameObject("MerchantShrineUI");
+        return host.AddComponent<MerchantShrineUI>();
     }
 
     private void Awake()
@@ -110,9 +127,11 @@ public class MerchantShrineUI : MonoBehaviour
 
     private void Show(MerchantShrineController shrine, PlayerStats stats)
     {
-        if (!isBuilt)
+        EnsurePanelReady();
+
+        if (!isBuilt || panelRoot == null)
         {
-            BuildPanel();
+            return;
         }
 
         if (ShouldBlockOpen())
@@ -163,6 +182,20 @@ public class MerchantShrineUI : MonoBehaviour
 
         sourceShrine = null;
         playerStats = null;
+    }
+
+    private void EnsurePanelReady()
+    {
+        if (panelRoot != null && panelRoot.transform.parent == null)
+        {
+            isBuilt = false;
+            panelRoot = null;
+        }
+
+        if (!isBuilt)
+        {
+            BuildPanel();
+        }
     }
 
     private static bool ShouldForceClose()
@@ -683,7 +716,12 @@ internal static class MerchantShrineTradeGuards
             return false;
         }
 
-        if (ChestRevealPause.IsPaused)
+        if (SettingsMenuUI.IsOpen)
+        {
+            return false;
+        }
+
+        if (ChestRevealPause.IsPaused && Time.timeScale <= 0f)
         {
             return false;
         }
@@ -700,7 +738,7 @@ internal static class MerchantShrineTradeGuards
     {
         LevelUpManager levelUpManager = LevelUpManager.Instance;
 
-        if (levelUpManager != null && levelUpManager.BlocksMerchantTrade)
+        if (levelUpManager != null && levelUpManager.BlocksGameplayPause)
         {
             return true;
         }

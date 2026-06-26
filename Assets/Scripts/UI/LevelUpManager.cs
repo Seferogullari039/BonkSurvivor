@@ -755,11 +755,6 @@ public class LevelUpManager : MonoBehaviour
                 return true;
             }
 
-            if (IsAwaitingChestRewardCollect())
-            {
-                return true;
-            }
-
             if (chestLootSelectionUI != null && chestLootSelectionUI.IsShowing)
             {
                 return true;
