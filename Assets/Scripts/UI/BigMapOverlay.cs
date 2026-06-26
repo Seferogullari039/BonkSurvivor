@@ -47,13 +47,43 @@ public class BigMapOverlay : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
-        if (FindFirstObjectByType<BigMapOverlay>(FindObjectsInactive.Include) != null)
+        EnsureReadyForRun();
+    }
+
+    public static void EnsureReadyForRun()
+    {
+        BigMapOverlay overlay = ResolveInstance();
+
+        if (overlay == null)
         {
             return;
         }
 
+        if (!overlay.gameObject.activeSelf)
+        {
+            overlay.gameObject.SetActive(true);
+        }
+
+        overlay.EnsureReadyInternal();
+    }
+
+    private static BigMapOverlay ResolveInstance()
+    {
+        if (instance != null)
+        {
+            return instance;
+        }
+
+        instance = FindFirstObjectByType<BigMapOverlay>(FindObjectsInactive.Include);
+
+        if (instance != null)
+        {
+            return instance;
+        }
+
         GameObject host = new GameObject("BigMapOverlay");
-        host.AddComponent<BigMapOverlay>();
+        instance = host.AddComponent<BigMapOverlay>();
+        return instance;
     }
 
     private void Awake()
@@ -65,8 +95,7 @@ public class BigMapOverlay : MonoBehaviour
         }
 
         instance = this;
-        BuildOverlayUi();
-        HideOverlay();
+        EnsureReadyInternal();
     }
 
     private void OnDestroy()
@@ -79,7 +108,12 @@ public class BigMapOverlay : MonoBehaviour
 
     private void Update()
     {
-        if (!isBuilt || overlayRoot == null)
+        if (MainMenuManager.IsRunActive && !IsUiHealthy())
+        {
+            EnsureReadyInternal();
+        }
+
+        if (!IsUiHealthy())
         {
             return;
         }
@@ -175,6 +209,46 @@ public class BigMapOverlay : MonoBehaviour
         {
             overlayRoot.SetActive(false);
         }
+    }
+
+    private bool IsUiHealthy()
+    {
+        return isBuilt && overlayRoot != null && markerContainer != null;
+    }
+
+    private void EnsureReadyInternal()
+    {
+        playerTransform = null;
+
+        if (overlayRoot != null && overlayRoot.transform.parent == null)
+        {
+            TeardownUi();
+        }
+
+        if (!IsUiHealthy())
+        {
+            TeardownUi();
+            BuildOverlayUi();
+        }
+
+        HideOverlay();
+    }
+
+    private void TeardownUi()
+    {
+        if (overlayRoot != null)
+        {
+            Destroy(overlayRoot);
+        }
+
+        overlayRoot = null;
+        markerContainer = null;
+        playerMarkerRect = null;
+        enemyMarkerPool.Clear();
+        chestMarkerPool.Clear();
+        slopeMarkerPool.Clear();
+        slopeMarkersCached = false;
+        isBuilt = false;
     }
 
     private void BuildOverlayUi()
