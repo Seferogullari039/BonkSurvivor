@@ -8,8 +8,8 @@ public static class ChestOpeningPresentation
     private const float LidOpenAngle = -34f;
     private const float MouthLocalY = 0.56f;
     private const float FallbackMouthHeight = 0.75f;
-    private const float CloseDistance = 1.85f;
-    private const float FarDistance = 4f;
+    private const float CloseDistance = 2.4f;
+    private const float FarDistance = 4.5f;
     private const float MinVisualIntensity = 0.42f;
     private const float PopScalePeak = 1.045f;
     private const float PopScaleXZPeak = 1.018f;

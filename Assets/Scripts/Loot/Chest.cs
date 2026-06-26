@@ -4,6 +4,11 @@ using UnityEngine;
 
 public class Chest : MonoBehaviour
 {
+    private const float InteractionRadius = 3.2f;
+    private const float HighlightRadius = 2.6f;
+    private static readonly float InteractionRadiusSqr = InteractionRadius * InteractionRadius;
+    private static readonly float HighlightRadiusSqr = HighlightRadius * HighlightRadius;
+
     [SerializeField] private int basePrice = 10;
     [SerializeField] private TMP_Text priceText;
 
@@ -14,6 +19,7 @@ public class Chest : MonoBehaviour
     private bool isBossDrop;
     private bool isDroppedRewardChest;
     private bool playerInRange;
+    private bool playerInHighlightRange;
     private ChestRarity chestRarity = ChestRarity.Normal;
     private MimicChestController mimicController;
     private PlayerStats cachedPlayerStats;
@@ -82,6 +88,7 @@ public class Chest : MonoBehaviour
 
     private void Update()
     {
+        RefreshProximityState();
         UpdateInteractionPrompt();
 
         if (isOpened || openRoutineStarted || isDroppedRewardChest || isMimic || !playerInRange)
@@ -93,6 +100,69 @@ public class Chest : MonoBehaviour
         {
             TryOpenNormalChest();
         }
+    }
+
+    private void RefreshProximityState()
+    {
+        if (isOpened || openRoutineStarted)
+        {
+            playerInRange = false;
+            playerInHighlightRange = false;
+            return;
+        }
+
+        float distanceSqr = GetPlayerDistanceSqr();
+        bool inInteractionRange = distanceSqr <= InteractionRadiusSqr;
+        playerInHighlightRange = distanceSqr <= HighlightRadiusSqr;
+
+        if (isMimic)
+        {
+            playerInRange = false;
+
+            if (inInteractionRange && !isOpened)
+            {
+                if (mimicController == null)
+                {
+                    EnsureMimicController();
+                    mimicController.Initialize(this, chestRarity);
+                }
+
+                if (mimicController != null && !mimicController.IsActivated)
+                {
+                    isOpened = true;
+                    mimicController.Activate();
+                }
+            }
+
+            return;
+        }
+
+        if (isDroppedRewardChest)
+        {
+            playerInRange = false;
+
+            if (inInteractionRange && FindPlayerStatsInRange() != null)
+            {
+                BeginChestOpen();
+            }
+
+            return;
+        }
+
+        if (inInteractionRange)
+        {
+            if (cachedPlayerStats == null)
+            {
+                cachedPlayerStats = FindPlayerStatsInRange();
+            }
+
+            playerInRange = cachedPlayerStats != null;
+            return;
+        }
+
+        playerInRange = false;
+        playerInHighlightRange = false;
+        cachedPlayerStats = null;
     }
 
     private void UpdateInteractionPrompt()
@@ -112,7 +182,7 @@ public class Chest : MonoBehaviour
         }
 
         WorldInteractionPromptUI.Register(this, "E - OPEN CHEST", GetPlayerDistanceSqr());
-        SetProximityHighlight(true);
+        SetProximityHighlight(playerInHighlightRange);
     }
 
     private float GetPlayerDistanceSqr()
@@ -279,49 +349,32 @@ public class Chest : MonoBehaviour
 
     private void OnTriggerEnter(Collider other)
     {
-        if (isOpened || openRoutineStarted) return;
-        if (!other.CompareTag("Player")) return;
-
-        if (isMimic)
+        if (!other.CompareTag("Player"))
         {
-            if (mimicController == null)
-            {
-                EnsureMimicController();
-                mimicController.Initialize(this, chestRarity);
-            }
-
-            isOpened = true;
-            mimicController.Activate();
             return;
         }
 
-        PlayerStats playerStats = other.GetComponent<PlayerStats>();
-
-        if (playerStats == null) return;
-
-        if (isDroppedRewardChest)
-        {
-            BeginChestOpen();
-            return;
-        }
-
-        cachedPlayerStats = playerStats;
-        playerInRange = true;
-        RefreshPriceLabel();
+        RefreshProximityState();
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (!other.CompareTag("Player")) return;
+        if (!other.CompareTag("Player"))
+        {
+            return;
+        }
 
-        playerInRange = false;
-        cachedPlayerStats = null;
-        RefreshPriceLabel();
+        RefreshProximityState();
     }
 
     private void TryOpenNormalChest()
     {
         if (isOpened || openRoutineStarted || isDroppedRewardChest || isMimic) return;
+
+        if (GetPlayerDistanceSqr() > InteractionRadiusSqr)
+        {
+            return;
+        }
 
         if (cachedPlayerStats == null)
         {
