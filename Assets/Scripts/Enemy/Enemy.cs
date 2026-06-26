@@ -44,6 +44,7 @@ public class Enemy : MonoBehaviour
 
     private const float GroundFootOffset = 0.5f;
     private const float GroundSnapSpeed = 12f;
+    private const float MaxGroundSnapRise = 2.5f;
 
     public EnemyType Type => enemyType;
     public bool IsElite { get; private set; }
@@ -351,6 +352,12 @@ public class Enemy : MonoBehaviour
         }
 
         Vector3 position = transform.position;
+
+        if (targetY - position.y > MaxGroundSnapRise)
+        {
+            return;
+        }
+
         position.y = Mathf.Lerp(position.y, targetY, Time.deltaTime * GroundSnapSpeed);
         transform.position = position;
     }
@@ -369,8 +376,12 @@ public class Enemy : MonoBehaviour
                 groundSnapCollider))
         {
             Vector3 position = transform.position;
-            position.y = targetY;
-            transform.position = position;
+
+            if (targetY - position.y <= MaxGroundSnapRise)
+            {
+                position.y = targetY;
+                transform.position = position;
+            }
         }
     }
 

@@ -3,9 +3,10 @@ using UnityEngine;
 public static class GroundSnapUtility
 {
     private const float RayOriginHeight = 4f;
-    private const float RayDistance = 8f;
+    private const float RayDistance = 10f;
+    private const float MinGroundNormalY = 0.35f;
 
-    private static readonly RaycastHit[] HitBuffer = new RaycastHit[12];
+    private static readonly RaycastHit[] HitBuffer = new RaycastHit[24];
 
     public static bool TryGetGroundPoint(Vector3 worldPosition, Collider ignoreCollider, out Vector3 groundPoint)
     {
@@ -24,17 +25,17 @@ public static class GroundSnapUtility
 
         for (int i = 0; i < hitCount; i++)
         {
-            Collider hitCollider = HitBuffer[i].collider;
+            RaycastHit hit = HitBuffer[i];
 
-            if (hitCollider == null || ShouldIgnoreCollider(hitCollider, ignoreCollider))
+            if (!IsValidGroundHit(hit, ignoreCollider))
             {
                 continue;
             }
 
-            if (HitBuffer[i].distance < bestDistance)
+            if (hit.distance < bestDistance)
             {
-                bestDistance = HitBuffer[i].distance;
-                groundPoint = HitBuffer[i].point;
+                bestDistance = hit.distance;
+                groundPoint = hit.point;
                 found = true;
             }
         }
@@ -75,6 +76,21 @@ public static class GroundSnapUtility
         return false;
     }
 
+    private static bool IsValidGroundHit(RaycastHit hit, Collider ignoreCollider)
+    {
+        if (hit.collider == null)
+        {
+            return false;
+        }
+
+        if (hit.normal.y < MinGroundNormalY)
+        {
+            return false;
+        }
+
+        return !ShouldIgnoreCollider(hit.collider, ignoreCollider);
+    }
+
     private static bool ShouldIgnoreCollider(Collider hitCollider, Collider ignoreCollider)
     {
         if (hitCollider.isTrigger)
@@ -82,7 +98,7 @@ public static class GroundSnapUtility
             return true;
         }
 
-        if (ignoreCollider != null && hitCollider == ignoreCollider)
+        if (ignoreCollider != null && IsSameColliderHierarchy(hitCollider, ignoreCollider))
         {
             return true;
         }
@@ -92,6 +108,42 @@ public static class GroundSnapUtility
             return true;
         }
 
+        if (hitCollider.GetComponentInParent<Enemy>() != null)
+        {
+            return true;
+        }
+
+        if (hitCollider.GetComponentInParent<FPSPlayerController>() != null)
+        {
+            return true;
+        }
+
+        if (hitCollider.GetComponentInParent<Chest>() != null
+            || hitCollider.GetComponentInParent<MimicChestController>() != null)
+        {
+            return true;
+        }
+
+        if (hitCollider.GetComponentInParent<XPOrb>() != null
+            || hitCollider.GetComponentInParent<Coin>() != null
+            || hitCollider.GetComponentInParent<HeartPickup>() != null)
+        {
+            return true;
+        }
+
         return false;
+    }
+
+    private static bool IsSameColliderHierarchy(Collider hitCollider, Collider ignoreCollider)
+    {
+        if (hitCollider == ignoreCollider)
+        {
+            return true;
+        }
+
+        Transform hitTransform = hitCollider.transform;
+        Transform ignoreTransform = ignoreCollider.transform;
+
+        return hitTransform.IsChildOf(ignoreTransform) || ignoreTransform.IsChildOf(hitTransform);
     }
 }
