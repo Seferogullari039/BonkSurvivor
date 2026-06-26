@@ -15,6 +15,7 @@ public class EnemySpawner : MonoBehaviour
     private float runTimer;
     private int currentWave = 0;
     private int spawnedBossWave = 0;
+    private int eliteWarningWave = -1;
     private int pendingWaveBurstCount;
     private float waveBurstTimer;
 
@@ -83,7 +84,7 @@ public class EnemySpawner : MonoBehaviour
 
         ApplyEnemyType(enemy, enemyObject.transform, Enemy.EnemyType.Normal);
         enemy.ApplyDifficultyScaling(Mathf.Max(1, currentWave));
-        ApplyEliteMutation(enemy, enemyObject.transform);
+        ApplyEliteMutation(enemy, enemyObject.transform, Mathf.Max(1, currentWave));
     }
 
     public bool TrySpawnPortalEnemy(Vector3 portalPosition)
@@ -121,6 +122,7 @@ public class EnemySpawner : MonoBehaviour
         runTimer = 0f;
         currentWave = 0;
         spawnedBossWave = 0;
+        eliteWarningWave = -1;
         pendingWaveBurstCount = 0;
         waveBurstTimer = 0f;
         spawnInterval = ResolveSpawnInterval(1);
@@ -482,7 +484,7 @@ public class EnemySpawner : MonoBehaviour
         }
 
         AudioManager.Instance?.PlayBossSpawn();
-        RunEventMessageDisplay.ShowBossIncoming();
+        RunEventMessageDisplay.ShowMiniBossApproaching();
     }
 
     private BossAbilityType GetBossAbilityType(int wave)
@@ -577,7 +579,7 @@ public class EnemySpawner : MonoBehaviour
 
         if (ShouldSpawnElite() && !IsBlockedEliteSpawn(fpsSpawnZone))
         {
-            ApplyEliteMutation(enemy, enemyObject.transform);
+            ApplyEliteMutation(enemy, enemyObject.transform, currentWave);
         }
 
         return true;
@@ -598,7 +600,7 @@ public class EnemySpawner : MonoBehaviour
         return Random.value < eliteChance;
     }
 
-    private static void ApplyEliteMutation(Enemy enemy, Transform enemyTransform)
+    private void ApplyEliteMutation(Enemy enemy, Transform enemyTransform, int wave)
     {
         if (enemy == null || enemyTransform == null) return;
 
@@ -608,6 +610,12 @@ public class EnemySpawner : MonoBehaviour
         if (JuiceManager.Instance != null)
         {
             JuiceManager.Instance.PlayEliteSpawn(enemyTransform.position);
+        }
+
+        if (eliteWarningWave != wave)
+        {
+            eliteWarningWave = wave;
+            RunEventMessageDisplay.ShowEliteMutation();
         }
     }
 
