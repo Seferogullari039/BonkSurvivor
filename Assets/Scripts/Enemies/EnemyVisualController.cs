@@ -177,6 +177,13 @@ public sealed class EnemyVisualController : MonoBehaviour
     {
         hitFlashTimer = 0f;
         CleanupCrowdReadabilityDecor(transform);
+        Transform existingVisualRoot = transform.Find(VisualRootName);
+
+        if (existingVisualRoot != null)
+        {
+            CleanupCrowdReadabilityDecor(existingVisualRoot);
+        }
+
         GameObject viewPrefab = EnemyViewPrefabUtility.ResolveViewPrefab(currentType);
 
         if (viewPrefab != null)
@@ -203,8 +210,8 @@ public sealed class EnemyVisualController : MonoBehaviour
             ApplySilhouetteScale(visualRoot, currentType);
             visualRootBaseScale = visualRoot.localScale;
             ApplyPrefabViewColors(viewInstance, visualRoot);
-            EnsureCrowdReadabilityDecor(visualRoot);
-            CacheFlashRenderers(GetVisualRenderers(visualRoot));
+            EnsureCrowdReadabilityDecor();
+            CacheFlashRenderers(FilterVisualRenderers(GetVisualRenderers(visualRoot)));
             EnemyVisualFacingController.BindToViewInstance(viewInstance, transform, currentType);
             return;
         }
@@ -237,8 +244,8 @@ public sealed class EnemyVisualController : MonoBehaviour
             }
 
             ApplyBaseColorsToRenderers(GetVisualRenderers(enhancerRoot));
-            EnsureCrowdReadabilityDecor(enhancerRoot);
-            CacheFlashRenderers(GetVisualRenderers(enhancerRoot));
+            EnsureCrowdReadabilityDecor();
+            CacheFlashRenderers(FilterVisualRenderers(GetVisualRenderers(enhancerRoot)));
             return;
         }
 
@@ -250,7 +257,7 @@ public sealed class EnemyVisualController : MonoBehaviour
             GameVisualStyle.ApplyColor(rootRenderer, baseColor, baseSmoothness, baseGlow);
         }
 
-        EnsureCrowdReadabilityDecor(transform);
+        EnsureCrowdReadabilityDecor();
         CacheFallbackRenderers();
     }
 
@@ -265,7 +272,67 @@ public sealed class EnemyVisualController : MonoBehaviour
             return;
         }
 
-        CacheFlashRenderers(renderers);
+        CacheFlashRenderers(FilterVisualRenderers(renderers));
+    }
+
+    private static bool IsReadabilityDecorRenderer(Renderer renderer)
+    {
+        if (renderer == null)
+        {
+            return true;
+        }
+
+        string objectName = renderer.gameObject.name;
+
+        return objectName == "EnemyGroundShadow"
+            || objectName == "EliteGlowRingOuter"
+            || objectName == "EliteGlowRingInner"
+            || objectName == "EliteGlowRing";
+    }
+
+    private static Renderer[] FilterVisualRenderers(Renderer[] renderers)
+    {
+        if (renderers == null || renderers.Length == 0)
+        {
+            return System.Array.Empty<Renderer>();
+        }
+
+        int keptCount = 0;
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            if (!IsReadabilityDecorRenderer(renderers[i]))
+            {
+                keptCount++;
+            }
+        }
+
+        if (keptCount == renderers.Length)
+        {
+            return renderers;
+        }
+
+        if (keptCount == 0)
+        {
+            return System.Array.Empty<Renderer>();
+        }
+
+        Renderer[] filtered = new Renderer[keptCount];
+        int writeIndex = 0;
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (IsReadabilityDecorRenderer(renderer))
+            {
+                continue;
+            }
+
+            filtered[writeIndex++] = renderer;
+        }
+
+        return filtered;
     }
 
     private void CacheFlashRenderers(Renderer[] renderers)
@@ -369,15 +436,22 @@ public sealed class EnemyVisualController : MonoBehaviour
         renderer.SetPropertyBlock(sharedFlashBlock);
     }
 
-    private void EnsureCrowdReadabilityDecor(Transform parent)
+    private void EnsureCrowdReadabilityDecor()
     {
-        EnsureGroundShadow(parent);
-        EnsureEliteRing(parent);
+        EnsureGroundShadow();
+        EnsureEliteRing();
     }
 
-    private void EnsureGroundShadow(Transform parent)
+    private Transform ResolveStableDecorParent()
     {
-        if (parent == null)
+        return transform;
+    }
+
+    private void EnsureGroundShadow()
+    {
+        Transform shadowParent = ResolveStableDecorParent();
+
+        if (shadowParent == null)
         {
             return;
         }
@@ -395,7 +469,7 @@ public sealed class EnemyVisualController : MonoBehaviour
             Enemy.EnemyType.Fast => 0.78f,
             Enemy.EnemyType.MiniBoss => 1.2f,
             Enemy.EnemyType.DragonBoss => 1.35f,
-            _ => 0.9f
+            _ => 0.88f
         };
 
         float alpha = currentType switch
@@ -403,22 +477,25 @@ public sealed class EnemyVisualController : MonoBehaviour
             Enemy.EnemyType.Tank => 0.26f,
             Enemy.EnemyType.Elite => 0.24f,
             Enemy.EnemyType.Fast => 0.2f,
-            _ => 0.22f
+            _ => 0.2f
         };
 
         groundShadow = CreateFlatDisc(
-            parent,
+            shadowParent,
             "EnemyGroundShadow",
-            new Vector3(0f, 0.012f, 0f),
-            new Vector3(diameter, 0.0045f, diameter),
+            new Vector3(0f, 0.008f, 0f),
+            new Vector3(diameter, 0.0035f, diameter),
             new Color(GroundShadowColor.r, GroundShadowColor.g, GroundShadowColor.b, alpha),
             false,
-            0f);
+            0f,
+            true);
         groundShadow.transform.SetAsFirstSibling();
     }
 
-    private void EnsureEliteRing(Transform parent)
+    private void EnsureEliteRing()
     {
+        Transform ringParent = ResolveStableDecorParent();
+
         if (eliteRingOuter != null)
         {
             Destroy(eliteRingOuter);
@@ -431,28 +508,30 @@ public sealed class EnemyVisualController : MonoBehaviour
             eliteRingInner = null;
         }
 
-        if (parent == null || currentType != Enemy.EnemyType.Elite)
+        if (ringParent == null || currentType != Enemy.EnemyType.Elite)
         {
             return;
         }
 
         eliteRingOuter = CreateFlatDisc(
-            parent,
+            ringParent,
             "EliteGlowRingOuter",
-            new Vector3(0f, 0.018f, 0f),
+            new Vector3(0f, 0.012f, 0f),
             new Vector3(0.98f, 0.006f, 0.98f),
             EliteRingGlowColor,
             true,
-            0.32f);
+            0.32f,
+            false);
 
         eliteRingInner = CreateFlatDisc(
-            parent,
+            ringParent,
             "EliteGlowRingInner",
-            new Vector3(0f, 0.022f, 0f),
+            new Vector3(0f, 0.014f, 0f),
             new Vector3(0.74f, 0.008f, 0.74f),
             EliteRingColor,
             true,
-            0.58f);
+            0.58f,
+            false);
     }
 
     private static GameObject CreateFlatDisc(
@@ -462,7 +541,8 @@ public sealed class EnemyVisualController : MonoBehaviour
         Vector3 localScale,
         Color color,
         bool emissionGlow,
-        float emissionIntensity)
+        float emissionIntensity,
+        bool isGroundShadow)
     {
         GameObject disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         disc.name = name;
@@ -483,9 +563,33 @@ public sealed class EnemyVisualController : MonoBehaviour
         if (renderer != null)
         {
             GameVisualStyle.ApplyColor(renderer, color, 0.72f, emissionGlow, emissionIntensity);
+            renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            renderer.receiveShadows = false;
+        }
+
+        if (isGroundShadow)
+        {
+            EnemyGroundShadowLock lockComponent = disc.AddComponent<EnemyGroundShadowLock>();
+            lockComponent.Configure(localScale);
         }
 
         return disc;
+    }
+
+    private sealed class EnemyGroundShadowLock : MonoBehaviour
+    {
+        private Vector3 baseLocalScale;
+
+        public void Configure(Vector3 localScale)
+        {
+            baseLocalScale = localScale;
+        }
+
+        private void LateUpdate()
+        {
+            transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            transform.localScale = baseLocalScale;
+        }
     }
 
     private void ApplyPrefabViewColors(GameObject viewInstance, Transform viewRoot)
@@ -592,11 +696,13 @@ public sealed class EnemyVisualController : MonoBehaviour
         groundShadow = null;
         eliteRingOuter = null;
         eliteRingInner = null;
+        CleanupCrowdReadabilityDecor(transform);
 
         Transform existingRoot = transform.Find(VisualRootName);
 
         if (existingRoot != null)
         {
+            CleanupCrowdReadabilityDecor(existingRoot);
             Destroy(existingRoot.gameObject);
         }
 
