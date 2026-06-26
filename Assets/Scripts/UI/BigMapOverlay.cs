@@ -178,6 +178,11 @@ public class BigMapOverlay : MonoBehaviour
             return false;
         }
 
+        if (SettingsMenuUI.IsOpen)
+        {
+            return false;
+        }
+
         if (DevAdminPanel.IsOpen)
         {
             return false;

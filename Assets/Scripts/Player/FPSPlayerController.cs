@@ -275,8 +275,9 @@ public class FPSPlayerController : MonoBehaviour
         if (DevAdminPanel.IsOpen) return;
         if (cameraTransform == null) return;
 
-        float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
-        float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
+        float lookSensitivity = mouseSensitivity * GameSettingsManager.MouseSensitivity;
+        float mouseX = Input.GetAxis("Mouse X") * lookSensitivity;
+        float mouseY = Input.GetAxis("Mouse Y") * lookSensitivity;
 
         transform.Rotate(Vector3.up, mouseX, Space.World);
 

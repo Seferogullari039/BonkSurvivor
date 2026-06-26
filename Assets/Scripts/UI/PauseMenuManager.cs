@@ -62,6 +62,16 @@ public class PauseMenuManager : MonoBehaviour
 
     private void Update()
     {
+        if (SettingsMenuUI.IsOpen)
+        {
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                SettingsMenuUI.CloseIfOpen();
+            }
+
+            return;
+        }
+
         if (!Input.GetKeyDown(KeyCode.Escape))
         {
             return;
@@ -142,6 +152,7 @@ public class PauseMenuManager : MonoBehaviour
             return;
         }
 
+        SettingsMenuUI.CloseIfOpen();
         isPaused = false;
 
         if (pausePanel != null)
@@ -154,6 +165,7 @@ public class PauseMenuManager : MonoBehaviour
 
     public void ForceHide()
     {
+        SettingsMenuUI.CloseIfOpen();
         isPaused = false;
 
         if (pausePanel != null)
@@ -352,9 +364,10 @@ public class PauseMenuManager : MonoBehaviour
             TextAlignmentOptions.TopLeft);
 
         CreateMenuButton(pausePanel.transform, "ResumeButton", "Resume", new Vector2(0f, -150f), OnResumeClicked);
-        CreateMenuButton(pausePanel.transform, "RestartButton", "Restart Run", new Vector2(0f, -210f), OnRestartClicked);
-        CreateMenuButton(pausePanel.transform, "MainMenuButton", "Main Menu", new Vector2(0f, -270f), OnMainMenuClicked);
-        CreateMenuButton(pausePanel.transform, "QuitButton", "Quit", new Vector2(0f, -330f), OnQuitClicked);
+        CreateMenuButton(pausePanel.transform, "OptionsButton", "Options", new Vector2(0f, -210f), OnOptionsClicked);
+        CreateMenuButton(pausePanel.transform, "RestartButton", "Restart Run", new Vector2(0f, -270f), OnRestartClicked);
+        CreateMenuButton(pausePanel.transform, "MainMenuButton", "Main Menu", new Vector2(0f, -330f), OnMainMenuClicked);
+        CreateMenuButton(pausePanel.transform, "QuitButton", "Quit", new Vector2(0f, -390f), OnQuitClicked);
 
         pausePanel.SetActive(false);
         isBuilt = true;
@@ -363,6 +376,11 @@ public class PauseMenuManager : MonoBehaviour
     private void OnResumeClicked()
     {
         Resume();
+    }
+
+    private void OnOptionsClicked()
+    {
+        SettingsMenuUI.OpenFromPauseMenu();
     }
 
     private void OnRestartClicked()

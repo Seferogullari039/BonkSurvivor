@@ -105,6 +105,7 @@ public class MainMenuManager : MonoBehaviour
         Time.timeScale = 1f;
         ItemOfferHudVisibility.ResetStateForNewRun();
         PauseMenuManager.HidePauseMenuIfExists();
+        SettingsMenuUI.CloseIfOpen();
         BigMapOverlay.EnsureReadyForRun();
 
         ApplyGameplayPresentationState();
@@ -190,9 +191,15 @@ public class MainMenuManager : MonoBehaviour
         ShowMainMenuPanel();
         HUDManager.HideGameplayHud();
         PauseMenuManager.HidePauseMenuIfExists();
+        SettingsMenuUI.CloseIfOpen();
 
         ApplyMenuPresentationState();
         HideMenuWeaponVisuals();
+    }
+
+    public void OpenSettings()
+    {
+        SettingsMenuUI.OpenFromMainMenu();
     }
 
     public void OpenUpgrades()
@@ -310,13 +317,16 @@ public class MainMenuManager : MonoBehaviour
             CreateText(mainMenuPanel.transform, "TitleText", "BONKSURVIVOR", 48, new Vector2(0f, 180f));
             mainMenuCoinsText = CreateText(mainMenuPanel.transform, "TotalCoinsText", "", 28, new Vector2(0f, 110f));
             CreateMenuButton(mainMenuPanel.transform, "PlayButton", "Play", new Vector2(0f, 20f), PlayGame);
-            CreateMenuButton(mainMenuPanel.transform, "UpgradesButton", "Upgrades", new Vector2(0f, -60f), OpenUpgrades);
-            CreateMenuButton(mainMenuPanel.transform, "QuitButton", "Quit", new Vector2(0f, -140f), QuitGame);
+            CreateMenuButton(mainMenuPanel.transform, "SettingsButton", "Settings", new Vector2(0f, -40f), OpenSettings);
+            CreateMenuButton(mainMenuPanel.transform, "UpgradesButton", "Upgrades", new Vector2(0f, -100f), OpenUpgrades);
+            CreateMenuButton(mainMenuPanel.transform, "QuitButton", "Quit", new Vector2(0f, -180f), QuitGame);
         }
         else
         {
             mainMenuCoinsText = mainMenuPanel.transform.Find("TotalCoinsText")?.GetComponent<TMP_Text>();
             WireExistingButton(mainMenuPanel.transform, "PlayButton", PlayGame);
+            EnsureSettingsButton(mainMenuPanel.transform);
+            WireExistingButton(mainMenuPanel.transform, "SettingsButton", OpenSettings);
             WireExistingButton(mainMenuPanel.transform, "UpgradesButton", OpenUpgrades);
             WireExistingButton(mainMenuPanel.transform, "QuitButton", QuitGame);
         }
@@ -408,8 +418,9 @@ public class MainMenuManager : MonoBehaviour
         LayoutCenteredText(panel, "TitleText", new Vector2(0f, 200f), new Vector2(900f, 80f), 52f);
         LayoutCenteredText(panel, "TotalCoinsText", new Vector2(0f, 120f), new Vector2(700f, 50f), 30f);
         LayoutCenteredButton(panel, "PlayButton", new Vector2(0f, 30f));
-        LayoutCenteredButton(panel, "UpgradesButton", new Vector2(0f, -50f));
-        LayoutCenteredButton(panel, "QuitButton", new Vector2(0f, -130f));
+        LayoutCenteredButton(panel, "SettingsButton", new Vector2(0f, -30f));
+        LayoutCenteredButton(panel, "UpgradesButton", new Vector2(0f, -90f));
+        LayoutCenteredButton(panel, "QuitButton", new Vector2(0f, -170f));
     }
 
     private static void LayoutUpgradesContent(Transform panel)
@@ -470,6 +481,16 @@ public class MainMenuManager : MonoBehaviour
         RunBuildHud.HideHud();
         ChestStatBuffHud.HideHud();
         ActiveWeaponHud.HideHud();
+    }
+
+    private void EnsureSettingsButton(Transform parent)
+    {
+        if (parent.Find("SettingsButton") != null)
+        {
+            return;
+        }
+
+        CreateMenuButton(parent, "SettingsButton", "Settings", new Vector2(0f, -40f), OpenSettings);
     }
 
     private void WireExistingButton(Transform parent, string buttonName, UnityEngine.Events.UnityAction onClick)
