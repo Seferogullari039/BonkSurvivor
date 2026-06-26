@@ -19,6 +19,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
     private const string MaterialsFolder = "Assets/BonkSurvivor/Maps/GreenAncientWilds/Materials";
     private const string PlaytestBootstrapName = "GreenAncientWilds_PlaytestBootstrap";
     private const string VisualDressingVersionMarker = "BossBoundary";
+    private const string SlopeTestVersionMarker = "SlopeTest_A_GentleRamp";
 
     private const string PolytopePrefabsRoot = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs";
 
@@ -136,10 +137,11 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         bool hasLegacyVisualNames = sceneText.Contains("PT_GroundVisual") || sceneText.Contains("PT_WaterDecor");
 
         bool missingVisualDressing = !sceneText.Contains(VisualDressingVersionMarker);
+        bool missingSlopeTests = !sceneText.Contains(SlopeTestVersionMarker);
         bool missingPlaytestSuppressor = !sceneText.Contains("GreenAncientWildsPlaytestVisualSuppressor");
 
         if (!missingVisuals && !hasLegacyPolytopeMaterials && !hasLegacyVisualNames
-            && !missingVisualDressing && !missingPlaytestSuppressor)
+            && !missingVisualDressing && !missingSlopeTests && !missingPlaytestSuppressor)
         {
             autoBuildAttempted = true;
             return;
@@ -160,6 +162,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
         sceneText = File.ReadAllText(PlaytestScenePath);
         if (!sceneText.Contains(VisualDressingVersionMarker)
+            || !sceneText.Contains(SlopeTestVersionMarker)
             || !sceneText.Contains("GreenAncientWildsPlaytestVisualSuppressor"))
         {
             autoBuildRetryCount++;
@@ -228,6 +231,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
         GameObject visualsRoot = BuildVisualDressing(scene, materials);
         DisableCollidersRecursive(visualsRoot);
+        BuildSlopeTestAreas(scene, materials);
 
         VisualValidationResult validation = ValidateAndSanitizeVisuals(visualsRoot, materials);
         LogValidationResult(validation);
@@ -417,6 +421,8 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         CreateMarker(markersRoot.transform, "ChestZone_A", new Vector3(-48f, 0f, -42f));
         CreateMarker(markersRoot.transform, "ChestZone_B", new Vector3(48f, 0f, -42f));
         CreateMarker(markersRoot.transform, "PortalEventArea", new Vector3(0f, 0f, -62f));
+        CreateMarker(markersRoot.transform, "SlopeTest_A", new Vector3(22f, 0f, 20f));
+        CreateMarker(markersRoot.transform, "SlopeTest_B", new Vector3(-20f, 0f, 22f));
     }
 
     private static void CreateMarker(Transform parent, string name, Vector3 localPosition)
@@ -446,6 +452,208 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         PlaceGrassClusters(visualsRoot.transform, materials.Grass);
 
         return visualsRoot;
+    }
+
+    private static void BuildSlopeTestAreas(Scene scene, MapMaterials materials)
+    {
+        GameObject existing = GameObject.Find("SlopeTestAreas");
+
+        if (existing != null)
+        {
+            UnityEngine.Object.DestroyImmediate(existing);
+        }
+
+        GameObject slopeRoot = new GameObject("SlopeTestAreas");
+        SceneManager.MoveGameObjectToScene(slopeRoot, scene);
+
+        BuildGentleRampTestArea(slopeRoot.transform, materials, new Vector3(22f, 0f, 20f), 32f);
+        BuildRidgeAndRampTestArea(slopeRoot.transform, materials, new Vector3(-20f, 0f, 22f), -28f);
+    }
+
+    private static void BuildGentleRampTestArea(Transform parent, MapMaterials materials, Vector3 worldCenter, float yawDegrees)
+    {
+        GameObject areaRoot = new GameObject("SlopeTest_A_GentleRamp");
+        areaRoot.transform.SetParent(parent, false);
+        areaRoot.transform.position = worldCenter;
+        areaRoot.transform.rotation = Quaternion.Euler(0f, yawDegrees, 0f);
+
+        Transform visualRoot = CreateChild(areaRoot.transform, "Visual");
+        Transform colliderRoot = CreateChild(areaRoot.transform, "Collider");
+        Transform rocksRoot = CreateChild(areaRoot.transform, "Rocks");
+        Transform markersRoot = CreateChild(areaRoot.transform, "Markers");
+
+        CreateBoxRamp(
+            visualRoot,
+            colliderRoot,
+            localPosition: new Vector3(0f, 0.58f, 0f),
+            localRotation: Quaternion.Euler(-8.5f, 0f, 0f),
+            size: new Vector3(8f, 0.22f, 10f),
+            material: materials.Grass);
+
+        CreateBoxRamp(
+            visualRoot,
+            colliderRoot,
+            localPosition: new Vector3(0f, 1.12f, 4.35f),
+            localRotation: Quaternion.identity,
+            size: new Vector3(8f, 0.18f, 2.4f),
+            material: materials.Ground);
+
+        PlaceSlopeDecorRock(
+            rocksRoot,
+            materials.Rock,
+            new Vector3(-3.2f, 0.18f, -4.8f),
+            Quaternion.Euler(0f, 24f, 0f),
+            0.85f);
+        PlaceSlopeDecorRock(
+            rocksRoot,
+            materials.Rock,
+            new Vector3(3.4f, 0.16f, -4.4f),
+            Quaternion.Euler(0f, -18f, 0f),
+            0.78f);
+
+        CreateMarker(markersRoot, "SlopeTestMarker", new Vector3(0f, 1.6f, -5.5f));
+    }
+
+    private static void BuildRidgeAndRampTestArea(Transform parent, MapMaterials materials, Vector3 worldCenter, float yawDegrees)
+    {
+        GameObject areaRoot = new GameObject("SlopeTest_B_RidgeAndRamp");
+        areaRoot.transform.SetParent(parent, false);
+        areaRoot.transform.position = worldCenter;
+        areaRoot.transform.rotation = Quaternion.Euler(0f, yawDegrees, 0f);
+
+        Transform visualRoot = CreateChild(areaRoot.transform, "Visual");
+        Transform colliderRoot = CreateChild(areaRoot.transform, "Collider");
+        Transform rocksRoot = CreateChild(areaRoot.transform, "Rocks");
+        Transform markersRoot = CreateChild(areaRoot.transform, "Markers");
+
+        CreateBoxObstacle(
+            visualRoot,
+            colliderRoot,
+            localPosition: new Vector3(-2.4f, 0.68f, 0.8f),
+            localRotation: Quaternion.identity,
+            size: new Vector3(3.6f, 1.35f, 1.1f),
+            material: materials.Rock);
+
+        CreateBoxRamp(
+            visualRoot,
+            colliderRoot,
+            localPosition: new Vector3(2.8f, 0.52f, 1.6f),
+            localRotation: Quaternion.Euler(-10.5f, 0f, 0f),
+            size: new Vector3(6f, 0.2f, 8f),
+            material: materials.Grass);
+
+        CreateBoxObstacle(
+            visualRoot,
+            colliderRoot,
+            localPosition: new Vector3(2.8f, 1.05f, 5.2f),
+            localRotation: Quaternion.identity,
+            size: new Vector3(6f, 0.16f, 1.8f),
+            material: materials.Ground);
+
+        PlaceSlopeDecorRock(
+            rocksRoot,
+            materials.Ruin,
+            new Vector3(-4.2f, 0.22f, 2.4f),
+            Quaternion.Euler(0f, 12f, 0f),
+            1.05f,
+            PolytopePrefabsRoot + "/Rocks/PT_Menhir_Rock_02.prefab");
+        PlaceSlopeDecorRock(
+            rocksRoot,
+            materials.Rock,
+            new Vector3(5.1f, 0.14f, -2.6f),
+            Quaternion.Euler(0f, -32f, 0f),
+            0.72f);
+
+        CreateMarker(markersRoot, "SlopeTestMarker", new Vector3(0f, 1.5f, -4.8f));
+    }
+
+    private static Transform CreateChild(Transform parent, string childName)
+    {
+        GameObject child = new GameObject(childName);
+        child.transform.SetParent(parent, false);
+        child.transform.localPosition = Vector3.zero;
+        child.transform.localRotation = Quaternion.identity;
+        child.transform.localScale = Vector3.one;
+        return child.transform;
+    }
+
+    private static void CreateBoxRamp(
+        Transform visualParent,
+        Transform colliderParent,
+        Vector3 localPosition,
+        Quaternion localRotation,
+        Vector3 size,
+        Material material)
+    {
+        GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        visual.name = "RampSurface";
+        visual.transform.SetParent(visualParent, false);
+        visual.transform.localPosition = localPosition;
+        visual.transform.localRotation = localRotation;
+        visual.transform.localScale = size;
+        UnityEngine.Object.DestroyImmediate(visual.GetComponent<Collider>());
+        ApplyMaterialToRenderers(visual, material);
+
+        GameObject colliderObject = new GameObject("RampBoxCollider");
+        colliderObject.transform.SetParent(colliderParent, false);
+        colliderObject.transform.localPosition = localPosition;
+        colliderObject.transform.localRotation = localRotation;
+        BoxCollider boxCollider = colliderObject.AddComponent<BoxCollider>();
+        boxCollider.size = size;
+        boxCollider.center = Vector3.zero;
+    }
+
+    private static void CreateBoxObstacle(
+        Transform visualParent,
+        Transform colliderParent,
+        Vector3 localPosition,
+        Quaternion localRotation,
+        Vector3 size,
+        Material material)
+    {
+        CreateBoxRamp(visualParent, colliderParent, localPosition, localRotation, size, material);
+
+        Transform lastVisual = visualParent.childCount > 0 ? visualParent.GetChild(visualParent.childCount - 1) : null;
+
+        if (lastVisual != null)
+        {
+            lastVisual.name = "RidgeWall";
+        }
+
+        Transform lastCollider = colliderParent.childCount > 0 ? colliderParent.GetChild(colliderParent.childCount - 1) : null;
+
+        if (lastCollider != null)
+        {
+            lastCollider.name = "RidgeBoxCollider";
+        }
+    }
+
+    private static void PlaceSlopeDecorRock(
+        Transform parent,
+        Material material,
+        Vector3 localPosition,
+        Quaternion localRotation,
+        float scale,
+        string prefabPath = null)
+    {
+        string path = string.IsNullOrEmpty(prefabPath) ? RockPrefabPaths[0] : prefabPath;
+        GameObject instance = InstantiatePolytopePrefab(path, parent, localPosition, localRotation, material);
+
+        if (instance == null)
+        {
+            GameObject fallback = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            fallback.name = "DecorRock";
+            fallback.transform.SetParent(parent, false);
+            fallback.transform.localPosition = localPosition;
+            fallback.transform.localRotation = localRotation;
+            fallback.transform.localScale = Vector3.one * (0.5f * scale);
+            UnityEngine.Object.DestroyImmediate(fallback.GetComponent<Collider>());
+            ApplyMaterialToRenderers(fallback, material);
+            return;
+        }
+
+        instance.transform.localScale = Vector3.one * scale;
+        DisableCollidersRecursive(instance);
     }
 
     private static void SuppressLegacySceneVisuals(Scene scene)
