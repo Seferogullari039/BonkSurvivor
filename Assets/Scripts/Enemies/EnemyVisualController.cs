@@ -15,7 +15,6 @@ public sealed class EnemyVisualController : MonoBehaviour
     private static readonly Color DeathPuffColor = new Color(0.95f, 0.25f, 0.2f);
     private static readonly Color EliteRingColor = new Color(1f, 0.86f, 0.12f, 0.95f);
     private static readonly Color EliteRingGlowColor = new Color(1f, 0.78f, 0.08f, 0.55f);
-    private static readonly Color GroundShadowColor = new Color(0.04f, 0.06f, 0.08f, 0.24f);
     private static MaterialPropertyBlock sharedFlashBlock;
 
     private EnemyVisualEnhancer visualEnhancer;
@@ -23,7 +22,6 @@ public sealed class EnemyVisualController : MonoBehaviour
     private Transform visualRoot;
     private Renderer[] flashRenderers;
     private Color[] baseRendererColors;
-    private GameObject groundShadow;
     private GameObject eliteRingOuter;
     private GameObject eliteRingInner;
     private Enemy.EnemyType currentType = Enemy.EnemyType.Normal;
@@ -438,75 +436,25 @@ public sealed class EnemyVisualController : MonoBehaviour
 
     private void EnsureCrowdReadabilityDecor()
     {
-        EnsureGroundShadow();
+        RemoveExistingGroundShadowIfAny();
         EnsureEliteRing();
+    }
+
+    private void RemoveExistingGroundShadowIfAny()
+    {
+        DestroyAllGroundShadows(transform);
+
+        Transform existingVisualRoot = transform.Find(VisualRootName);
+
+        if (existingVisualRoot != null)
+        {
+            DestroyAllGroundShadows(existingVisualRoot);
+        }
     }
 
     private Transform ResolveStableDecorParent()
     {
         return transform;
-    }
-
-    private void EnsureGroundShadow()
-    {
-        RemoveExistingGroundShadow();
-
-        if (!ShouldCreateGroundShadow())
-        {
-            return;
-        }
-
-        Transform shadowParent = ResolveStableDecorParent();
-
-        if (shadowParent == null)
-        {
-            return;
-        }
-
-        float diameter = currentType switch
-        {
-            Enemy.EnemyType.Tank => 1.08f,
-            Enemy.EnemyType.Elite => 1.02f,
-            Enemy.EnemyType.Fast => 0.78f,
-            Enemy.EnemyType.MiniBoss => 1.2f,
-            Enemy.EnemyType.DragonBoss => 1.35f,
-            _ => 0.88f
-        };
-
-        float alpha = currentType switch
-        {
-            Enemy.EnemyType.Tank => 0.26f,
-            Enemy.EnemyType.Elite => 0.24f,
-            Enemy.EnemyType.Fast => 0.2f,
-            _ => 0.2f
-        };
-
-        groundShadow = CreateFlatDisc(
-            shadowParent,
-            "EnemyGroundShadow",
-            new Vector3(0f, 0.008f, 0f),
-            new Vector3(diameter, 0.0035f, diameter),
-            new Color(GroundShadowColor.r, GroundShadowColor.g, GroundShadowColor.b, alpha),
-            false,
-            0f,
-            true);
-        groundShadow.transform.SetAsFirstSibling();
-    }
-
-    private bool ShouldCreateGroundShadow()
-    {
-        return currentType != Enemy.EnemyType.Normal;
-    }
-
-    private void RemoveExistingGroundShadow()
-    {
-        if (groundShadow != null)
-        {
-            Destroy(groundShadow);
-            groundShadow = null;
-        }
-
-        DestroyAllGroundShadows(transform);
     }
 
     private static void DestroyAllGroundShadows(Transform root)
@@ -557,8 +505,7 @@ public sealed class EnemyVisualController : MonoBehaviour
             new Vector3(0.98f, 0.006f, 0.98f),
             EliteRingGlowColor,
             true,
-            0.32f,
-            false);
+            0.32f);
 
         eliteRingInner = CreateFlatDisc(
             ringParent,
@@ -567,8 +514,7 @@ public sealed class EnemyVisualController : MonoBehaviour
             new Vector3(0.74f, 0.008f, 0.74f),
             EliteRingColor,
             true,
-            0.58f,
-            false);
+            0.58f);
     }
 
     private static GameObject CreateFlatDisc(
@@ -578,8 +524,7 @@ public sealed class EnemyVisualController : MonoBehaviour
         Vector3 localScale,
         Color color,
         bool emissionGlow,
-        float emissionIntensity,
-        bool isGroundShadow)
+        float emissionIntensity)
     {
         GameObject disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
         disc.name = name;
@@ -604,29 +549,7 @@ public sealed class EnemyVisualController : MonoBehaviour
             renderer.receiveShadows = false;
         }
 
-        if (isGroundShadow)
-        {
-            EnemyGroundShadowLock lockComponent = disc.AddComponent<EnemyGroundShadowLock>();
-            lockComponent.Configure(localScale);
-        }
-
         return disc;
-    }
-
-    private sealed class EnemyGroundShadowLock : MonoBehaviour
-    {
-        private Vector3 baseLocalScale;
-
-        public void Configure(Vector3 localScale)
-        {
-            baseLocalScale = localScale;
-        }
-
-        private void LateUpdate()
-        {
-            transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
-            transform.localScale = baseLocalScale;
-        }
     }
 
     private void ApplyPrefabViewColors(GameObject viewInstance, Transform viewRoot)
@@ -730,7 +653,6 @@ public sealed class EnemyVisualController : MonoBehaviour
 
     private void ClearControllerVisualRoot()
     {
-        groundShadow = null;
         eliteRingOuter = null;
         eliteRingInner = null;
         CleanupCrowdReadabilityDecor(transform);

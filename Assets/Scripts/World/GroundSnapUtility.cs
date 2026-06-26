@@ -131,6 +131,44 @@ public static class GroundSnapUtility
             return true;
         }
 
+        if (IsDecorativeWorldCollider(hitCollider))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsDecorativeWorldCollider(Collider hitCollider)
+    {
+        Transform current = hitCollider.transform;
+
+        while (current != null)
+        {
+            string objectName = current.name;
+
+            if (objectName == "Trees"
+                || objectName == "Rocks"
+                || objectName == "Bushes"
+                || objectName == "Logs")
+            {
+                return true;
+            }
+
+            if (objectName.StartsWith("TreeTrunk_")
+                || objectName.StartsWith("TreeLeaf_")
+                || objectName.StartsWith("Rock_")
+                || objectName.StartsWith("RockCluster_")
+                || objectName.StartsWith("Bush_")
+                || objectName.StartsWith("Log_")
+                || objectName.StartsWith("Landmark_"))
+            {
+                return true;
+            }
+
+            current = current.parent;
+        }
+
         return false;
     }
 

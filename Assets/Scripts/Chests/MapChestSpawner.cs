@@ -10,6 +10,7 @@ public static class MapChestSpawner
     private const float MinDistanceBetweenChests = 14f;
     private const float ChestObjectRadius = 1.2f;
     private const float ChestHeightOffset = 0.5f;
+    private const float MaxChestRiseAboveFlatGround = 1.35f;
     private const float SlopeExclusionRadius = 9f;
     private const int MaxPlacementAttempts = 72;
     private const int MapChestSeedSalt = 0x4D415043;
@@ -99,25 +100,44 @@ public static class MapChestSpawner
                 continue;
             }
 
-            if (GroundSnapUtility.TryGetLootSpawnPosition(
-                    candidate,
-                    ChestHeightOffset,
-                    null,
-                    out Vector3 groundedPosition))
-            {
-                position = groundedPosition;
-            }
-            else
-            {
-                position = candidate;
-                position.y = ProceduralGrassArena.GetLootSpawnY(ChestHeightOffset);
-            }
-
-            ProceduralGrassArena.TryClampHorizontal(ref position);
+            ResolveMapChestGroundPosition(candidate, out position);
             return true;
         }
 
         return false;
+    }
+
+    public static void ApplyMapChestWorldTransform(Transform chestTransform, Vector3 position)
+    {
+        if (chestTransform == null)
+        {
+            return;
+        }
+
+        chestTransform.SetPositionAndRotation(position, Quaternion.identity);
+        chestTransform.localScale = Vector3.one;
+    }
+
+    private static void ResolveMapChestGroundPosition(Vector3 candidate, out Vector3 position)
+    {
+        float flatY = ProceduralGrassArena.GetLootSpawnY(ChestHeightOffset);
+
+        if (GroundSnapUtility.TryGetLootSpawnPosition(
+                candidate,
+                ChestHeightOffset,
+                null,
+                out Vector3 groundedPosition)
+            && groundedPosition.y <= flatY + MaxChestRiseAboveFlatGround)
+        {
+            position = groundedPosition;
+        }
+        else
+        {
+            position = candidate;
+            position.y = flatY;
+        }
+
+        ProceduralGrassArena.TryClampHorizontal(ref position);
     }
 
     private static bool IsTooCloseToPlacedChests(Vector3 flatCandidate, List<Vector3> placedPositions)

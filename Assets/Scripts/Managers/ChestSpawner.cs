@@ -33,6 +33,7 @@ public class ChestSpawner : MonoBehaviour
         }
 
         GameObject chestObject = Instantiate(prefab, position, Quaternion.identity);
+        MapChestSpawner.ApplyMapChestWorldTransform(chestObject.transform, position);
         Chest chest = chestObject.GetComponent<Chest>();
 
         if (chest != null)
