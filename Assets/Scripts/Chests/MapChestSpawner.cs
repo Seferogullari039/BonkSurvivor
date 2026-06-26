@@ -9,7 +9,8 @@ public static class MapChestSpawner
     private const float MapEdgeMargin = 10f;
     private const float MinDistanceBetweenChests = 14f;
     private const float ChestObjectRadius = 1.2f;
-    private const float ChestHeightOffset = 0.5f;
+    private const float MapChestPlacementProbeOffset = 0.05f;
+    private const float MapChestGroundSkin = 0.03f;
     private const float MaxChestRiseAboveFlatGround = 1.35f;
     private const float SlopeExclusionRadius = 9f;
     private const int MaxPlacementAttempts = 72;
@@ -118,25 +119,86 @@ public static class MapChestSpawner
         chestTransform.localScale = Vector3.one;
     }
 
+    public static void SnapMapChestToGround(Transform chestTransform)
+    {
+        if (chestTransform == null)
+        {
+            return;
+        }
+
+        Vector3 position = chestTransform.position;
+        float groundY = ResolveGroundY(position);
+
+        Bounds bounds = ComputeChestWorldBounds(chestTransform);
+        position.y += (groundY + MapChestGroundSkin) - bounds.min.y;
+        chestTransform.position = position;
+    }
+
+    private static float ResolveGroundY(Vector3 worldPosition)
+    {
+        float flatGroundY = ProceduralGrassArena.GetLootSpawnY(0f);
+
+        if (GroundSnapUtility.TryGetGroundPoint(worldPosition, null, out Vector3 groundPoint)
+            && groundPoint.y <= flatGroundY + MaxChestRiseAboveFlatGround)
+        {
+            return groundPoint.y;
+        }
+
+        return flatGroundY;
+    }
+
+    private static Bounds ComputeChestWorldBounds(Transform chestTransform)
+    {
+        Renderer[] renderers = chestTransform.GetComponentsInChildren<Renderer>(true);
+        bool hasBounds = false;
+        Bounds bounds = default;
+
+        for (int i = 0; i < renderers.Length; i++)
+        {
+            Renderer renderer = renderers[i];
+
+            if (renderer == null || !renderer.enabled)
+            {
+                continue;
+            }
+
+            if (renderer.GetComponent<TMPro.TMP_Text>() != null)
+            {
+                continue;
+            }
+
+            if (!hasBounds)
+            {
+                bounds = renderer.bounds;
+                hasBounds = true;
+            }
+            else
+            {
+                bounds.Encapsulate(renderer.bounds);
+            }
+        }
+
+        if (hasBounds)
+        {
+            return bounds;
+        }
+
+        Collider collider = chestTransform.GetComponent<Collider>();
+
+        if (collider != null)
+        {
+            return collider.bounds;
+        }
+
+        return new Bounds(chestTransform.position, new Vector3(1.1f, 0.64f, 0.85f));
+    }
+
     private static void ResolveMapChestGroundPosition(Vector3 candidate, out Vector3 position)
     {
-        float flatY = ProceduralGrassArena.GetLootSpawnY(ChestHeightOffset);
+        float groundY = ResolveGroundY(candidate);
 
-        if (GroundSnapUtility.TryGetLootSpawnPosition(
-                candidate,
-                ChestHeightOffset,
-                null,
-                out Vector3 groundedPosition)
-            && groundedPosition.y <= flatY + MaxChestRiseAboveFlatGround)
-        {
-            position = groundedPosition;
-        }
-        else
-        {
-            position = candidate;
-            position.y = flatY;
-        }
-
+        position = candidate;
+        position.y = groundY + MapChestPlacementProbeOffset;
         ProceduralGrassArena.TryClampHorizontal(ref position);
     }
 

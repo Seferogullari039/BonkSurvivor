@@ -40,6 +40,7 @@ public class ChestSpawner : MonoBehaviour
         {
             bool isMimic = MimicChestUtility.RollMimicForMapChest(currentWave);
             chest.ConfigureMapChest(rarity, isMimic);
+            MapChestSpawner.SnapMapChestToGround(chestObject.transform);
         }
     }
 
