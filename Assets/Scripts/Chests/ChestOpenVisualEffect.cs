@@ -16,10 +16,11 @@ public static class ChestOpenVisualEffect
         LegendaryPulse,
     };
 
-    private const float RouletteDuration = 0.82f;
-    private const float SettleDuration = 0.14f;
-    private const float LockDuration = 0.30f;
-    private const float FadeDuration = 0.06f;
+    private const float AnticipationDuration = 0.08f;
+    private const float RouletteDuration = 0.72f;
+    private const float SettleDuration = 0.12f;
+    private const float LockDuration = 0.16f;
+    private const float FadeDuration = 0.08f;
     private const int RouletteCycles = 3;
 
     private const float InnerScaleMin = 0.12f;
@@ -74,6 +75,26 @@ public static class ChestOpenVisualEffect
 
         float elapsed = 0f;
 
+        while (elapsed < AnticipationDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / AnticipationDuration);
+            float pulseScale = Mathf.Lerp(0.08f, InnerScaleMin, progress);
+            float alpha = progress * CommonPulse.a * 0.65f;
+
+            ApplyInnerGlow(innerGlow, pulseScale);
+            ApplyInnerGlow(spark, pulseScale * 0.55f);
+            SetRingScale(ring, RingRadiusMin * (0.85f + progress * 0.15f));
+            UpdateEffectMaterial(innerMaterial, CommonPulse, 0.10f + progress * 0.06f, alpha);
+            UpdateEffectMaterial(sparkMaterial, CommonPulse, 0.08f + progress * 0.05f, alpha * 0.7f);
+            UpdateEffectMaterial(ringMaterial, GetRingColorForPalette(0), 0.08f, alpha * 0.55f);
+            UpdateRevealLight(revealLight, CommonPulse, 0.04f + progress * 0.05f);
+
+            yield return null;
+        }
+
+        elapsed = 0f;
+
         while (elapsed < RouletteDuration)
         {
             elapsed += Time.unscaledDeltaTime;
@@ -108,7 +129,7 @@ public static class ChestOpenVisualEffect
             Color pulseColor = Color.Lerp(lastRouletteColor, finalPulse, settleEase);
             Color ringColor = Color.Lerp(GetRingColorForPalette(GetRoulettePaletteIndex(1f)), finalRing, settleEase);
 
-            float innerScale = Mathf.Lerp(InnerScaleMin + 0.04f, InnerScaleMax, settleEase);
+            float innerScale = Mathf.Lerp(InnerScaleMin + 0.04f, InnerScaleMax * 1.06f, settleEase);
             float ringRadius = Mathf.Lerp(RingRadiusMax * 0.78f, RingRadiusMax, settleEase);
             float emission = Mathf.Lerp(0.18f, 0.24f, settleEase);
             float alpha = Mathf.Lerp(pulseColor.a, finalPulse.a, settleEase);

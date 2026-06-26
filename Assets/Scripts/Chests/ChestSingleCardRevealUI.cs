@@ -6,9 +6,10 @@ using UnityEngine.UI;
 
 public sealed class ChestSingleCardRevealUI : MonoBehaviour
 {
-    private const float RevealDuration = 0.48f;
-    private const float RouletteDuration = 0.82f;
-    private const float SettleDuration = 0.14f;
+    private const float RevealDuration = 0.40f;
+    private const float HeaderFadeDuration = 0.22f;
+    private const float RouletteDuration = 0.72f;
+    private const float SettleDuration = 0.12f;
     private const float PostLockPulseDuration = 0.22f;
     private const float GlowPulseSpeed = 2.8f;
     private const int RouletteCycles = 3;
@@ -56,6 +57,7 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
     private static Sprite placeholderSprite;
 
     private GameObject rootPanel;
+    private Image panelImage;
     private TMP_Text headerText;
     private CardView cardView;
     private Coroutine presentationRoutine;
@@ -70,6 +72,7 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
     private Color lockedBorder = ChestLootRarityPalette.CommonBorder;
     private string lockedRarityLabel = "COMMON";
     private bool rouletteLocked;
+    private Color headerTargetColor = Color.white;
 
     public bool IsShowing => isShowing && rootPanel != null && rootPanel.activeSelf;
 
@@ -110,6 +113,21 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         rootPanel.SetActive(true);
 
         ApplyHeader(header, headerColor);
+
+        if (headerText != null)
+        {
+            Color fadedHeader = headerText.color;
+            fadedHeader.a = 0f;
+            headerText.color = fadedHeader;
+        }
+
+        if (panelImage != null)
+        {
+            Color panelColor = panelImage.color;
+            panelColor.a = 0.72f;
+            panelImage.color = panelColor;
+        }
+
         ApplyCardContent(cardData);
 
         if (presentationRoutine != null)
@@ -173,10 +191,12 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
 
         RectTransform cardRect = cardView.CardRect;
         Vector2 targetPosition = new Vector2(0f, 8f);
-        Vector2 startPosition = targetPosition + new Vector2(0f, -108f);
+        Vector2 startPosition = targetPosition + new Vector2(0f, -118f);
         cardRect.anchoredPosition = startPosition;
-        cardRect.localScale = Vector3.one * 0.42f;
+        cardRect.localScale = Vector3.one * 0.38f;
         ApplyRoulettePaletteIndex(0);
+
+        const float targetPanelAlpha = 0.9f;
 
         if (cardView.CollectHintText != null)
         {
@@ -192,13 +212,29 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         {
             elapsed += Time.unscaledDeltaTime;
 
+            float headerFade = Mathf.Clamp01(elapsed / HeaderFadeDuration);
+
+            if (headerText != null)
+            {
+                Color headerColorNow = headerTargetColor;
+                headerColorNow.a = headerFade;
+                headerText.color = headerColorNow;
+            }
+
+            if (panelImage != null)
+            {
+                Color panelColor = panelImage.color;
+                panelColor.a = Mathf.Lerp(0.72f, targetPanelAlpha, headerFade);
+                panelImage.color = panelColor;
+            }
+
             if (elapsed <= RevealDuration)
             {
                 float progress = Mathf.Clamp01(elapsed / RevealDuration);
                 float eased = progress * progress * (3f - 2f * progress);
                 float popScale = progress < 0.78f
-                    ? Mathf.Lerp(0.42f, 1.08f, eased / 0.78f)
-                    : Mathf.Lerp(1.08f, 1f, (progress - 0.78f) / 0.22f);
+                    ? Mathf.Lerp(0.38f, 1.10f, eased / 0.78f)
+                    : Mathf.Lerp(1.10f, 1f, (progress - 0.78f) / 0.22f);
 
                 cardRect.anchoredPosition = Vector2.Lerp(startPosition, targetPosition, eased);
                 cardRect.localScale = Vector3.one * popScale;
@@ -386,6 +422,8 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         }
 
         headerText.text = string.IsNullOrEmpty(header) ? "Chest Reward" : header;
+        headerTargetColor = headerColor;
+        headerTargetColor.a = 1f;
         headerText.color = headerColor;
     }
 
@@ -519,9 +557,10 @@ public sealed class ChestSingleCardRevealUI : MonoBehaviour
         RectTransform panelRect = rootPanel.AddComponent<RectTransform>();
         UiLayoutUtility.SetAnchorCenter(panelRect, Vector2.zero, new Vector2(860f, 520f));
 
-        Image panelImage = rootPanel.AddComponent<Image>();
-        panelImage.color = new Color(0.02f, 0.03f, 0.05f, 0.9f);
-        panelImage.raycastTarget = true;
+        Image panelImageComponent = rootPanel.AddComponent<Image>();
+        panelImageComponent.color = new Color(0.02f, 0.03f, 0.05f, 0.9f);
+        panelImageComponent.raycastTarget = true;
+        panelImage = panelImageComponent;
 
         GameObject backdropPulseObject = new GameObject("BackdropPulse");
         backdropPulseObject.transform.SetParent(rootPanel.transform, false);

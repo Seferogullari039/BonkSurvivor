@@ -3,7 +3,8 @@ using UnityEngine;
 
 public static class ChestOpeningPresentation
 {
-    private const float OpeningDuration = 0.30f;
+    private const float AnticipationDuration = 0.14f;
+    private const float OpeningDuration = 0.32f;
     private const float LidOpenAngle = -42f;
     private const float MouthLocalY = 0.56f;
     private const float FallbackMouthHeight = 0.75f;
@@ -92,6 +93,41 @@ public static class ChestOpeningPresentation
         lidTransform.localRotation = Quaternion.Euler(openAngle, 0f, 0f);
     }
 
+    public static IEnumerator PlayAnticipationShake(Transform chestTransform)
+    {
+        if (chestTransform == null)
+        {
+            yield break;
+        }
+
+        Transform animatedRoot = ResolveAnimatedRoot(chestTransform);
+
+        if (animatedRoot == null)
+        {
+            yield break;
+        }
+
+        Vector3 baseLocalPosition = animatedRoot.localPosition;
+        Quaternion baseLocalRotation = animatedRoot.localRotation;
+        float elapsed = 0f;
+
+        while (elapsed < AnticipationDuration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float progress = Mathf.Clamp01(elapsed / AnticipationDuration);
+            float decay = 1f - progress;
+            float shake = Mathf.Sin(progress * 52f) * decay * 2.4f;
+
+            animatedRoot.localRotation = baseLocalRotation * Quaternion.Euler(0f, shake * 0.35f, shake);
+            animatedRoot.localPosition = baseLocalPosition + new Vector3(shake * 0.014f, 0f, shake * 0.01f);
+
+            yield return null;
+        }
+
+        animatedRoot.localPosition = baseLocalPosition;
+        animatedRoot.localRotation = baseLocalRotation;
+    }
+
     public static IEnumerator PlayPhysicalOpening(Transform chestTransform)
     {
         if (chestTransform == null)
@@ -113,6 +149,8 @@ public static class ChestOpeningPresentation
         {
             visualAnimator.SetIdleEnabled(false);
         }
+
+        FPSScreenShake.Shake(0.024f, 0.12f);
 
         Vector3 baseLocalPosition = animatedRoot.localPosition;
         Quaternion baseLocalRotation = animatedRoot.localRotation;
@@ -140,7 +178,7 @@ public static class ChestOpeningPresentation
             }
             else if (progress < 0.72f)
             {
-                scaleY = Mathf.Lerp(0.88f, 1.06f, (progress - 0.42f) / 0.3f);
+                scaleY = Mathf.Lerp(0.88f, 1.10f, (progress - 0.42f) / 0.3f);
             }
             else
             {

@@ -19,6 +19,7 @@ public class ChestVisual : MonoBehaviour
     private bool bossPresentation;
     private bool droppedRewardPresentation;
     private bool proximityHighlight;
+    private bool openingHighlight;
     private float proximityPulseTime;
     private float storedGlowIntensity;
     private float storedLightIntensity;
@@ -68,8 +69,28 @@ public class ChestVisual : MonoBehaviour
         }
     }
 
+    public void SetOpeningHighlight(bool active)
+    {
+        openingHighlight = active;
+
+        if (active)
+        {
+            proximityHighlight = false;
+            proximityPulseTime = 0f;
+            return;
+        }
+
+        ApplyMaterials();
+    }
+
     private void Update()
     {
+        if (openingHighlight)
+        {
+            UpdateOpeningPulse();
+            return;
+        }
+
         if (!proximityHighlight || glowLight == null)
         {
             return;
@@ -78,6 +99,25 @@ public class ChestVisual : MonoBehaviour
         proximityPulseTime += Time.deltaTime * 3.6f;
         float pulse = 0.5f + 0.5f * Mathf.Sin(proximityPulseTime);
         float intensityBoost = 1f + pulse * 0.38f;
+
+        glowLight.intensity = storedLightIntensity * intensityBoost;
+
+        if (glowRenderer != null)
+        {
+            ChestVisualMaterials.ApplyGlow(glowRenderer, rarity, storedGlowIntensity * intensityBoost);
+        }
+    }
+
+    private void UpdateOpeningPulse()
+    {
+        if (glowLight == null)
+        {
+            return;
+        }
+
+        proximityPulseTime += Time.unscaledDeltaTime * 5.2f;
+        float pulse = 0.5f + 0.5f * Mathf.Sin(proximityPulseTime);
+        float intensityBoost = 1f + pulse * 0.55f;
 
         glowLight.intensity = storedLightIntensity * intensityBoost;
 

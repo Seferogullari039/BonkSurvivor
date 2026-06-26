@@ -116,7 +116,6 @@ public class MimicChestController : MonoBehaviour
         ChestRarity rarity = ownerChest != null ? ownerChest.Rarity : ChestRarity.Normal;
 
         ChestRevealPause.Begin();
-        AudioManager.Instance?.PlayChestOpen();
         yield return ChestOpenPresentation.PlayRevealThenOpenUpgradeMenu(openPosition, rarity, transform);
         Destroy(gameObject);
     }

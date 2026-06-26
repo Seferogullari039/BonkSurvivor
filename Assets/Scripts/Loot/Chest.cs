@@ -380,7 +380,6 @@ public class Chest : MonoBehaviour
         Vector3 openPosition = transform.position;
         ChestRarity rarity = chestRarity;
 
-        AudioManager.Instance?.PlayChestOpen();
         yield return ChestOpenPresentation.PlayRevealThenOpenUpgradeMenu(openPosition, rarity, transform);
         Destroy(gameObject);
     }
