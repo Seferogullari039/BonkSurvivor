@@ -551,11 +551,16 @@ public class Enemy : MonoBehaviour
                 }
 
                 DropMiniBossRewards(dropPosition);
+                if (enemyType == EnemyType.MiniBoss)
+                {
+                    TryDropHeartPickup(dropPosition);
+                }
             }
             else if (enemyType == EnemyType.Elite && IsElite)
             {
                 RunStatsTracker.GetOrCreate().RecordEnemyKill(true, false);
                 DropEliteRewards(dropPosition);
+                TryDropHeartPickup(dropPosition);
 
                 if (JuiceManager.Instance != null)
                 {
@@ -581,6 +586,7 @@ public class Enemy : MonoBehaviour
                     );
                 }
 
+                TryDropHeartPickup(dropPosition);
                 TryDropChest();
             }
 
@@ -627,6 +633,28 @@ public class Enemy : MonoBehaviour
         }
 
         TryDropChest();
+    }
+
+    private void TryDropHeartPickup(Vector3 dropPosition)
+    {
+        if (enemyType == EnemyType.DragonBoss)
+        {
+            return;
+        }
+
+        HeartPickup.TrySpawnAt(dropPosition, GetHeartDropChance());
+    }
+
+    private float GetHeartDropChance()
+    {
+        return enemyType switch
+        {
+            EnemyType.Elite => 0.15f,
+            EnemyType.MiniBoss => 0.50f,
+            EnemyType.Tank => 0.08f,
+            EnemyType.Fast => 0.07f,
+            _ => 0.07f
+        };
     }
 
     private void DropMiniBossRewards(Vector3 dropPosition)

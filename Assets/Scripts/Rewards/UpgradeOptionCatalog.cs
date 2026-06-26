@@ -30,6 +30,7 @@ public static class UpgradeOptionCatalog
     public const int StarfallSigilIndex = 33;
     public const int CelestialShieldIndex = 34;
     public const int BloodPactIndex = 35;
+    public const int VitalityIndex = 36;
 
     public static int OptionCount => Options.Length;
 
@@ -117,6 +118,8 @@ public static class UpgradeOptionCatalog
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 33 Starfall Sigil
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1), // 34 Celestial Shield
         new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Legendary, WeaponBuildType.General, 1) // 35 Blood Pact
+        ,
+        new OptionMetadata(RewardCategory.Passive, UpgradeRarity.Common, WeaponBuildType.General, 5) // 36 Vitality
     };
 
     private static readonly EvolutionRequirement[] EvolutionRequirements =
@@ -202,7 +205,8 @@ public static class UpgradeOptionCatalog
             return false;
         }
 
-        return upgradeIndex >= 0 && upgradeIndex <= ConductiveCoreIndex;
+        return (upgradeIndex >= 0 && upgradeIndex <= ConductiveCoreIndex)
+            || upgradeIndex == VitalityIndex;
     }
 
     public static bool IsChestSpecialEligible(int upgradeIndex)
@@ -494,6 +498,7 @@ public static class UpgradeOptionCatalog
         "Titan Gauntlet",
         "Starfall Sigil",
         "Celestial Shield",
-        "Blood Pact"
+        "Blood Pact",
+        "Vitality"
     };
 }

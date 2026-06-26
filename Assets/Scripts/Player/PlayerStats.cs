@@ -39,6 +39,7 @@ public class PlayerStats : MonoBehaviour
     private float chestMoveSpeedMultiplier = 1f;
     private float chestCoinGainMultiplier = 1f;
     private float chestXpGainMultiplier = 1f;
+    private int vitalityLevel;
 
     public float ChestMoveSpeedMultiplier => chestMoveSpeedMultiplier;
     public float StarterWeaponCooldownMultiplier => starterWeaponCooldownMultiplier;
@@ -57,6 +58,7 @@ public class PlayerStats : MonoBehaviour
     public int CurrentXP => currentXP;
     public int XPToNextLevel => xpToNextLevel;
     public int Coins => coins;
+    public int VitalityLevel => vitalityLevel;
 
     public static bool LogEffectiveDamage = false;
     public static bool LogLevelUpDebug = false;
@@ -71,7 +73,7 @@ public class PlayerStats : MonoBehaviour
     {
         get
         {
-            return Mathf.Max(1, maxHealth + RelicManager.MaxHealthBonus);
+            return Mathf.Max(1, maxHealth + RelicManager.MaxHealthBonus + vitalityLevel * 10);
         }
     }
 
@@ -300,6 +302,7 @@ public class PlayerStats : MonoBehaviour
         chestCoinGainMultiplier = 1f;
         chestXpGainMultiplier = 1f;
         hpRegenAccumulator = 0f;
+        vitalityLevel = 0;
 
         if (UpgradeManager.Instance != null)
         {
@@ -312,6 +315,18 @@ public class PlayerStats : MonoBehaviour
         int bonus = Mathf.Max(1, Mathf.RoundToInt(maxHealth * percent));
         maxHealth += bonus;
         currentHealth = Mathf.Min(currentHealth + bonus, EffectiveMaxHealth);
+        RefreshHUD();
+    }
+
+    public void ApplyVitalityLevel()
+    {
+        if (vitalityLevel >= UpgradeOptionCatalog.GetMaxLevel(UpgradeOptionCatalog.VitalityIndex))
+        {
+            return;
+        }
+
+        vitalityLevel++;
+        currentHealth = Mathf.Min(currentHealth + 10, EffectiveMaxHealth);
         RefreshHUD();
     }
 

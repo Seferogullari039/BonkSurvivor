@@ -1586,6 +1586,7 @@ public class LevelUpManager : MonoBehaviour
             case 18:
             case 20:
             case 22:
+            case UpgradeOptionCatalog.VitalityIndex:
                 weight = earlyGame ? 8 : (midGame ? 6 : 5);
                 break;
             case 19:
@@ -1870,6 +1871,11 @@ public class LevelUpManager : MonoBehaviour
                     "Blood Pact",
                     "Gain more power as your health gets lower.",
                     "sharp_instinct");
+            case UpgradeOptionCatalog.VitalityIndex:
+                return MakeContent(
+                    "Vitality",
+                    "+10 Max HP",
+                    "chest_stat_health");
             default:
                 return MakeContent(string.Empty, string.Empty, string.Empty);
         }
@@ -2323,6 +2329,9 @@ public class LevelUpManager : MonoBehaviour
                 break;
             case 14:
                 ApplySwordSkillDamageUpgrade(0.15f * multiplier);
+                break;
+            case UpgradeOptionCatalog.VitalityIndex:
+                FindPlayerStats()?.ApplyVitalityLevel();
                 break;
             case 15:
             case 16:
