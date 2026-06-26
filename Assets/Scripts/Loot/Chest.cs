@@ -21,6 +21,9 @@ public class Chest : MonoBehaviour
     public ChestRarity Rarity => chestRarity;
     public bool IsMimic => isMimic;
     public bool IsDroppedRewardChest => isDroppedRewardChest;
+    public bool IsOpened => isOpened;
+    public bool IsSeededMapChest => !isDroppedRewardChest;
+    public bool ShouldShowOnBigMap => IsSeededMapChest && !isOpened;
     public bool RequiresManualOpen => !isDroppedRewardChest && !isMimic;
 
     private void Start()

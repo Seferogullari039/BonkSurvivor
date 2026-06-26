@@ -13,11 +13,15 @@ public class BigMapOverlay : MonoBehaviour
     private const float DefaultWorldHalfSize = 80f;
 
     private static readonly Color DimOverlayColor = new Color(0.02f, 0.03f, 0.05f, 0.55f);
-    private static readonly Color MapPanelColor = new Color(0.05f, 0.07f, 0.1f, 0.82f);
-    private static readonly Color MapBorderColor = new Color(0.38f, 0.48f, 0.58f, 0.75f);
+    private static readonly Color MapPanelColor = new Color(0.1f, 0.24f, 0.12f, 0.9f);
+    private static readonly Color MapGrassPatchColor = new Color(0.16f, 0.34f, 0.18f, 0.22f);
+    private static readonly Color MapGrassStripeColor = new Color(0.2f, 0.42f, 0.22f, 0.14f);
+    private static readonly Color MapBorderColor = new Color(0.42f, 0.58f, 0.38f, 0.82f);
     private static readonly Color PlayerMarkerColor = new Color(0.35f, 0.88f, 1f, 1f);
     private static readonly Color EnemyMarkerColor = new Color(1f, 0.28f, 0.28f, 0.95f);
-    private static readonly Color ChestMarkerColor = new Color(0.92f, 0.72f, 0.28f, 0.95f);
+    private static readonly Color ChestBodyColor = new Color(0.82f, 0.62f, 0.22f, 1f);
+    private static readonly Color ChestLidColor = new Color(0.58f, 0.42f, 0.14f, 1f);
+    private static readonly Color ChestBorderColor = new Color(0.28f, 0.2f, 0.08f, 0.95f);
     private static readonly Color SlopeMarkerColor = new Color(0.45f, 0.78f, 0.42f, 0.7f);
 
     private static BigMapOverlay instance;
@@ -27,7 +31,7 @@ public class BigMapOverlay : MonoBehaviour
     private RectTransform playerMarkerRect;
     private Transform playerTransform;
     private readonly List<Image> enemyMarkerPool = new List<Image>();
-    private readonly List<Image> chestMarkerPool = new List<Image>();
+    private readonly List<RectTransform> chestMarkerPool = new List<RectTransform>();
     private readonly List<Image> slopeMarkerPool = new List<Image>();
     private readonly List<Transform> slopeMarkerTargets = new List<Transform>();
     private float markerUpdateTimer;
@@ -209,6 +213,8 @@ public class BigMapOverlay : MonoBehaviour
         mapPanelImage.color = MapPanelColor;
         mapPanelImage.raycastTarget = false;
 
+        BuildGrassBackground(mapPanelObject.transform);
+
         Outline mapOutline = mapPanelObject.AddComponent<Outline>();
         mapOutline.effectColor = MapBorderColor;
         mapOutline.effectDistance = new Vector2(2f, -2f);
@@ -318,18 +324,18 @@ public class BigMapOverlay : MonoBehaviour
         {
             Chest chest = chests[i];
 
-            if (chest == null || !chest.gameObject.activeInHierarchy)
+            if (chest == null || !chest.ShouldShowOnBigMap)
             {
                 continue;
             }
 
-            Image marker = GetOrCreateMarker(chestMarkerPool, markerIndex, ChestMarkerColor, 8f, false);
-            PlaceWorldMarker(chest.transform.position, marker.rectTransform);
+            RectTransform marker = GetOrCreateChestMarker(markerIndex);
+            PlaceWorldMarker(chest.transform.position, marker);
             marker.gameObject.SetActive(true);
             markerIndex++;
         }
 
-        HideUnusedMarkers(chestMarkerPool, markerIndex);
+        HideUnusedChestMarkers(markerIndex);
     }
 
     private void RefreshSlopeMarkers()
@@ -435,6 +441,142 @@ public class BigMapOverlay : MonoBehaviour
         {
             playerTransform = fpsController.transform;
         }
+    }
+
+    private RectTransform GetOrCreateChestMarker(int index)
+    {
+        while (chestMarkerPool.Count <= index)
+        {
+            chestMarkerPool.Add(null);
+        }
+
+        if (chestMarkerPool[index] == null)
+        {
+            chestMarkerPool[index] = CreateChestMapMarker(markerContainer, "ChestMapMarker");
+        }
+
+        return chestMarkerPool[index];
+    }
+
+    private static void HideUnusedChestMarkers(List<RectTransform> pool, int activeCount)
+    {
+        for (int i = activeCount; i < pool.Count; i++)
+        {
+            if (pool[i] != null)
+            {
+                pool[i].gameObject.SetActive(false);
+            }
+        }
+    }
+
+    private static void BuildGrassBackground(Transform mapPanel)
+    {
+        GameObject grassRoot = new GameObject("GrassBackground");
+        grassRoot.transform.SetParent(mapPanel, false);
+        grassRoot.transform.SetAsFirstSibling();
+
+        RectTransform grassRect = grassRoot.AddComponent<RectTransform>();
+        UiLayoutUtility.StretchToParent(grassRect);
+
+        CreateGrassPatch(grassRoot.transform, "GrassPatch_A", new Vector2(-280f, 120f), new Vector2(420f, 180f), 18f);
+        CreateGrassPatch(grassRoot.transform, "GrassPatch_B", new Vector2(240f, -90f), new Vector2(360f, 160f), -12f);
+        CreateGrassPatch(grassRoot.transform, "GrassPatch_C", new Vector2(40f, 40f), new Vector2(520f, 220f), 8f);
+
+        for (int i = 0; i < 5; i++)
+        {
+            float y = -MapPanelHeight * 0.42f + i * (MapPanelHeight * 0.2f);
+            CreateGrassStripe(grassRoot.transform, "GrassStripe_" + i, y);
+        }
+    }
+
+    private static void CreateGrassPatch(
+        Transform parent,
+        string name,
+        Vector2 anchoredPosition,
+        Vector2 size,
+        float rotationZ)
+    {
+        GameObject patchObject = new GameObject(name);
+        patchObject.transform.SetParent(parent, false);
+
+        RectTransform rect = patchObject.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = anchoredPosition;
+        rect.sizeDelta = size;
+        rect.localRotation = Quaternion.Euler(0f, 0f, rotationZ);
+
+        Image image = patchObject.AddComponent<Image>();
+        image.color = MapGrassPatchColor;
+        image.raycastTarget = false;
+    }
+
+    private static void CreateGrassStripe(Transform parent, string name, float y)
+    {
+        GameObject stripeObject = new GameObject(name);
+        stripeObject.transform.SetParent(parent, false);
+
+        RectTransform rect = stripeObject.AddComponent<RectTransform>();
+        rect.anchorMin = new Vector2(0.5f, 0.5f);
+        rect.anchorMax = new Vector2(0.5f, 0.5f);
+        rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.anchoredPosition = new Vector2(0f, y);
+        rect.sizeDelta = new Vector2(MapPanelWidth - 80f, 10f);
+        rect.localRotation = Quaternion.Euler(0f, 0f, -8f);
+
+        Image image = stripeObject.AddComponent<Image>();
+        image.color = MapGrassStripeColor;
+        image.raycastTarget = false;
+    }
+
+    private static RectTransform CreateChestMapMarker(Transform parent, string name)
+    {
+        GameObject markerObject = new GameObject(name);
+        markerObject.transform.SetParent(parent, false);
+
+        RectTransform markerRect = markerObject.AddComponent<RectTransform>();
+        markerRect.anchorMin = new Vector2(0.5f, 0.5f);
+        markerRect.anchorMax = new Vector2(0.5f, 0.5f);
+        markerRect.pivot = new Vector2(0.5f, 0.5f);
+        markerRect.sizeDelta = new Vector2(12f, 10f);
+
+        GameObject borderObject = new GameObject("Border");
+        borderObject.transform.SetParent(markerObject.transform, false);
+        RectTransform borderRect = borderObject.AddComponent<RectTransform>();
+        borderRect.anchorMin = Vector2.zero;
+        borderRect.anchorMax = Vector2.one;
+        borderRect.offsetMin = new Vector2(-1f, -1f);
+        borderRect.offsetMax = new Vector2(1f, 1f);
+        Image borderImage = borderObject.AddComponent<Image>();
+        borderImage.color = ChestBorderColor;
+        borderImage.raycastTarget = false;
+
+        GameObject bodyObject = new GameObject("Body");
+        bodyObject.transform.SetParent(markerObject.transform, false);
+        RectTransform bodyRect = bodyObject.AddComponent<RectTransform>();
+        bodyRect.anchorMin = new Vector2(0.5f, 0.5f);
+        bodyRect.anchorMax = new Vector2(0.5f, 0.5f);
+        bodyRect.pivot = new Vector2(0.5f, 0.5f);
+        bodyRect.anchoredPosition = new Vector2(0f, -1f);
+        bodyRect.sizeDelta = new Vector2(10f, 6f);
+        Image bodyImage = bodyObject.AddComponent<Image>();
+        bodyImage.color = ChestBodyColor;
+        bodyImage.raycastTarget = false;
+
+        GameObject lidObject = new GameObject("Lid");
+        lidObject.transform.SetParent(markerObject.transform, false);
+        RectTransform lidRect = lidObject.AddComponent<RectTransform>();
+        lidRect.anchorMin = new Vector2(0.5f, 0.5f);
+        lidRect.anchorMax = new Vector2(0.5f, 0.5f);
+        lidRect.pivot = new Vector2(0.5f, 0.5f);
+        lidRect.anchoredPosition = new Vector2(0f, 3f);
+        lidRect.sizeDelta = new Vector2(10f, 2f);
+        Image lidImage = lidObject.AddComponent<Image>();
+        lidImage.color = ChestLidColor;
+        lidImage.raycastTarget = false;
+
+        return markerRect;
     }
 
     private Image GetOrCreateMarker(

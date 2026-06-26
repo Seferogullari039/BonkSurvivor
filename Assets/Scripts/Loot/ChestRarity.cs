@@ -41,14 +41,27 @@ public static class ChestRarityUtility
 
     public static ChestRarity RollRandomChestRarity()
     {
-        float roll = Random.value;
+        return RollRandomChestRarity(Random.value);
+    }
 
-        if (roll < 0.05f)
+    public static ChestRarity RollRandomChestRarity(System.Random random)
+    {
+        if (random == null)
+        {
+            return RollRandomChestRarity();
+        }
+
+        return RollRandomChestRarity(random.NextDouble());
+    }
+
+    private static ChestRarity RollRandomChestRarity(double roll)
+    {
+        if (roll < 0.05d)
         {
             return ChestRarity.Epic;
         }
 
-        if (roll < 0.30f)
+        if (roll < 0.30d)
         {
             return ChestRarity.Rare;
         }

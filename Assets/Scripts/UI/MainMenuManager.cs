@@ -83,6 +83,13 @@ public class MainMenuManager : MonoBehaviour
             proceduralArena.MovePlayerToSelectedSpawn(player);
         }
 
+        ChestSpawner chestSpawner = FindFirstObjectByType<ChestSpawner>();
+
+        if (chestSpawner != null && proceduralArena != null)
+        {
+            chestSpawner.SpawnSeededMapChestsForRun(proceduralArena.CurrentRunSeed);
+        }
+
         if (mainMenuPanel != null)
         {
             mainMenuPanel.SetActive(false);
