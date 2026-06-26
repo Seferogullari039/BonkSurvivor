@@ -385,8 +385,10 @@ public class PauseMenuManager : MonoBehaviour
 
     private void OnRestartClicked()
     {
+        SettingsMenuUI.CloseIfOpen();
         ForceHide();
         Time.timeScale = 1f;
+        MainMenuManager.RequestPlayAfterSceneLoad = true;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 

@@ -45,6 +45,12 @@ public class ActiveWeaponHud : MonoBehaviour
         SetVisible(true);
     }
 
+    public static void EnsureVisibleForRun()
+    {
+        ActiveWeaponHud hud = ResolveOrCreateInstance();
+        hud?.EnsureVisibleForRunInternal();
+    }
+
     public static void HideHud()
     {
         SetVisible(false);
@@ -52,24 +58,40 @@ public class ActiveWeaponHud : MonoBehaviour
 
     public static void SetVisible(bool visible)
     {
+        ResolveOrCreateInstance()?.ApplyRunVisibility(visible);
+    }
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        instance = null;
+    }
+
+    private static ActiveWeaponHud ResolveOrCreateInstance()
+    {
         if (instance == null)
         {
-            instance = FindFirstObjectByType<ActiveWeaponHud>();
+            instance = FindFirstObjectByType<ActiveWeaponHud>(FindObjectsInactive.Include);
         }
 
-        instance?.ApplyRunVisibility(visible);
+        if (instance == null)
+        {
+            GameObject hudObject = new GameObject("ActiveWeaponHud");
+            instance = hudObject.AddComponent<ActiveWeaponHud>();
+        }
+
+        if (!instance.gameObject.activeSelf)
+        {
+            instance.gameObject.SetActive(true);
+        }
+
+        return instance;
     }
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
-        if (FindFirstObjectByType<ActiveWeaponHud>() != null)
-        {
-            return;
-        }
-
-        GameObject hudObject = new GameObject("ActiveWeaponHud");
-        hudObject.AddComponent<ActiveWeaponHud>();
+        ResolveOrCreateInstance();
     }
 
     private sealed class AbilityRowView
@@ -121,6 +143,16 @@ public class ActiveWeaponHud : MonoBehaviour
         {
             panelRoot.SetActive(visible && ShouldShowDuringGameplay());
         }
+    }
+
+    private void EnsureVisibleForRunInternal()
+    {
+        if (!isBuilt || panelRoot == null)
+        {
+            BuildPanel();
+        }
+
+        ApplyRunVisibility(true);
     }
 
     private static bool ShouldShowDuringGameplay()

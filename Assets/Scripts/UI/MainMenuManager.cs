@@ -154,7 +154,7 @@ public class MainMenuManager : MonoBehaviour
 
         RunBuildHud.EnsureVisibleForRun();
         ChestStatBuffHud.OnGameplayRunStarted();
-        ActiveWeaponHud.ShowHud();
+        ActiveWeaponHud.EnsureVisibleForRun();
     }
 
     private static void HideLevelUpPanelForGameplay()
