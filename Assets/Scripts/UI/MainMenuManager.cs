@@ -105,6 +105,7 @@ public class MainMenuManager : MonoBehaviour
         Time.timeScale = 1f;
         ItemOfferHudVisibility.ResetStateForNewRun();
         PauseMenuManager.HidePauseMenuIfExists();
+        PauseMenuManager.EnsureReadyForRun();
         SettingsMenuUI.CloseIfOpen();
         BigMapOverlay.EnsureReadyForRun();
 
@@ -137,6 +138,7 @@ public class MainMenuManager : MonoBehaviour
 
     private static void RestoreGameplayHudFrame()
     {
+        PauseMenuManager.EnsureReadyForRun();
         BigMapOverlay.EnsureReadyForRun();
 
         HUDManager hud = FindFirstObjectByType<HUDManager>();

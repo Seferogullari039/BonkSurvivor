@@ -17,16 +17,41 @@ public class PauseMenuManager : MonoBehaviour
     private bool isPaused;
     private bool isBuilt;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        Instance = null;
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     private static void Bootstrap()
     {
-        if (FindFirstObjectByType<PauseMenuManager>() != null)
+        EnsureReadyForRun();
+    }
+
+    public static void EnsureReadyForRun()
+    {
+        PauseMenuManager manager = ResolveOrCreateInstance();
+        manager?.EnsureReadyInternal();
+    }
+
+    private static PauseMenuManager ResolveOrCreateInstance()
+    {
+        if (Instance != null)
         {
-            return;
+            return Instance;
+        }
+
+        Instance = FindFirstObjectByType<PauseMenuManager>(FindObjectsInactive.Include);
+
+        if (Instance != null)
+        {
+            return Instance;
         }
 
         GameObject host = new GameObject("PauseMenuManager");
-        host.AddComponent<PauseMenuManager>();
+        Instance = host.AddComponent<PauseMenuManager>();
+        return Instance;
     }
 
     public static void HidePauseMenuIfExists()
@@ -48,8 +73,7 @@ public class PauseMenuManager : MonoBehaviour
         }
 
         Instance = this;
-        BuildPauseUI();
-        ForceHide();
+        EnsureReadyInternal();
     }
 
     private void OnDestroy()
@@ -62,6 +86,11 @@ public class PauseMenuManager : MonoBehaviour
 
     private void Update()
     {
+        if (MainMenuManager.IsRunActive && !IsPauseUiHealthy())
+        {
+            EnsureReadyInternal();
+        }
+
         if (SettingsMenuUI.IsOpen)
         {
             if (Input.GetKeyDown(KeyCode.Escape))
@@ -126,7 +155,14 @@ public class PauseMenuManager : MonoBehaviour
 
     public void Pause()
     {
-        if (isPaused || !MainMenuManager.IsRunActive || ShouldBlockPauseInput())
+        if (!MainMenuManager.IsRunActive || ShouldBlockPauseInput())
+        {
+            return;
+        }
+
+        EnsureReadyInternal();
+
+        if (isPaused)
         {
             return;
         }
@@ -172,6 +208,42 @@ public class PauseMenuManager : MonoBehaviour
         {
             pausePanel.SetActive(false);
         }
+    }
+
+    private bool IsPauseUiHealthy()
+    {
+        return isBuilt && pausePanel != null;
+    }
+
+    private void EnsureReadyInternal()
+    {
+        if (!gameObject.activeSelf)
+        {
+            gameObject.SetActive(true);
+        }
+
+        SettingsMenuUI.CloseIfOpen();
+        isPaused = false;
+
+        if (!IsPauseUiHealthy())
+        {
+            ClearPauseUiState();
+            BuildPauseUI();
+        }
+
+        if (pausePanel != null)
+        {
+            pausePanel.SetActive(false);
+        }
+    }
+
+    private void ClearPauseUiState()
+    {
+        isBuilt = false;
+        pausePanel = null;
+        runInfoText = null;
+        buildInfoText = null;
+        chestBuffsText = null;
     }
 
     private void RefreshContent()
@@ -324,11 +396,21 @@ public class PauseMenuManager : MonoBehaviour
 
         if (canvas == null)
         {
-            Debug.LogError("PauseMenuManager: Canvas bulunamadi.");
             return;
         }
 
         UiLayoutUtility.ConfigureGameplayCanvas(canvas);
+
+        Transform existingPanel = canvas.transform.Find("PauseMenuPanel");
+
+        if (existingPanel != null)
+        {
+            pausePanel = existingPanel.gameObject;
+            BindExistingPausePanelReferences();
+            pausePanel.SetActive(false);
+            isBuilt = true;
+            return;
+        }
 
         pausePanel = CreatePanel(canvas.transform, "PauseMenuPanel");
         CreateText(pausePanel.transform, "TitleText", "PAUSED", 44, new Vector2(0f, 300f), new Vector2(500f, 60f), FontStyles.Bold);
@@ -371,6 +453,53 @@ public class PauseMenuManager : MonoBehaviour
 
         pausePanel.SetActive(false);
         isBuilt = true;
+    }
+
+    private void BindExistingPausePanelReferences()
+    {
+        if (pausePanel == null)
+        {
+            return;
+        }
+
+        runInfoText = pausePanel.transform.Find("RunInfoText")?.GetComponent<TMP_Text>();
+        buildInfoText = pausePanel.transform.Find("BuildInfoText")?.GetComponent<TMP_Text>();
+        chestBuffsText = pausePanel.transform.Find("ChestBuffsText")?.GetComponent<TMP_Text>();
+
+        WirePauseButton("ResumeButton", OnResumeClicked);
+        WirePauseButton("OptionsButton", OnOptionsClicked);
+        WirePauseButton("RestartButton", OnRestartClicked);
+        WirePauseButton("MainMenuButton", OnMainMenuClicked);
+        WirePauseButton("QuitButton", OnQuitClicked);
+    }
+
+    private void WirePauseButton(string buttonName, UnityEngine.Events.UnityAction onClick)
+    {
+        if (pausePanel == null)
+        {
+            return;
+        }
+
+        Transform buttonTransform = pausePanel.transform.Find(buttonName);
+
+        if (buttonTransform == null)
+        {
+            return;
+        }
+
+        Button button = buttonTransform.GetComponent<Button>();
+
+        if (button == null)
+        {
+            return;
+        }
+
+        button.onClick.RemoveAllListeners();
+        button.onClick.AddListener(() =>
+        {
+            AudioManager.Instance?.PlayButtonClick();
+            onClick.Invoke();
+        });
     }
 
     private void OnResumeClicked()
