@@ -165,6 +165,14 @@ public class RunEventMessageDisplay : MonoBehaviour
         Instance.Enqueue(message, color, duration, priority, fontSize);
     }
 
+    public static void EnsureReadyForRun()
+    {
+        if (Instance != null)
+        {
+            Instance.ResetRun();
+        }
+    }
+
     public void ResetRun()
     {
         pendingMessages.Clear();

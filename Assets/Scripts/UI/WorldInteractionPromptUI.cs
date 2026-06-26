@@ -73,6 +73,11 @@ public class WorldInteractionPromptUI : MonoBehaviour
         instance.SetVisible(false);
     }
 
+    public static void EnsureReadyForRun()
+    {
+        Hide();
+    }
+
     private static WorldInteractionPromptUI EnsureInstance()
     {
         if (instance != null)

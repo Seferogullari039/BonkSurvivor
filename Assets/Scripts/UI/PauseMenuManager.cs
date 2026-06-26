@@ -515,6 +515,8 @@ public class PauseMenuManager : MonoBehaviour
     private void OnRestartClicked()
     {
         SettingsMenuUI.CloseIfOpen();
+        ChestRevealPause.ResetForNewRun();
+        WorldInteractionPromptUI.EnsureReadyForRun();
         ForceHide();
         Time.timeScale = 1f;
         MainMenuManager.RequestPlayAfterSceneLoad = true;

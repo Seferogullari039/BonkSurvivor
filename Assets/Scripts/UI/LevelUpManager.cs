@@ -45,6 +45,47 @@ public class LevelUpManager : MonoBehaviour
         Instance = this;
     }
 
+    private void OnDestroy()
+    {
+        if (Instance == this)
+        {
+            Instance = null;
+        }
+    }
+
+    public static void EnsureReadyForRun()
+    {
+        ChestRevealPause.ResetForNewRun();
+
+        if (Instance == null)
+        {
+            return;
+        }
+
+        Instance.ResetChestFlowState();
+    }
+
+    private void ResetChestFlowState()
+    {
+        useChestSingleCardReveal = false;
+        chestRewardCollected = false;
+        isChestUpgradeMenu = false;
+        chestRewardIsSpecialUpgrade = false;
+        remainingUpgradeSelections = 1;
+
+        if (chestSingleCardRevealUI != null)
+        {
+            chestSingleCardRevealUI.Hide();
+        }
+
+        if (chestLootSelectionUI != null)
+        {
+            chestLootSelectionUI.Hide();
+        }
+
+        HideLevelUpPresentation();
+    }
+
     private void Start()
     {
         if (levelUpPanel != null)

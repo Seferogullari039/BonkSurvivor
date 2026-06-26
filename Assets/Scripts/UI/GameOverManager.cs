@@ -949,6 +949,8 @@ public class GameOverManager : MonoBehaviour
 
     public void RestartGame()
     {
+        ChestRevealPause.ResetForNewRun();
+        WorldInteractionPromptUI.EnsureReadyForRun();
         Time.timeScale = 1f;
         MainMenuManager.RequestPlayAfterSceneLoad = true;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);

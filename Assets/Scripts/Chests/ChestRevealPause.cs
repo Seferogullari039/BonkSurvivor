@@ -8,6 +8,19 @@ public static class ChestRevealPause
 
     public static bool IsPaused => pauseDepth > 0;
 
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ResetStaticState()
+    {
+        pauseDepth = 0;
+        savedTimeScale = 1f;
+        ownsPause = false;
+    }
+
+    public static void ResetForNewRun()
+    {
+        ForceEnd();
+    }
+
     public static void Begin()
     {
         if (pauseDepth == 0)

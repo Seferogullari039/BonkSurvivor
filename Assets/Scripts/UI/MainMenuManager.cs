@@ -698,6 +698,11 @@ public class MainMenuManager : MonoBehaviour
 
     private void ResetGameplayWorld()
     {
+        ChestRevealPause.ResetForNewRun();
+        WorldInteractionPromptUI.EnsureReadyForRun();
+        RunEventMessageDisplay.EnsureReadyForRun();
+        LevelUpManager.EnsureReadyForRun();
+
         ClearRunEntities();
         ResetPlayerRun();
 
