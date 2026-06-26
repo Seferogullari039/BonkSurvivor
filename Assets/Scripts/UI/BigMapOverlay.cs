@@ -335,7 +335,7 @@ public class BigMapOverlay : MonoBehaviour
             markerIndex++;
         }
 
-        HideUnusedChestMarkers(markerIndex);
+        HideUnusedChestMarkers(chestMarkerPool, markerIndex);
     }
 
     private void RefreshSlopeMarkers()
