@@ -10,5 +10,8 @@ public enum ChestStatRewardType
     CritDamage,
     DashCooldown,
     SkillArea,
+    DamagePercent,
+    DamageReduction,
+    HpRegen,
     Heal
 }

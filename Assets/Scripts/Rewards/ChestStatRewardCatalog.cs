@@ -14,7 +14,9 @@ public static class ChestStatRewardCatalog
         ChestStatRewardType.CritDamage,
         ChestStatRewardType.DashCooldown,
         ChestStatRewardType.SkillArea,
-        ChestStatRewardType.Heal
+        ChestStatRewardType.DamagePercent,
+        ChestStatRewardType.DamageReduction,
+        ChestStatRewardType.HpRegen
     };
 
     public static ChestStatRewardType RollRandomReward()
@@ -24,56 +26,6 @@ public static class ChestStatRewardCatalog
         if (roll < 10)
         {
             return ChestStatRewardType.Heal;
-        }
-
-        if (roll < 18)
-        {
-            return ChestStatRewardType.MaxHealth;
-        }
-
-        if (roll < 26)
-        {
-            return ChestStatRewardType.MoveSpeed;
-        }
-
-        if (roll < 34)
-        {
-            return ChestStatRewardType.AttackCooldown;
-        }
-
-        if (roll < 42)
-        {
-            return ChestStatRewardType.PickupRange;
-        }
-
-        if (roll < 50)
-        {
-            return ChestStatRewardType.CoinGain;
-        }
-
-        if (roll < 58)
-        {
-            return ChestStatRewardType.XpGain;
-        }
-
-        if (roll < 66)
-        {
-            return ChestStatRewardType.CritChance;
-        }
-
-        if (roll < 74)
-        {
-            return ChestStatRewardType.SkillArea;
-        }
-
-        if (roll < 82)
-        {
-            return ChestStatRewardType.DashCooldown;
-        }
-
-        if (roll < 90)
-        {
-            return ChestStatRewardType.CritDamage;
         }
 
         return RewardPool[Random.Range(0, RewardPool.Length)];
@@ -129,6 +81,18 @@ public static class ChestStatRewardCatalog
                 title = "Wide Arcana";
                 description = "Skill area +" + Mathf.RoundToInt(percent * 100f) + "%.";
                 break;
+            case ChestStatRewardType.DamagePercent:
+                title = "Power Sigil";
+                description = "Damage +" + Mathf.RoundToInt(percent * 100f) + "%. Increases starter weapon damage.";
+                break;
+            case ChestStatRewardType.DamageReduction:
+                title = "Stone Ward";
+                description = "Damage taken -" + Mathf.RoundToInt(percent * 100f) + "%. Reduces incoming damage.";
+                break;
+            case ChestStatRewardType.HpRegen:
+                title = "Vital Flow";
+                description = "HP Regen +" + percent.ToString("0.0") + "/s. Regenerates health over time.";
+                break;
             default:
                 title = "Recovery";
                 description = GetHealDescription(rarity);
@@ -170,6 +134,9 @@ public static class ChestStatRewardCatalog
             case ChestStatRewardType.CritDamage:
             case ChestStatRewardType.DashCooldown:
             case ChestStatRewardType.SkillArea:
+            case ChestStatRewardType.DamagePercent:
+            case ChestStatRewardType.DamageReduction:
+            case ChestStatRewardType.HpRegen:
                 break;
             case ChestStatRewardType.Heal:
                 ApplyHeal(rarity, playerStats);
@@ -202,6 +169,9 @@ public static class ChestStatRewardCatalog
             ChestStatRewardType.CritDamage => "sharp_instinct",
             ChestStatRewardType.DashCooldown => "chest_stat_speed",
             ChestStatRewardType.SkillArea => "meteor_focus",
+            ChestStatRewardType.DamagePercent => "sharp_instinct",
+            ChestStatRewardType.DamageReduction => "chest_stat_health",
+            ChestStatRewardType.HpRegen => "chest_stat_heal",
             _ => "chest_stat_heal"
         };
     }
@@ -279,6 +249,27 @@ public static class ChestStatRewardCatalog
                 UpgradeRarity.Epic => 0.08f,
                 UpgradeRarity.Rare => 0.06f,
                 _ => 0.05f
+            },
+            ChestStatRewardType.DamagePercent => rarity switch
+            {
+                UpgradeRarity.Legendary => 0.10f,
+                UpgradeRarity.Epic => 0.08f,
+                UpgradeRarity.Rare => 0.06f,
+                _ => 0.05f
+            },
+            ChestStatRewardType.DamageReduction => rarity switch
+            {
+                UpgradeRarity.Legendary => 0.05f,
+                UpgradeRarity.Epic => 0.04f,
+                UpgradeRarity.Rare => 0.03f,
+                _ => 0.03f
+            },
+            ChestStatRewardType.HpRegen => rarity switch
+            {
+                UpgradeRarity.Legendary => 0.35f,
+                UpgradeRarity.Epic => 0.28f,
+                UpgradeRarity.Rare => 0.24f,
+                _ => 0.20f
             },
             _ => 0f
         };

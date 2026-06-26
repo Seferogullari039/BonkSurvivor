@@ -148,11 +148,14 @@ public class ChestStatBuffTracker : MonoBehaviour
             ChestStatRewardType.SkillArea => 2,
             ChestStatRewardType.CritChance => 3,
             ChestStatRewardType.CritDamage => 4,
-            ChestStatRewardType.DashCooldown => 5,
-            ChestStatRewardType.PickupRange => 6,
-            ChestStatRewardType.MaxHealth => 7,
-            ChestStatRewardType.CoinGain => 8,
-            ChestStatRewardType.XpGain => 9,
+            ChestStatRewardType.DamagePercent => 5,
+            ChestStatRewardType.DamageReduction => 6,
+            ChestStatRewardType.HpRegen => 7,
+            ChestStatRewardType.DashCooldown => 8,
+            ChestStatRewardType.PickupRange => 9,
+            ChestStatRewardType.MaxHealth => 10,
+            ChestStatRewardType.CoinGain => 11,
+            ChestStatRewardType.XpGain => 12,
             _ => 99
         };
     }
@@ -169,6 +172,9 @@ public class ChestStatBuffTracker : MonoBehaviour
             ChestStatRewardType.XpGain => "XP",
             ChestStatRewardType.CritChance => "CRIT",
             ChestStatRewardType.CritDamage => "CDMG",
+            ChestStatRewardType.DamagePercent => "DMG",
+            ChestStatRewardType.DamageReduction => "DR",
+            ChestStatRewardType.HpRegen => "REGEN",
             ChestStatRewardType.DashCooldown => "DASH",
             ChestStatRewardType.SkillArea => "AREA",
             _ => "?"
@@ -180,7 +186,9 @@ public class ChestStatBuffTracker : MonoBehaviour
         return type == ChestStatRewardType.CritChance
             || type == ChestStatRewardType.CritDamage
             || type == ChestStatRewardType.DashCooldown
-            || type == ChestStatRewardType.SkillArea;
+            || type == ChestStatRewardType.SkillArea
+            || type == ChestStatRewardType.DamagePercent
+            || type == ChestStatRewardType.DamageReduction;
     }
 
     public static string FormatHudBadgeText(ChestStatBuffEntry entry)
@@ -195,13 +203,20 @@ public class ChestStatBuffTracker : MonoBehaviour
             return FormatPercentBadgeText(entry);
         }
 
+        if (entry.Type == ChestStatRewardType.HpRegen)
+        {
+            return GetShortLabel(entry.Type) + " +" + entry.TotalValue.ToString("0.0");
+        }
+
         return GetShortLabel(entry.Type) + " +" + entry.Stacks;
     }
 
     private static string FormatPercentBadgeText(ChestStatBuffEntry entry)
     {
         int percent = Mathf.RoundToInt(entry.TotalValue * 100f);
-        string sign = entry.Type == ChestStatRewardType.DashCooldown ? "-" : "+";
+        string sign = entry.Type == ChestStatRewardType.DashCooldown || entry.Type == ChestStatRewardType.DamageReduction
+            ? "-"
+            : "+";
         return GetShortLabel(entry.Type) + " " + sign + percent + "%";
     }
 
@@ -236,6 +251,9 @@ public class ChestStatBuffTracker : MonoBehaviour
             ChestStatRewardType.CritDamage => "Crit damage +" + percent + "%",
             ChestStatRewardType.DashCooldown => "Dash cooldown -" + percent + "%",
             ChestStatRewardType.SkillArea => "Skill area +" + percent + "%",
+            ChestStatRewardType.DamagePercent => "Damage +" + percent + "%",
+            ChestStatRewardType.DamageReduction => "Damage taken -" + percent + "%",
+            ChestStatRewardType.HpRegen => "HP regen +" + entry.TotalValue.ToString("0.0") + "/s",
             _ => "+" + percent + "%"
         };
     }

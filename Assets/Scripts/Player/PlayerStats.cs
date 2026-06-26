@@ -63,6 +63,7 @@ public class PlayerStats : MonoBehaviour
 
     // Tracks the relic max-HP bonus already folded into currentHealth so mid-run grants apply once.
     private int lastRelicMaxHealthBonus;
+    private float hpRegenAccumulator;
 
     // Runtime final max HP. Relic-aware; relic yoksa MaxHealthBonus 0 -> base maxHealth ayni.
     // maxHealth field meta/upgrade/UI/save tarafindan oldugu gibi kullanilmaya devam eder.
@@ -298,6 +299,7 @@ public class PlayerStats : MonoBehaviour
         chestMoveSpeedMultiplier = 1f;
         chestCoinGainMultiplier = 1f;
         chestXpGainMultiplier = 1f;
+        hpRegenAccumulator = 0f;
 
         if (UpgradeManager.Instance != null)
         {
@@ -356,6 +358,40 @@ public class PlayerStats : MonoBehaviour
     private void Update()
     {
         RefreshRelicHealthBonus();
+        TickChestHpRegen();
+    }
+
+    private void TickChestHpRegen()
+    {
+        if (isDead || !MainMenuManager.IsRunActive || Time.timeScale <= 0f)
+        {
+            return;
+        }
+
+        if (currentHealth >= EffectiveMaxHealth)
+        {
+            hpRegenAccumulator = 0f;
+            return;
+        }
+
+        float regenPerSecond = ChestStatCombatModifiers.GetHpRegenPerSecond();
+
+        if (regenPerSecond <= 0f)
+        {
+            hpRegenAccumulator = 0f;
+            return;
+        }
+
+        hpRegenAccumulator += regenPerSecond * Time.deltaTime;
+
+        if (hpRegenAccumulator < 1f)
+        {
+            return;
+        }
+
+        int healAmount = Mathf.FloorToInt(hpRegenAccumulator);
+        hpRegenAccumulator -= healAmount;
+        HealAmount(healAmount);
     }
 
     // Applies Vital Core (or future max-HP relics) the moment the bonus changes.
@@ -396,9 +432,11 @@ public class PlayerStats : MonoBehaviour
             return;
         }
 
-        RunStatsTracker.GetOrCreate().RecordDamageTaken(damage);
+        int finalDamage = Mathf.Max(1, Mathf.RoundToInt(damage * ChestStatCombatModifiers.GetDamageTakenMultiplier()));
 
-        currentHealth -= damage;
+        RunStatsTracker.GetOrCreate().RecordDamageTaken(finalDamage);
+
+        currentHealth -= finalDamage;
 
         if (HUDManager.Instance != null)
         {

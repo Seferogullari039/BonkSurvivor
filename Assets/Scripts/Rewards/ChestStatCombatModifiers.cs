@@ -6,6 +6,27 @@ public static class ChestStatCombatModifiers
     private const float MaxCritDamageBonus = 1.5f;
     private const float MaxDashCooldownReduction = 0.35f;
     private const float MaxSkillAreaBonus = 0.60f;
+    private const float MaxDamagePercentBonus = 1.0f;
+    private const float MaxDamageReduction = 0.50f;
+    private const float MaxHpRegenPerSecond = 3f;
+
+    public static float GetDamageMultiplier()
+    {
+        float total = GetTotalValue(ChestStatRewardType.DamagePercent);
+        return 1f + Mathf.Clamp(total, 0f, MaxDamagePercentBonus);
+    }
+
+    public static float GetDamageTakenMultiplier()
+    {
+        float reduction = Mathf.Clamp(GetTotalValue(ChestStatRewardType.DamageReduction), 0f, MaxDamageReduction);
+        return 1f - reduction;
+    }
+
+    public static float GetHpRegenPerSecond()
+    {
+        float total = GetTotalValue(ChestStatRewardType.HpRegen);
+        return Mathf.Clamp(total, 0f, MaxHpRegenPerSecond);
+    }
 
     public static float GetCritChance()
     {

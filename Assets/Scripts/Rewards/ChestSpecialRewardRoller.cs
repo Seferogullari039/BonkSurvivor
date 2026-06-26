@@ -3,11 +3,11 @@ using UnityEngine;
 
 public static class ChestSpecialRewardRoller
 {
-    private const float NormalChestSpecialChance = 0.08f;
-    private const float RareChestSpecialChance = 0.12f;
-    private const float EpicChestSpecialChance = 0.16f;
-    private const float LuckSpecialChancePerLevel = 0.003f;
-    private const float MaxLuckSpecialChanceBonus = 0.03f;
+    private const float NormalChestSpecialChance = 0.12f;
+    private const float RareChestSpecialChance = 0.18f;
+    private const float EpicChestSpecialChance = 0.25f;
+    private const float LuckSpecialChancePerLevel = 0.005f;
+    private const float MaxLuckSpecialChanceBonus = 0.05f;
 
     private const int LegendaryPickWeight = 1;
     private const int EpicPickWeight = 3;
