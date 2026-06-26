@@ -12,11 +12,11 @@ public class BigMapOverlay : MonoBehaviour
     private const int MaxEnemyMarkers = 80;
     private const float DefaultWorldHalfSize = 80f;
 
-    private static readonly Color DimOverlayColor = new Color(0.02f, 0.03f, 0.05f, 0.39f);
-    private static readonly Color MapPanelColor = new Color(0.09f, 0.22f, 0.11f, 0.56f);
-    private static readonly Color MapGrassPatchColor = new Color(0.14f, 0.32f, 0.16f, 0.17f);
-    private static readonly Color MapGrassStripeColor = new Color(0.18f, 0.38f, 0.2f, 0.09f);
-    private static readonly Color MapGrassDotColor = new Color(0.22f, 0.44f, 0.24f, 0.055f);
+    private static readonly Color DimOverlayColor = new Color(0.02f, 0.03f, 0.05f, 0.32f);
+    private static readonly Color MapPanelColor = new Color(0.09f, 0.22f, 0.11f, 0.44f);
+    private static readonly Color MapGrassPatchColor = new Color(0.14f, 0.32f, 0.16f, 0.13f);
+    private static readonly Color MapGrassStripeColor = new Color(0.18f, 0.38f, 0.2f, 0.07f);
+    private static readonly Color MapGrassDotColor = new Color(0.22f, 0.44f, 0.24f, 0.04f);
     private static readonly Color MapBorderColor = new Color(0.42f, 0.58f, 0.38f, 0.72f);
     private static readonly Color PlayerMarkerColor = new Color(0.35f, 0.88f, 1f, 1f);
     private static readonly Color EnemyMarkerColor = new Color(1f, 0.28f, 0.28f, 0.95f);
