@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -132,6 +133,7 @@ public class StarterWeaponViewModel : MonoBehaviour
     private Renderer blunderbussMuzzleRenderer;
     private float thunderSpearTipGlowTimer;
     private Renderer thunderSpearTipRenderer;
+    private Coroutine impactPunchRoutine;
 
     public Transform FireballSpawnPoint => fireballSpawnPoint;
     public Transform MeteorCastPoint => meteorCastPoint;
@@ -161,6 +163,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         bowArrowTipRenderer = null;
         bowArrowShaftRenderer = null;
         bowFireAnimTimer = 0f;
+        impactPunchRoutine = null;
         staffOrbRenderer = null;
         staffGlowRenderers = System.Array.Empty<Renderer>();
         fireballSpawnPoint = null;
@@ -203,6 +206,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         bowArrowTipRenderer = null;
         bowArrowShaftRenderer = null;
         bowFireAnimTimer = 0f;
+        impactPunchRoutine = null;
         staffOrbRenderer = null;
         staffGlowRenderers = System.Array.Empty<Renderer>();
         fireballSpawnPoint = null;
@@ -264,6 +268,136 @@ public class StarterWeaponViewModel : MonoBehaviour
     public void PlayThunderSpearTipGlow(float duration = 0.12f)
     {
         thunderSpearTipGlowTimer = Mathf.Max(thunderSpearTipGlowTimer, duration);
+    }
+
+    public void PlayImpactPunch(
+        float kickBack = 0.025f,
+        float kickDown = 0.008f,
+        float pitchKick = 3f,
+        float rollKick = 1.5f,
+        float duration = 0.09f)
+    {
+        if (activeVisualRoot == null || currentWeapon == StarterWeaponType.HunterBow)
+        {
+            return;
+        }
+
+        if (impactPunchRoutine != null)
+        {
+            StopCoroutine(impactPunchRoutine);
+        }
+
+        impactPunchRoutine = StartCoroutine(ImpactPunchRoutine(kickBack, kickDown, pitchKick, rollKick, duration));
+    }
+
+    public bool TryGetWeaponMuzzlePoint(out Vector3 worldPosition, out Vector3 forward)
+    {
+        worldPosition = Vector3.zero;
+        forward = Vector3.forward;
+
+        if (activeVisualRoot == null)
+        {
+            return false;
+        }
+
+        Transform root = activeVisualRoot.transform;
+
+        switch (currentWeapon)
+        {
+            case StarterWeaponType.FireStaff:
+                if (fireballSpawnPoint != null)
+                {
+                    worldPosition = fireballSpawnPoint.position;
+                    forward = fireballSpawnPoint.forward;
+                    return true;
+                }
+
+                worldPosition = root.TransformPoint(new Vector3(0.04f, 0.06f, 0.18f));
+                forward = root.forward;
+                return true;
+
+            case StarterWeaponType.Blunderbuss:
+                Transform blunderbussMuzzle = root.Find("BlunderbussMuzzle");
+
+                if (blunderbussMuzzle != null)
+                {
+                    worldPosition = blunderbussMuzzle.position;
+                    forward = blunderbussMuzzle.forward;
+                    return true;
+                }
+
+                worldPosition = root.TransformPoint(new Vector3(0f, 0.012f, 0.28f));
+                forward = root.forward;
+                return true;
+
+            case StarterWeaponType.ThunderSpear:
+                Transform spearTip = root.Find("ThunderSpearTip");
+
+                if (spearTip != null)
+                {
+                    worldPosition = spearTip.position;
+                    forward = spearTip.forward;
+                    return true;
+                }
+
+                worldPosition = root.TransformPoint(new Vector3(0f, 0.015f, 0.34f));
+                forward = root.forward;
+                return true;
+
+            case StarterWeaponType.KnightSword:
+                worldPosition = root.TransformPoint(new Vector3(0f, 0.01f, 0.22f));
+                forward = root.forward;
+                return true;
+
+            case StarterWeaponType.HunterBow:
+                if (bowArrowTipRenderer != null)
+                {
+                    worldPosition = bowArrowTipRenderer.transform.position;
+                    forward = root.forward;
+                    return true;
+                }
+
+                worldPosition = root.TransformPoint(new Vector3(0.014f, 0.007f, 0.12f));
+                forward = root.forward;
+                return true;
+        }
+
+        return false;
+    }
+
+    private IEnumerator ImpactPunchRoutine(
+        float kickBack,
+        float kickDown,
+        float pitchKick,
+        float rollKick,
+        float duration)
+    {
+        Transform visualTransform = activeVisualRoot.transform;
+        Vector3 restPosition = visualTransform.localPosition;
+        Quaternion restRotation = visualTransform.localRotation;
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            if (visualTransform == null)
+            {
+                yield break;
+            }
+
+            elapsed += Time.deltaTime;
+            float wave = Mathf.Sin(Mathf.Clamp01(elapsed / duration) * Mathf.PI);
+            visualTransform.localPosition = restPosition + new Vector3(0f, -kickDown * wave, -kickBack * wave);
+            visualTransform.localRotation = restRotation * Quaternion.Euler(-pitchKick * wave, 0f, rollKick * wave);
+            yield return null;
+        }
+
+        if (visualTransform != null)
+        {
+            visualTransform.localPosition = restPosition;
+            visualTransform.localRotation = restRotation;
+        }
+
+        impactPunchRoutine = null;
     }
 
     public bool TryGetFireballSpawnPosition(out Vector3 worldPosition)
@@ -689,6 +823,7 @@ public class StarterWeaponViewModel : MonoBehaviour
         bowArrowTipRenderer = null;
         bowArrowShaftRenderer = null;
         bowFireAnimTimer = 0f;
+        impactPunchRoutine = null;
         staffOrbRenderer = null;
         staffGlowRenderers = System.Array.Empty<Renderer>();
         fireballSpawnPoint = null;

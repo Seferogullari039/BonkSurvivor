@@ -427,6 +427,7 @@ public class StarterWeaponController : MonoBehaviour
 
         fpsViewModel?.PlayRecoil();
         weaponViewModel?.PlayBowStringKick();
+        StarterWeaponImpactFeedback.PlayBowFire(weaponViewModel, spawnPosition);
 
         StarterWeaponProjectile.SpawnRuntimeProjectile(
             spawnPosition,
@@ -447,6 +448,7 @@ public class StarterWeaponController : MonoBehaviour
         int damage = StarterWeaponDamageUtility.GetBaseDamage(playerStats);
         fpsViewModel?.PlayRecoil();
         weaponViewModel?.PlayStaffGlowPulse();
+        StarterWeaponImpactFeedback.PlayFireStaffFire(weaponViewModel, spawnPosition);
 
         Quaternion castRotation = Quaternion.LookRotation(direction);
 
@@ -508,6 +510,7 @@ public class StarterWeaponController : MonoBehaviour
         LogStarterDebug($"[StarterWeapon] Sword LMB Slash hit={hitEnemy} dmg={damage}");
         SpawnSwordSwingVisual(origin, forward, meleeRange, meleeHalfAngle);
         fpsViewModel?.PlayRecoil();
+        StarterWeaponImpactFeedback.PlaySwordSlash(weaponViewModel);
 
         swordComboIndex = (swordComboIndex + 1) % 3;
         swordComboResetTime = Time.time + 0.85f;
@@ -770,6 +773,8 @@ public class StarterWeaponController : MonoBehaviour
 
         weaponViewModel?.PlayBlunderbussMuzzleFlash();
         fpsViewModel?.PlayRecoil();
+        StarterWeaponImpactFeedback.TryResolveMuzzlePoint(weaponViewModel, origin + forward * 0.55f, forward, out Vector3 muzzlePosition, out Vector3 muzzleForward);
+        StarterWeaponImpactFeedback.PlayBlunderbussFire(weaponViewModel, muzzlePosition, muzzleForward);
         SpawnScatterShotVisuals(origin, forward, scatterShotRange, halfAngle);
         FPSScreenShake.Shake(0.018f, 0.06f);
     }
@@ -790,6 +795,18 @@ public class StarterWeaponController : MonoBehaviour
 
         weaponViewModel?.PlayBlunderbussMuzzleFlash();
         fpsViewModel?.PlayRecoil();
+        if (fireCamera != null)
+        {
+            Vector3 blastForward = fireCamera.forward;
+            StarterWeaponImpactFeedback.TryResolveMuzzlePoint(
+                weaponViewModel,
+                fireCamera.position + blastForward * 0.55f,
+                blastForward,
+                out Vector3 muzzlePosition,
+                out Vector3 muzzleForward);
+            StarterWeaponImpactFeedback.PlayBlunderbussFire(weaponViewModel, muzzlePosition, muzzleForward);
+        }
+
         SpawnBlastShellVisual(impactPoint, radius);
         FPSScreenShake.Shake(0.028f, 0.1f);
 
@@ -1112,6 +1129,8 @@ public class StarterWeaponController : MonoBehaviour
 
         weaponViewModel?.PlayThunderSpearTipGlow();
         fpsViewModel?.PlayRecoil();
+        StarterWeaponImpactFeedback.TryResolveMuzzlePoint(weaponViewModel, origin + forward * 0.5f, forward, out Vector3 tipPosition, out Vector3 tipForward);
+        StarterWeaponImpactFeedback.PlayThunderSpearFire(weaponViewModel, tipPosition, tipForward);
         SpawnLightningThrustVisual(origin, forward, lightningThrustRange, hitCount > 0);
         FPSScreenShake.Shake(0.012f, 0.05f);
     }
@@ -1139,6 +1158,18 @@ public class StarterWeaponController : MonoBehaviour
 
         weaponViewModel?.PlayThunderSpearTipGlow(0.18f);
         fpsViewModel?.PlayRecoil();
+        if (fireCamera != null)
+        {
+            Vector3 javelinForward = fireCamera.forward;
+            StarterWeaponImpactFeedback.TryResolveMuzzlePoint(
+                weaponViewModel,
+                fireCamera.position + javelinForward * 0.5f,
+                javelinForward,
+                out Vector3 tipPosition,
+                out Vector3 tipForward);
+            StarterWeaponImpactFeedback.PlayThunderSpearFire(weaponViewModel, tipPosition, tipForward);
+        }
+
         SpawnThunderJavelinVisual(impactPoint, shockRadius, hitPrimary, chainedEnemies);
         FPSScreenShake.Shake(hitPrimary ? 0.022f : 0.008f, hitPrimary ? 0.08f : 0.05f);
     }

@@ -9,7 +9,7 @@ public class FloatingDamage : MonoBehaviour
     private static bool faceCameraLogShown;
 
     [SerializeField] private TMP_Text textMesh;
-    [SerializeField] private float lifetime = 0.68f;
+    [SerializeField] private float lifetime = 0.62f;
     [SerializeField] private float moveSpeed = 1.45f;
 
     private Color startColor = Color.white;
@@ -31,7 +31,8 @@ public class FloatingDamage : MonoBehaviour
             startFontSize = textMesh.fontSize;
         }
 
-        startScale = transform.localScale;
+        startScale = transform.localScale * 0.88f;
+        transform.localScale = startScale;
         horizontalDrift = Random.Range(-0.28f, 0.28f);
         FaceCamera();
 
@@ -70,7 +71,7 @@ public class FloatingDamage : MonoBehaviour
             moveSpeed * riseEase * Time.deltaTime,
             0f);
 
-        float scale = Mathf.Lerp(0.82f, 1f, fade);
+        float scale = Mathf.Lerp(0.74f, 0.88f, fade);
         transform.localScale = startScale * scale;
 
         if (textMesh == null)
