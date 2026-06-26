@@ -82,6 +82,8 @@ public class Chest : MonoBehaviour
 
     private void Update()
     {
+        UpdateInteractionPrompt();
+
         if (isOpened || openRoutineStarted || isDroppedRewardChest || isMimic || !playerInRange)
         {
             return;
@@ -90,6 +92,52 @@ public class Chest : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.E))
         {
             TryOpenNormalChest();
+        }
+    }
+
+    private void UpdateInteractionPrompt()
+    {
+        if (isOpened || openRoutineStarted || isDroppedRewardChest || isMimic)
+        {
+            WorldInteractionPromptUI.Clear(this);
+            SetProximityHighlight(false);
+            return;
+        }
+
+        if (!playerInRange)
+        {
+            WorldInteractionPromptUI.Clear(this);
+            SetProximityHighlight(false);
+            return;
+        }
+
+        WorldInteractionPromptUI.Register(this, "E - OPEN CHEST", GetPlayerDistanceSqr());
+        SetProximityHighlight(true);
+    }
+
+    private float GetPlayerDistanceSqr()
+    {
+        GameObject player = GameObject.FindGameObjectWithTag("Player");
+
+        if (player == null)
+        {
+            return float.MaxValue;
+        }
+
+        Vector3 flatPlayer = player.transform.position;
+        flatPlayer.y = 0f;
+        Vector3 flatChest = transform.position;
+        flatChest.y = 0f;
+        return (flatPlayer - flatChest).sqrMagnitude;
+    }
+
+    private void SetProximityHighlight(bool active)
+    {
+        ChestVisual chestVisual = GetComponent<ChestVisual>();
+
+        if (chestVisual != null)
+        {
+            chestVisual.SetProximityHighlight(active);
         }
     }
 
@@ -216,19 +264,17 @@ public class Chest : MonoBehaviour
             price = 25;
         }
 
-        RefreshPriceLabel(false);
+        RefreshPriceLabel();
     }
 
-    private void RefreshPriceLabel(bool showInteractHint)
+    private void RefreshPriceLabel()
     {
         if (priceText == null || isDroppedRewardChest)
         {
             return;
         }
 
-        priceText.text = showInteractHint
-            ? price + " Coin  [E]"
-            : price + " Coin";
+        priceText.text = price + " Coin";
     }
 
     private void OnTriggerEnter(Collider other)
@@ -261,7 +307,7 @@ public class Chest : MonoBehaviour
 
         cachedPlayerStats = playerStats;
         playerInRange = true;
-        RefreshPriceLabel(true);
+        RefreshPriceLabel(false);
     }
 
     private void OnTriggerExit(Collider other)
@@ -316,6 +362,9 @@ public class Chest : MonoBehaviour
 
     private void DisableOpenInteraction()
     {
+        WorldInteractionPromptUI.Clear(this);
+        SetProximityHighlight(false);
+
         Collider chestCollider = GetComponent<Collider>();
 
         if (chestCollider != null)
@@ -338,6 +387,8 @@ public class Chest : MonoBehaviour
 
     private void OnDestroy()
     {
+        WorldInteractionPromptUI.Clear(this);
+
         if (!openRoutineStarted || !ChestRevealPause.IsPaused)
         {
             return;

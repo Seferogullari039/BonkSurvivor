@@ -18,6 +18,10 @@ public class ChestVisual : MonoBehaviour
     private Light glowLight;
     private bool bossPresentation;
     private bool droppedRewardPresentation;
+    private bool proximityHighlight;
+    private float proximityPulseTime;
+    private float storedGlowIntensity;
+    private float storedLightIntensity;
 
     private void Awake()
     {
@@ -51,6 +55,36 @@ public class ChestVisual : MonoBehaviour
         bossPresentation = true;
         transform.localScale = Vector3.one * 1.2f;
         ApplyMaterials();
+    }
+
+    public void SetProximityHighlight(bool active)
+    {
+        proximityHighlight = active;
+
+        if (!active)
+        {
+            proximityPulseTime = 0f;
+            ApplyMaterials();
+        }
+    }
+
+    private void Update()
+    {
+        if (!proximityHighlight || glowLight == null)
+        {
+            return;
+        }
+
+        proximityPulseTime += Time.deltaTime * 3.6f;
+        float pulse = 0.5f + 0.5f * Mathf.Sin(proximityPulseTime);
+        float intensityBoost = 1f + pulse * 0.38f;
+
+        glowLight.intensity = storedLightIntensity * intensityBoost;
+
+        if (glowRenderer != null)
+        {
+            ChestVisualMaterials.ApplyGlow(glowRenderer, rarity, storedGlowIntensity * intensityBoost);
+        }
     }
 
     public void ApplyDroppedRewardPresentation(bool bossPresentationOverride = false)
@@ -186,6 +220,7 @@ public class ChestVisual : MonoBehaviour
                 glowIntensity *= 1.5f;
             }
 
+            storedGlowIntensity = glowIntensity;
             ChestVisualMaterials.ApplyGlow(glowRenderer, rarity, glowIntensity);
         }
 
@@ -195,14 +230,16 @@ public class ChestVisual : MonoBehaviour
 
             if (droppedRewardPresentation)
             {
-                glowLight.intensity = bossPresentation ? 0.52f : 0.36f;
+                storedLightIntensity = bossPresentation ? 0.52f : 0.36f;
                 glowLight.range = 1.35f;
             }
             else
             {
-                glowLight.intensity = bossPresentation ? 0.42f : 0.22f;
+                storedLightIntensity = bossPresentation ? 0.42f : 0.22f;
                 glowLight.range = 1.15f;
             }
+
+            glowLight.intensity = storedLightIntensity;
         }
     }
 
