@@ -40,6 +40,10 @@ public class Enemy : MonoBehaviour
     private GoldenDragonController goldenDragonOwner;
     private EnemyVisualController visualController;
     private bool difficultyScalingApplied;
+    private Collider groundSnapCollider;
+
+    private const float GroundFootOffset = 0.5f;
+    private const float GroundSnapSpeed = 12f;
 
     public EnemyType Type => enemyType;
     public bool IsElite { get; private set; }
@@ -65,6 +69,7 @@ public class Enemy : MonoBehaviour
         }
 
         EnsureVisualController();
+        groundSnapCollider = GetComponent<Collider>();
     }
 
     private void EnsureVisualController()
@@ -97,6 +102,8 @@ public class Enemy : MonoBehaviour
         {
             target = player.transform;
         }
+
+        SnapToGroundImmediate();
     }
 
     public void Configure(float newMoveSpeed, int newMaxHealth, Color enemyColor, EnemyType type)
@@ -312,6 +319,61 @@ public class Enemy : MonoBehaviour
         transform.position += moveDirection * moveStep;
     }
 
+    private void LateUpdate()
+    {
+        if (!ShouldSnapToGround())
+        {
+            return;
+        }
+
+        SnapToGround();
+    }
+
+    private bool ShouldSnapToGround()
+    {
+        if (movementLocked)
+        {
+            return false;
+        }
+
+        return enemyType != EnemyType.MiniBoss && enemyType != EnemyType.DragonBoss;
+    }
+
+    private void SnapToGround()
+    {
+        if (!GroundSnapUtility.TryGetGroundY(
+                transform.position,
+                GroundFootOffset,
+                out float targetY,
+                groundSnapCollider))
+        {
+            return;
+        }
+
+        Vector3 position = transform.position;
+        position.y = Mathf.Lerp(position.y, targetY, Time.deltaTime * GroundSnapSpeed);
+        transform.position = position;
+    }
+
+    private void SnapToGroundImmediate()
+    {
+        if (!ShouldSnapToGround())
+        {
+            return;
+        }
+
+        if (GroundSnapUtility.TryGetGroundY(
+                transform.position,
+                GroundFootOffset,
+                out float targetY,
+                groundSnapCollider))
+        {
+            Vector3 position = transform.position;
+            position.y = targetY;
+            transform.position = position;
+        }
+    }
+
     private Vector3 GetSeparationOffset()
     {
         Collider[] nearbyColliders = Physics.OverlapSphere(transform.position, separationRadius);
@@ -515,7 +577,7 @@ public class Enemy : MonoBehaviour
         if (currentHealth <= 0)
         {
             CancelContactTelegraph();
-            Vector3 dropPosition = transform.position;
+            Vector3 dropPosition = ResolveLootDropPosition(transform.position);
 
             visualController?.PlayDeathPuff(dropPosition);
             if (visualController == null)
@@ -641,6 +703,21 @@ public class Enemy : MonoBehaviour
         }
 
         TryDropChest();
+    }
+
+    private Vector3 ResolveLootDropPosition(Vector3 position)
+    {
+        if (GroundSnapUtility.TryGetLootSpawnPosition(
+                position,
+                0.5f,
+                groundSnapCollider,
+                out Vector3 spawnPosition))
+        {
+            return spawnPosition;
+        }
+
+        position.y = ProceduralGrassArena.GetLootSpawnY(0.5f);
+        return position;
     }
 
     private void TryDropHeartPickup(Vector3 dropPosition)

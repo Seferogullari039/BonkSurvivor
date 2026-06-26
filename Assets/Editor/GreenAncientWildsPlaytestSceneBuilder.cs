@@ -19,7 +19,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
     private const string MaterialsFolder = "Assets/BonkSurvivor/Maps/GreenAncientWilds/Materials";
     private const string PlaytestBootstrapName = "GreenAncientWilds_PlaytestBootstrap";
     private const string VisualDressingVersionMarker = "BossBoundary";
-    private const string SlopeTestVersionMarker = "SlopeTest_A_GentleRamp";
+    private const string SlopeTestVersionMarker = "NaturalHill_A";
 
     private const string PolytopePrefabsRoot = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs";
 
@@ -482,35 +482,83 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         Transform rocksRoot = CreateChild(areaRoot.transform, "Rocks");
         Transform markersRoot = CreateChild(areaRoot.transform, "Markers");
 
-        CreateBoxRamp(
+        CreateHillMoundVisual(
             visualRoot,
-            colliderRoot,
-            localPosition: new Vector3(0f, 0.58f, 0f),
-            localRotation: Quaternion.Euler(-8.5f, 0f, 0f),
-            size: new Vector3(8f, 0.22f, 10f),
-            material: materials.Grass);
+            "HillBaseBlend",
+            new Vector3(0f, -0.12f, -0.8f),
+            new Vector3(13f, 0.42f, 11f),
+            materials.Grass);
+        CreateHillMoundVisual(
+            visualRoot,
+            "HillRise",
+            new Vector3(0f, 0.22f, 1.2f),
+            new Vector3(10.5f, 0.72f, 9f),
+            materials.Grass);
+        CreateHillMoundVisual(
+            visualRoot,
+            "HillCrown",
+            new Vector3(0f, 0.82f, 3.6f),
+            new Vector3(5.5f, 0.55f, 4.8f),
+            materials.Ground);
+        CreateHillMoundVisual(
+            visualRoot,
+            "HillShoulder_L",
+            new Vector3(-4.2f, 0.08f, 0.4f),
+            new Vector3(4.2f, 0.38f, 5.5f),
+            materials.Grass,
+            Quaternion.Euler(0f, 18f, -4f));
+        CreateHillMoundVisual(
+            visualRoot,
+            "HillShoulder_R",
+            new Vector3(4f, 0.06f, 0.2f),
+            new Vector3(4f, 0.36f, 5.2f),
+            materials.Grass,
+            Quaternion.Euler(0f, -14f, 5f));
 
         CreateBoxRamp(
-            visualRoot,
             colliderRoot,
-            localPosition: new Vector3(0f, 1.12f, 4.35f),
-            localRotation: Quaternion.identity,
-            size: new Vector3(8f, 0.18f, 2.4f),
-            material: materials.Ground);
+            colliderRoot,
+            localPosition: new Vector3(0f, 0.34f, -0.4f),
+            localRotation: Quaternion.Euler(-5.5f, 0f, 0f),
+            size: new Vector3(11f, 0.2f, 10f),
+            material: null,
+            createVisual: false);
+        CreateBoxRamp(
+            colliderRoot,
+            colliderRoot,
+            localPosition: new Vector3(0f, 0.72f, 3.1f),
+            localRotation: Quaternion.Euler(-4.5f, 0f, 0f),
+            size: new Vector3(7.5f, 0.18f, 5.5f),
+            material: null,
+            createVisual: false);
 
         PlaceSlopeDecorRock(
             rocksRoot,
             materials.Rock,
-            new Vector3(-3.2f, 0.18f, -4.8f),
+            new Vector3(-4.8f, 0.08f, -4.6f),
             Quaternion.Euler(0f, 24f, 0f),
-            0.85f);
+            0.95f);
         PlaceSlopeDecorRock(
             rocksRoot,
             materials.Rock,
-            new Vector3(3.4f, 0.16f, -4.4f),
+            new Vector3(4.6f, 0.06f, -4.2f),
             Quaternion.Euler(0f, -18f, 0f),
-            0.78f);
+            0.82f);
+        PlaceSlopeDecorRock(
+            rocksRoot,
+            materials.Ruin,
+            new Vector3(-2.8f, 0.12f, 5.2f),
+            Quaternion.Euler(8f, 42f, 0f),
+            0.68f,
+            PolytopePrefabsRoot + "/Rocks/PT_River_Rock_Pile_02.prefab");
+        PlaceSlopeDecorRock(
+            rocksRoot,
+            materials.Grass,
+            new Vector3(3.1f, 0.1f, 5.4f),
+            Quaternion.Euler(0f, -36f, 0f),
+            0.58f);
 
+        CreateMarker(markersRoot, "NaturalHill_A", new Vector3(0f, 1.35f, -5.2f));
         CreateMarker(markersRoot, "SlopeTestMarker", new Vector3(0f, 1.6f, -5.5f));
     }
 
@@ -526,43 +574,83 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         Transform rocksRoot = CreateChild(areaRoot.transform, "Rocks");
         Transform markersRoot = CreateChild(areaRoot.transform, "Markers");
 
+        CreateHillMoundVisual(
+            visualRoot,
+            "RidgeBase",
+            new Vector3(-2.2f, 0.18f, 0.6f),
+            new Vector3(4.2f, 0.95f, 2.4f),
+            materials.Rock,
+            Quaternion.Euler(0f, 8f, 0f));
+        CreateHillMoundVisual(
+            visualRoot,
+            "RidgeCap",
+            new Vector3(-2.1f, 0.78f, 0.9f),
+            new Vector3(3.2f, 0.72f, 1.6f),
+            materials.Rock,
+            Quaternion.Euler(0f, -6f, 0f));
+        CreateHillMoundVisual(
+            visualRoot,
+            "RampBlend",
+            new Vector3(2.6f, 0.08f, 0.2f),
+            new Vector3(8.5f, 0.34f, 7.5f),
+            materials.Grass);
+        CreateHillMoundVisual(
+            visualRoot,
+            "RampCrown",
+            new Vector3(2.9f, 0.62f, 4.8f),
+            new Vector3(4.8f, 0.42f, 3.6f),
+            materials.Ground);
+
         CreateBoxObstacle(
             visualRoot,
             colliderRoot,
-            localPosition: new Vector3(-2.4f, 0.68f, 0.8f),
+            localPosition: new Vector3(-2.3f, 0.62f, 0.85f),
             localRotation: Quaternion.identity,
-            size: new Vector3(3.6f, 1.35f, 1.1f),
-            material: materials.Rock);
-
+            size: new Vector3(2.8f, 1.15f, 1.05f),
+            material: null,
+            createVisual: false);
         CreateBoxRamp(
             visualRoot,
             colliderRoot,
-            localPosition: new Vector3(2.8f, 0.52f, 1.6f),
-            localRotation: Quaternion.Euler(-10.5f, 0f, 0f),
-            size: new Vector3(6f, 0.2f, 8f),
-            material: materials.Grass);
-
-        CreateBoxObstacle(
+            localPosition: new Vector3(2.7f, 0.42f, 1.5f),
+            localRotation: Quaternion.Euler(-9f, 0f, 0f),
+            size: new Vector3(6.5f, 0.2f, 7.5f),
+            material: null,
+            createVisual: false);
+        CreateBoxRamp(
             visualRoot,
             colliderRoot,
-            localPosition: new Vector3(2.8f, 1.05f, 5.2f),
-            localRotation: Quaternion.identity,
-            size: new Vector3(6f, 0.16f, 1.8f),
-            material: materials.Ground);
+            localPosition: new Vector3(2.9f, 0.92f, 4.9f),
+            localRotation: Quaternion.Euler(-2f, 0f, 0f),
+            size: new Vector3(5f, 0.16f, 2.8f),
+            material: null,
+            createVisual: false);
 
         PlaceSlopeDecorRock(
             rocksRoot,
             materials.Ruin,
-            new Vector3(-4.2f, 0.22f, 2.4f),
+            new Vector3(-4.4f, 0.18f, 2.2f),
             Quaternion.Euler(0f, 12f, 0f),
             1.05f,
             PolytopePrefabsRoot + "/Rocks/PT_Menhir_Rock_02.prefab");
         PlaceSlopeDecorRock(
             rocksRoot,
             materials.Rock,
-            new Vector3(5.1f, 0.14f, -2.6f),
+            new Vector3(-3.4f, 0.1f, -1.8f),
+            Quaternion.Euler(0f, 28f, 0f),
+            0.76f);
+        PlaceSlopeDecorRock(
+            rocksRoot,
+            materials.Rock,
+            new Vector3(5.2f, 0.1f, -2.4f),
             Quaternion.Euler(0f, -32f, 0f),
             0.72f);
+        PlaceSlopeDecorRock(
+            rocksRoot,
+            materials.Rock,
+            new Vector3(4.8f, 0.28f, 5.6f),
+            Quaternion.Euler(12f, -8f, 0f),
+            0.64f);
 
         CreateMarker(markersRoot, "SlopeTestMarker", new Vector3(0f, 1.5f, -4.8f));
     }
@@ -577,24 +665,55 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         return child.transform;
     }
 
+    private static void CreateHillMoundVisual(
+        Transform parent,
+        string objectName,
+        Vector3 localPosition,
+        Vector3 localScale,
+        Material material,
+        Quaternion localRotation = default)
+    {
+        if (localRotation == default)
+        {
+            localRotation = Quaternion.identity;
+        }
+
+        GameObject mound = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+        mound.name = objectName;
+        mound.transform.SetParent(parent, false);
+        mound.transform.localPosition = localPosition;
+        mound.transform.localRotation = localRotation;
+        mound.transform.localScale = localScale;
+        UnityEngine.Object.DestroyImmediate(mound.GetComponent<Collider>());
+
+        if (material != null)
+        {
+            ApplyMaterialToRenderers(mound, material);
+        }
+    }
+
     private static void CreateBoxRamp(
         Transform visualParent,
         Transform colliderParent,
         Vector3 localPosition,
         Quaternion localRotation,
         Vector3 size,
-        Material material)
+        Material material,
+        bool createVisual = true)
     {
-        GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        visual.name = "RampSurface";
-        visual.transform.SetParent(visualParent, false);
-        visual.transform.localPosition = localPosition;
-        visual.transform.localRotation = localRotation;
-        visual.transform.localScale = size;
-        UnityEngine.Object.DestroyImmediate(visual.GetComponent<Collider>());
-        ApplyMaterialToRenderers(visual, material);
+        if (createVisual && material != null)
+        {
+            GameObject visual = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            visual.name = "RampSurface";
+            visual.transform.SetParent(visualParent, false);
+            visual.transform.localPosition = localPosition;
+            visual.transform.localRotation = localRotation;
+            visual.transform.localScale = size;
+            UnityEngine.Object.DestroyImmediate(visual.GetComponent<Collider>());
+            ApplyMaterialToRenderers(visual, material);
+        }
 
-        GameObject colliderObject = new GameObject("RampBoxCollider");
+        GameObject colliderObject = new GameObject(createVisual ? "RampBoxCollider" : "RampCollider");
         colliderObject.transform.SetParent(colliderParent, false);
         colliderObject.transform.localPosition = localPosition;
         colliderObject.transform.localRotation = localRotation;
@@ -609,9 +728,10 @@ public static class GreenAncientWildsPlaytestSceneBuilder
         Vector3 localPosition,
         Quaternion localRotation,
         Vector3 size,
-        Material material)
+        Material material,
+        bool createVisual = true)
     {
-        CreateBoxRamp(visualParent, colliderParent, localPosition, localRotation, size, material);
+        CreateBoxRamp(visualParent, colliderParent, localPosition, localRotation, size, material, createVisual);
 
         Transform lastVisual = visualParent.childCount > 0 ? visualParent.GetChild(visualParent.childCount - 1) : null;
 
@@ -624,7 +744,7 @@ public static class GreenAncientWildsPlaytestSceneBuilder
 
         if (lastCollider != null)
         {
-            lastCollider.name = "RidgeBoxCollider";
+            lastCollider.name = createVisual ? "RidgeBoxCollider" : "RidgeCollider";
         }
     }
 
