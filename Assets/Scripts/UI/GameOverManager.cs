@@ -1090,7 +1090,11 @@ public class GameOverManager : MonoBehaviour
     private void QuitGame()
     {
         Time.timeScale = 1f;
+#if UNITY_EDITOR
+        UnityEditor.EditorApplication.isPlaying = false;
+#else
         Application.Quit();
+#endif
     }
 
     private static TMP_Text CreateColumnText(Transform parent, string objectName, float x)
