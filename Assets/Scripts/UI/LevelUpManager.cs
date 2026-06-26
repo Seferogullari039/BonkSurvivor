@@ -34,6 +34,12 @@ public class LevelUpManager : MonoBehaviour
     private ChestStatRewardType shownChestStatReward;
     private bool chestRewardIsSpecialUpgrade;
 
+    private GameObject offerActionRow;
+    private Button skipOfferButton;
+    private Button refreshOfferButton;
+    private TMP_Text skipOfferButtonText;
+    private TMP_Text refreshOfferButtonText;
+
     private void Awake()
     {
         Instance = this;
@@ -52,6 +58,8 @@ public class LevelUpManager : MonoBehaviour
     private sealed class UpgradeCardView
     {
         public Button Button;
+        public Button BanishButton;
+        public TMP_Text BanishButtonText;
         public Image BackgroundImage;
         public Image GlowImage;
         public Transform IconRoot;
@@ -105,6 +113,8 @@ public class LevelUpManager : MonoBehaviour
             UiLayoutUtility.SetAnchorCenter(chestHeaderText.rectTransform, new Vector2(0f, 286f), new Vector2(680f, 44f));
             chestHeaderText.fontSize = 30f;
         }
+
+        EnsureOfferActionButtons();
     }
 
     private static void LayoutUpgradeButton(Button button, float yOffset)
@@ -182,6 +192,139 @@ public class LevelUpManager : MonoBehaviour
         ConfigureRarityText(upgradeCards[index].RarityText);
         ConfigureCategoryText(upgradeCards[index].CategoryText);
         ConfigureBuildText(upgradeCards[index].BuildText);
+        EnsureCardBanishButton(index, buttonRect, legacyText);
+    }
+
+    private void EnsureCardBanishButton(int cardIndex, RectTransform cardRect, TMP_Text fontSource)
+    {
+        UpgradeCardView card = upgradeCards[cardIndex];
+
+        if (card == null || card.BanishButton != null)
+        {
+            return;
+        }
+
+        GameObject buttonObject = new GameObject("BanishButton");
+        buttonObject.transform.SetParent(cardRect, false);
+
+        RectTransform buttonRect = buttonObject.AddComponent<RectTransform>();
+        buttonRect.anchorMin = new Vector2(1f, 1f);
+        buttonRect.anchorMax = new Vector2(1f, 1f);
+        buttonRect.pivot = new Vector2(1f, 1f);
+        buttonRect.anchoredPosition = new Vector2(-10f, -8f);
+        buttonRect.sizeDelta = new Vector2(78f, 24f);
+
+        Image buttonImage = buttonObject.AddComponent<Image>();
+        buttonImage.color = new Color(0.16f, 0.10f, 0.12f, 0.94f);
+
+        Button button = buttonObject.AddComponent<Button>();
+        ApplyOfferActionButtonColors(button);
+
+        GameObject labelObject = new GameObject("Label");
+        labelObject.transform.SetParent(buttonObject.transform, false);
+
+        RectTransform labelRect = labelObject.AddComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+
+        TextMeshProUGUI labelText = labelObject.AddComponent<TextMeshProUGUI>();
+        CopyTmpFontFrom(fontSource, labelText);
+        labelText.text = "BANISH";
+        labelText.fontSize = 11f;
+        labelText.fontStyle = FontStyles.Bold;
+        labelText.alignment = TextAlignmentOptions.Center;
+        labelText.color = new Color(0.92f, 0.78f, 0.80f, 1f);
+        labelText.raycastTarget = false;
+
+        card.BanishButton = button;
+        card.BanishButtonText = labelText;
+    }
+
+    private void EnsureOfferActionButtons()
+    {
+        if (levelUpPanel == null || offerActionRow != null)
+        {
+            return;
+        }
+
+        offerActionRow = new GameObject("OfferActionRow");
+        offerActionRow.transform.SetParent(levelUpPanel.transform, false);
+
+        RectTransform rowRect = offerActionRow.AddComponent<RectTransform>();
+        UiLayoutUtility.SetAnchorCenter(rowRect, new Vector2(0f, -318f), new Vector2(520f, 40f));
+
+        skipOfferButton = CreateOfferActionButton(
+            offerActionRow.transform,
+            "SkipOfferButton",
+            new Vector2(-110f, 0f),
+            out skipOfferButtonText);
+        refreshOfferButton = CreateOfferActionButton(
+            offerActionRow.transform,
+            "RefreshOfferButton",
+            new Vector2(110f, 0f),
+            out refreshOfferButtonText);
+
+        skipOfferButton.onClick.AddListener(OnSkipOffer);
+        refreshOfferButton.onClick.AddListener(OnRefreshOffer);
+        offerActionRow.SetActive(false);
+    }
+
+    private Button CreateOfferActionButton(
+        Transform parent,
+        string objectName,
+        Vector2 anchoredPosition,
+        out TMP_Text labelText)
+    {
+        GameObject buttonObject = new GameObject(objectName);
+        buttonObject.transform.SetParent(parent, false);
+
+        RectTransform buttonRect = buttonObject.AddComponent<RectTransform>();
+        UiLayoutUtility.SetAnchorCenter(buttonRect, anchoredPosition, new Vector2(180f, 36f));
+
+        Image buttonImage = buttonObject.AddComponent<Image>();
+        buttonImage.color = new Color(0.10f, 0.11f, 0.15f, 0.96f);
+
+        Button button = buttonObject.AddComponent<Button>();
+        ApplyOfferActionButtonColors(button);
+
+        GameObject labelObject = new GameObject("Label");
+        labelObject.transform.SetParent(buttonObject.transform, false);
+
+        RectTransform labelRect = labelObject.AddComponent<RectTransform>();
+        labelRect.anchorMin = Vector2.zero;
+        labelRect.anchorMax = Vector2.one;
+        labelRect.offsetMin = Vector2.zero;
+        labelRect.offsetMax = Vector2.zero;
+
+        TextMeshProUGUI textMesh = labelObject.AddComponent<TextMeshProUGUI>();
+        CopyTmpFontFrom(optionText1, textMesh);
+        textMesh.fontSize = 16f;
+        textMesh.fontStyle = FontStyles.Bold;
+        textMesh.alignment = TextAlignmentOptions.Center;
+        textMesh.color = new Color(0.88f, 0.90f, 0.96f, 1f);
+        textMesh.raycastTarget = false;
+
+        labelText = textMesh;
+        return button;
+    }
+
+    private static void ApplyOfferActionButtonColors(Button button)
+    {
+        if (button == null)
+        {
+            return;
+        }
+
+        ColorBlock colors = button.colors;
+        colors.normalColor = Color.white;
+        colors.highlightedColor = new Color(0.92f, 0.95f, 1f, 1f);
+        colors.pressedColor = new Color(0.82f, 0.88f, 0.98f, 1f);
+        colors.selectedColor = new Color(0.92f, 0.95f, 1f, 1f);
+        colors.disabledColor = new Color(0.45f, 0.47f, 0.52f, 0.65f);
+        colors.fadeDuration = 0.08f;
+        button.colors = colors;
     }
 
     private static void ApplyUpgradeCardLayout(int index, Button button)
@@ -784,6 +927,150 @@ public class LevelUpManager : MonoBehaviour
         RefreshUpgradeOptionTexts();
         UpdateChestHeaderText();
         RefreshButtonListeners();
+        RefreshOfferActionButtons();
+    }
+
+    private void RefreshOfferActionButtons()
+    {
+        if (offerActionRow != null)
+        {
+            offerActionRow.SetActive(!isChestUpgradeMenu && !useChestSingleCardReveal);
+        }
+
+        if (skipOfferButtonText != null)
+        {
+            skipOfferButtonText.text = "SKIP " + RewardOfferActionState.SkipsRemaining;
+        }
+
+        if (refreshOfferButtonText != null)
+        {
+            refreshOfferButtonText.text = "REFRESH " + RewardOfferActionState.RefreshesRemaining;
+        }
+
+        if (skipOfferButton != null)
+        {
+            skipOfferButton.interactable = RewardOfferActionState.CanSkip();
+        }
+
+        if (refreshOfferButton != null)
+        {
+            refreshOfferButton.interactable = RewardOfferActionState.CanRefresh();
+        }
+
+        for (int i = 0; i < upgradeCards.Length; i++)
+        {
+            RefreshCardBanishButton(i);
+        }
+    }
+
+    private void RefreshCardBanishButton(int cardIndex)
+    {
+        UpgradeCardView card = upgradeCards[cardIndex];
+
+        if (card == null || card.BanishButton == null)
+        {
+            return;
+        }
+
+        int upgradeIndex = shownUpgradeIndices[cardIndex];
+        bool supportsBanish = RewardOfferActionState.SupportsBanish(upgradeIndex);
+        card.BanishButton.gameObject.SetActive(supportsBanish);
+
+        if (!supportsBanish)
+        {
+            return;
+        }
+
+        card.BanishButton.interactable = RewardOfferActionState.CanBanish(upgradeIndex);
+
+        if (card.BanishButtonText != null)
+        {
+            card.BanishButtonText.text = "BANISH";
+            card.BanishButtonText.color = card.BanishButton.interactable
+                ? new Color(0.92f, 0.78f, 0.80f, 1f)
+                : new Color(0.55f, 0.52f, 0.56f, 0.75f);
+        }
+    }
+
+    private void OnSkipOffer()
+    {
+        if (!RewardOfferActionState.TryConsumeSkip())
+        {
+            return;
+        }
+
+        AudioManager.Instance?.PlayButtonClick();
+        remainingUpgradeSelections = 0;
+        isChestUpgradeMenu = false;
+        useChestSingleCardReveal = false;
+        HideLevelUpPresentation();
+        Time.timeScale = 1f;
+        RefreshOfferActionButtons();
+    }
+
+    private void OnRefreshOffer()
+    {
+        if (!RewardOfferActionState.TryConsumeRefresh())
+        {
+            return;
+        }
+
+        AudioManager.Instance?.PlayButtonClick();
+        AssignRandomUpgradeOptions();
+        RefreshUpgradeOptionTexts();
+        RefreshButtonListeners();
+        RefreshOfferActionButtons();
+        itemOfferLayout.RefreshSidePanels(FindPlayerStats());
+    }
+
+    private void OnBanishCard(int cardIndex)
+    {
+        if (cardIndex < 0 || cardIndex >= shownUpgradeIndices.Length)
+        {
+            return;
+        }
+
+        int upgradeIndex = shownUpgradeIndices[cardIndex];
+
+        if (!RewardOfferActionState.SupportsBanish(upgradeIndex))
+        {
+            return;
+        }
+
+        if (!RewardOfferActionState.TryBanish(upgradeIndex))
+        {
+            return;
+        }
+
+        AudioManager.Instance?.PlayButtonClick();
+        RerollOfferSlot(cardIndex);
+        RefreshUpgradeOptionTexts();
+        RefreshButtonListeners();
+        RefreshOfferActionButtons();
+        itemOfferLayout.RefreshSidePanels(FindPlayerStats());
+    }
+
+    private void RerollOfferSlot(int slotIndex)
+    {
+        List<int> availableIndices = RunBuildRewardFilter.BuildPoolIndices();
+
+        for (int i = 0; i < shownUpgradeIndices.Length; i++)
+        {
+            if (i == slotIndex)
+            {
+                continue;
+            }
+
+            int shownIndex = shownUpgradeIndices[i];
+
+            if (shownIndex >= 0)
+            {
+                availableIndices.Remove(shownIndex);
+            }
+        }
+
+        List<int> unpurchasedWeapons = GetUnpurchasedWeaponIndices();
+        AssignWeightedOption(slotIndex, availableIndices, unpurchasedWeapons);
     }
 
     private void RefreshUpgradeOptionTexts()
@@ -1893,6 +2180,20 @@ public class LevelUpManager : MonoBehaviour
             optionButton3.onClick.RemoveAllListeners();
             optionButton3.onClick.AddListener(() => SelectUpgrade(2));
         }
+
+        for (int i = 0; i < upgradeCards.Length; i++)
+        {
+            UpgradeCardView card = upgradeCards[i];
+
+            if (card?.BanishButton == null)
+            {
+                continue;
+            }
+
+            int cardIndex = i;
+            card.BanishButton.onClick.RemoveAllListeners();
+            card.BanishButton.onClick.AddListener(() => OnBanishCard(cardIndex));
+        }
     }
 
     private void SetOptionText(TMP_Text text, string value)
@@ -1918,6 +2219,7 @@ public class LevelUpManager : MonoBehaviour
             AssignRandomUpgradeOptions();
             RefreshUpgradeOptionTexts();
             RefreshButtonListeners();
+            RefreshOfferActionButtons();
             itemOfferLayout.RefreshSidePanels(FindPlayerStats());
             return;
         }
@@ -1951,6 +2253,11 @@ public class LevelUpManager : MonoBehaviour
         if (chestHeaderText != null)
         {
             chestHeaderText.gameObject.SetActive(false);
+        }
+
+        if (offerActionRow != null)
+        {
+            offerActionRow.SetActive(false);
         }
     }
 

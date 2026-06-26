@@ -28,9 +28,14 @@ public static class RewardOfferActionState
 
     public static bool CanBanish(int upgradeIndex)
     {
-        return upgradeIndex >= 0
+        return SupportsBanish(upgradeIndex)
             && banishesUsed < MaxActionsPerRun
             && !banishedUpgradeIndices.Contains(upgradeIndex);
+    }
+
+    public static bool SupportsBanish(int upgradeIndex)
+    {
+        return upgradeIndex >= 0;
     }
 
     public static bool TryBanish(int upgradeIndex)
