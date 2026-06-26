@@ -307,7 +307,7 @@ public class Chest : MonoBehaviour
 
         cachedPlayerStats = playerStats;
         playerInRange = true;
-        RefreshPriceLabel(false);
+        RefreshPriceLabel();
     }
 
     private void OnTriggerExit(Collider other)
@@ -316,7 +316,7 @@ public class Chest : MonoBehaviour
 
         playerInRange = false;
         cachedPlayerStats = null;
-        RefreshPriceLabel(false);
+        RefreshPriceLabel();
     }
 
     private void TryOpenNormalChest()
