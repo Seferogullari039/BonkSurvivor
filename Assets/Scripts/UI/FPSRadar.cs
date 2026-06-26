@@ -8,6 +8,8 @@ public class FPSRadar : MonoBehaviour
     private const float RadarPixelSize = 150f;
     private const float BlipSize = 7f;
 
+    private static bool suppressedByBigMap;
+
     private static readonly Color PlayerColor = new Color(0.85f, 0.95f, 1f, 1f);
     private static readonly Color EnemyColor = new Color(1f, 0.25f, 0.25f, 1f);
     private static readonly Color EliteColor = new Color(1f, 0.9f, 0.2f, 1f);
@@ -17,6 +19,11 @@ public class FPSRadar : MonoBehaviour
     private RectTransform blipContainer;
     private Transform playerTransform;
     private readonly List<Image> blipPool = new List<Image>();
+
+    public static void SetSuppressedByBigMap(bool suppressed)
+    {
+        suppressedByBigMap = suppressed;
+    }
 
     private void Awake()
     {
@@ -30,7 +37,8 @@ public class FPSRadar : MonoBehaviour
 
         bool showRadar = FPSPlayerController.IsFpsModeActive
             && MainMenuManager.IsRunActive
-            && Time.timeScale > 0f;
+            && Time.timeScale > 0f
+            && !suppressedByBigMap;
 
         if (radarPanel.activeSelf != showRadar)
         {
