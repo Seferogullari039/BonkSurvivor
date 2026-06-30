@@ -492,7 +492,22 @@ public static class ImportedEnvironmentVisualLayer
         }
 
         Material runtimeMaterial = new Material(shader);
-        GameVisualStyle.ApplyColor(runtimeMaterial, fallbackColor, 0.16f, false, 0f);
+
+        if (runtimeMaterial.HasProperty("_BaseColor"))
+        {
+            runtimeMaterial.SetColor("_BaseColor", fallbackColor);
+        }
+
+        if (runtimeMaterial.HasProperty("_Color"))
+        {
+            runtimeMaterial.SetColor("_Color", fallbackColor);
+        }
+
+        if (runtimeMaterial.HasProperty("_Smoothness"))
+        {
+            runtimeMaterial.SetFloat("_Smoothness", 0.16f);
+        }
+
         return runtimeMaterial;
     }
 
@@ -512,7 +527,7 @@ public static class ImportedEnvironmentVisualLayer
 
     private static float PlacementScale(System.Random random, int salt, int multiplier, float min, float max)
     {
-        float t = Mathf.Abs(Mathf.Sin(salt * multiplier * 0.113f + random.NextDouble() * 0.35f));
+        float t = Mathf.Abs(Mathf.Sin(salt * multiplier * 0.113f + (float)random.NextDouble() * 0.35f));
         return min + t * (max - min);
     }
 
