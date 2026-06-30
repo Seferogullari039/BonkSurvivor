@@ -28,6 +28,9 @@ public class ProceduralGrassArena : MonoBehaviour
     [Header("Terrain Mesh")]
     [SerializeField] private bool useLowpolyTerrainMesh = true;
 
+    [Header("Imported Environment Visuals")]
+    [SerializeField] private bool useImportedEnvironmentVisuals = true;
+
     [Header("Map Size")]
     [SerializeField] private float mapSizeX = DefaultMapSize;
     [SerializeField] private float mapSizeZ = DefaultMapSize;
@@ -121,6 +124,7 @@ public class ProceduralGrassArena : MonoBehaviour
     private Transform playabilityTerrainRoot;
     private Transform terrainMeshRoot;
     private Transform safetyGroundRoot;
+    private Transform importedEnvironmentRoot;
     private Mesh terrainMesh;
     private Mesh terrainCollisionMesh;
     private readonly List<Vector3> placedLargeObjectPositions = new List<Vector3>();
@@ -604,6 +608,11 @@ public class ProceduralGrassArena : MonoBehaviour
         BuildGrassPatches(random);
         BuildLandmarks(random);
 
+        if (useImportedEnvironmentVisuals)
+        {
+            BuildImportedEnvironmentAssetLayer(random);
+        }
+
         if (applyPlayerSpawn)
         {
             ApplyPlayerSpawn(random);
@@ -717,6 +726,7 @@ public class ProceduralGrassArena : MonoBehaviour
         playabilityTerrainRoot = null;
         terrainMeshRoot = null;
         safetyGroundRoot = null;
+        importedEnvironmentRoot = null;
         terrainMesh = null;
         terrainCollisionMesh = null;
 
@@ -725,6 +735,17 @@ public class ProceduralGrassArena : MonoBehaviour
         if (existingRoot == null) return;
 
         DestroyImmediate(existingRoot.gameObject);
+
+        Transform existingImported = transform.Find("ImportedEnvironmentVisuals");
+        if (existingImported != null)
+        {
+            DestroyImmediate(existingImported.gameObject);
+        }
+    }
+
+    private void BuildImportedEnvironmentAssetLayer(System.Random random)
+    {
+        importedEnvironmentRoot = ImportedEnvironmentVisualLayer.Build(this, transform, random);
     }
 
     private bool HasValidGeneratedArena()
