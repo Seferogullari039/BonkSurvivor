@@ -136,9 +136,11 @@ public static class MapChestSpawner
 
     private static float ResolveGroundY(Vector3 worldPosition)
     {
-        float flatGroundY = ProceduralGrassArena.GetLootSpawnY(0f);
+        float flatGroundY = ProceduralGrassArena.GetLootSpawnY(worldPosition, 0f);
+        Vector3 probePosition = worldPosition;
+        probePosition.y = flatGroundY;
 
-        if (GroundSnapUtility.TryGetGroundPoint(worldPosition, null, out Vector3 groundPoint)
+        if (GroundSnapUtility.TryGetGroundPoint(probePosition, null, out Vector3 groundPoint)
             && groundPoint.y <= flatGroundY + MaxChestRiseAboveFlatGround)
         {
             return groundPoint.y;

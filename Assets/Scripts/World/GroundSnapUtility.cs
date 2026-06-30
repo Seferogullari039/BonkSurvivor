@@ -3,7 +3,7 @@ using UnityEngine;
 public static class GroundSnapUtility
 {
     private const float RayOriginHeight = 4f;
-    private const float RayDistance = 10f;
+    private const float RayDistance = 16f;
     private const float MinGroundNormalY = 0.35f;
 
     private static readonly RaycastHit[] HitBuffer = new RaycastHit[24];
@@ -72,7 +72,7 @@ public static class GroundSnapUtility
         }
 
         spawnPosition = worldPosition;
-        spawnPosition.y = ProceduralGrassArena.GetLootSpawnY(heightOffset);
+        spawnPosition.y = ProceduralGrassArena.GetLootSpawnY(worldPosition, heightOffset);
         return false;
     }
 

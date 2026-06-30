@@ -19,6 +19,11 @@ public class ProceduralGrassArena : MonoBehaviour
     public const float DefaultMapHalfSize = DefaultMapSize * 0.5f;
     private const float LegacyMapSize = 160f;
     private const float ReferenceHalfSize = 80f;
+    private const int TerrainGridResolution = 52;
+    private const float TerrainSpawnFlattenRadius = 22f;
+
+    [Header("Terrain Mesh")]
+    [SerializeField] private bool useLowpolyTerrainMesh = true;
 
     [Header("Map Size")]
     [SerializeField] private float mapSizeX = DefaultMapSize;
@@ -111,6 +116,8 @@ public class ProceduralGrassArena : MonoBehaviour
     private Transform interiorHillsRoot;
     private Transform interiorMountainsRoot;
     private Transform playabilityTerrainRoot;
+    private Transform terrainMeshRoot;
+    private Mesh terrainMesh;
     private readonly List<Vector3> placedLargeObjectPositions = new List<Vector3>();
     private readonly List<BlockedArea> blockedAreas = new List<BlockedArea>();
     private readonly List<Vector3> placedMountainCenters = new List<Vector3>();
@@ -279,7 +286,7 @@ public class ProceduralGrassArena : MonoBehaviour
         {
             float x = UnityEngine.Random.Range(-maxX, maxX);
             float z = UnityEngine.Random.Range(-maxZ, maxZ);
-            Vector3 candidate = new Vector3(x, groundHeight + PlayerSpawnHeightOffset, z);
+            Vector3 candidate = new Vector3(x, GetSurfaceHeightAt(x, z) + PlayerSpawnHeightOffset, z);
 
             if (IsPositionBlocked(candidate, objectRadius))
             {
@@ -326,7 +333,7 @@ public class ProceduralGrassArena : MonoBehaviour
             offset = offset.normalized * distance;
             Vector3 candidate = new Vector3(
                 playerPosition.x + offset.x,
-                GetLootSpawnY(0.5f),
+                GetLootSpawnY(new Vector3(playerPosition.x + offset.x, 0f, playerPosition.z + offset.y), 0.5f),
                 playerPosition.z + offset.y);
 
             TryClampHorizontal(ref candidate);
@@ -354,7 +361,7 @@ public class ProceduralGrassArena : MonoBehaviour
         if (Instance != null)
         {
             spawnPosition = Instance.GetSafePointInsideArena(minDistanceFromPlayer, objectRadius);
-            spawnPosition.y = GetLootSpawnY(0.5f);
+            spawnPosition.y = GetLootSpawnY(spawnPosition, 0.5f);
             TryClampHorizontal(ref spawnPosition);
             return true;
         }
@@ -368,7 +375,12 @@ public class ProceduralGrassArena : MonoBehaviour
 
         spawnPosition = new Vector3(
             playerPosition.x + fallbackDirection.x * fallbackDistance,
-            GetLootSpawnY(0.5f),
+            GetLootSpawnY(
+                new Vector3(
+                    playerPosition.x + fallbackDirection.x * fallbackDistance,
+                    0f,
+                    playerPosition.z + fallbackDirection.y * fallbackDistance),
+                0.5f),
             playerPosition.z + fallbackDirection.y * fallbackDistance);
         return true;
     }
@@ -392,7 +404,88 @@ public class ProceduralGrassArena : MonoBehaviour
 
     public static float GetLootSpawnY(float heightOffset = 0.5f)
     {
-        return Instance != null ? Instance.groundHeight + heightOffset : heightOffset;
+        return GetLootSpawnY(Vector3.zero, heightOffset);
+    }
+
+    public static float GetLootSpawnY(Vector3 worldPosition, float heightOffset = 0.5f)
+    {
+        if (Instance == null)
+        {
+            return heightOffset;
+        }
+
+        return Instance.GetSurfaceHeightAt(worldPosition.x, worldPosition.z) + heightOffset;
+    }
+
+    public float GetSurfaceHeightAt(float worldX, float worldZ)
+    {
+        if (useLowpolyTerrainMesh)
+        {
+            return SampleTerrainHeight(worldX, worldZ);
+        }
+
+        return groundHeight;
+    }
+
+    public float SampleTerrainHeight(float worldX, float worldZ)
+    {
+        float halfX = HalfSizeX;
+        float halfZ = HalfSizeZ;
+
+        if (halfX <= 0.01f || halfZ <= 0.01f)
+        {
+            return groundHeight;
+        }
+
+        float nx = worldX / halfX;
+        float nz = worldZ / halfZ;
+        float seed = currentRunSeed * 0.0001f;
+
+        float southRoll = Mathf.PerlinNoise((worldX + seed * 120f) * 0.024f, (worldZ + seed * 60f) * 0.02f) * 1.1f;
+        southRoll += Mathf.PerlinNoise(worldX * 0.055f + 36f, worldZ * 0.048f - 12f) * 0.42f;
+
+        float eastHill =
+            GaussianBump(worldX, worldZ, halfX * 0.38f, 0f, 26f, 24f) * 5.2f
+            + GaussianBump(worldX, worldZ, halfX * 0.52f, halfZ * 0.12f, 20f, 18f) * 4f
+            + GaussianBump(worldX, worldZ, halfX * 0.44f, -halfZ * 0.15f, 18f, 16f) * 3.2f;
+
+        float westValley =
+            GaussianBump(worldX, worldZ, -halfX * 0.48f, halfZ * 0.08f, 32f, 28f) * 2.4f
+            + GaussianBump(worldX, worldZ, -halfX * 0.35f, -halfZ * 0.2f, 22f, 20f) * 1.4f;
+
+        float ridgeAxis = Mathf.Exp(-Mathf.Pow((worldZ - halfZ * 0.5f) / 20f, 2f));
+        float ridgeAlongX = 1f - Mathf.Pow(Mathf.Abs(nx), 3f);
+        float northRidge = ridgeAxis * ridgeAlongX * 5.5f;
+
+        float edgeX = 1f - Mathf.Abs(nx);
+        float edgeZ = 1f - Mathf.Abs(nz);
+        float edgeMin = Mathf.Min(edgeX, edgeZ);
+        float edgeRise = Mathf.Pow(Mathf.Clamp01(1f - edgeMin / 0.22f), 2.2f) * 4f;
+
+        float height = southRoll + eastHill - westValley * 0.9f + northRidge + edgeRise;
+        height = Mathf.Max(0f, height);
+
+        float dist = Mathf.Sqrt(worldX * worldX + worldZ * worldZ);
+
+        if (dist < TerrainSpawnFlattenRadius)
+        {
+            float t = dist / TerrainSpawnFlattenRadius;
+            float smooth = t * t * (3f - 2f * t);
+            height *= smooth;
+        }
+
+        return groundHeight + height;
+    }
+
+    private float SurfaceY(float worldX, float worldZ) => GetSurfaceHeightAt(worldX, worldZ);
+
+    private float SurfaceY(Vector3 flatPosition) => GetSurfaceHeightAt(flatPosition.x, flatPosition.z);
+
+    private static float GaussianBump(float x, float z, float centerX, float centerZ, float radiusX, float radiusZ)
+    {
+        float dx = (x - centerX) / radiusX;
+        float dz = (z - centerZ) / radiusZ;
+        return Mathf.Exp(-(dx * dx + dz * dz));
     }
 
     public Vector3 ClampHorizontal(Vector3 position, float margin)
@@ -470,9 +563,20 @@ public class ProceduralGrassArena : MonoBehaviour
         SelectPlayerSpawn(random);
 
         BuildGround();
+
+        if (useLowpolyTerrainMesh)
+        {
+            BuildLowpolyTerrainMesh();
+        }
+
         BuildBorders();
-        BuildInteriorHills(random);
-        BuildInteriorMountains(random);
+
+        if (!useLowpolyTerrainMesh)
+        {
+            BuildInteriorHills(random);
+            BuildInteriorMountains(random);
+        }
+
         BuildPlayabilityTerrain();
         BuildGroundVariationPatches();
         BuildHorizonSilhouettes();
@@ -503,7 +607,7 @@ public class ProceduralGrassArena : MonoBehaviour
 
     private void SelectPlayerSpawn(System.Random random)
     {
-        float spawnY = groundHeight + PlayerSpawnHeightOffset;
+        float spawnY = GetSurfaceHeightAt(0f, 0f) + PlayerSpawnHeightOffset;
         float borderMargin = BorderInset + playerSpawnSafeRadius;
         float maxX = HalfSizeX - borderMargin;
         float maxZ = HalfSizeZ - borderMargin;
@@ -529,7 +633,7 @@ public class ProceduralGrassArena : MonoBehaviour
                 continue;
             }
 
-            Vector3 candidate = new Vector3(x, spawnY, z);
+            Vector3 candidate = new Vector3(x, GetSurfaceHeightAt(x, z) + PlayerSpawnHeightOffset, z);
 
             if (IsPositionBlocked(candidate, 1.2f))
             {
@@ -598,6 +702,8 @@ public class ProceduralGrassArena : MonoBehaviour
         interiorHillsRoot = null;
         interiorMountainsRoot = null;
         playabilityTerrainRoot = null;
+        terrainMeshRoot = null;
+        terrainMesh = null;
 
         Transform existingRoot = transform.Find(ArenaRootName);
 
@@ -652,8 +758,10 @@ public class ProceduralGrassArena : MonoBehaviour
 
     private void BuildGround()
     {
-        Vector3 groundCenter = new Vector3(0f, groundHeight - 0.05f, 0f);
+        float underlayDepth = useLowpolyTerrainMesh ? 1.6f : 0.05f;
+        Vector3 groundCenter = new Vector3(0f, groundHeight - underlayDepth, 0f);
         Vector3 groundScale = new Vector3(mapSizeX, 0.1f, mapSizeZ);
+        Color underlayColor = useLowpolyTerrainMesh ? GroundPatchDark : GroundColor;
 
         CreatePrimitivePart(
             groundRoot,
@@ -661,10 +769,142 @@ public class ProceduralGrassArena : MonoBehaviour
             PrimitiveType.Cube,
             groundCenter,
             groundScale,
-            GroundColor,
+            underlayColor,
             0.18f,
             true,
-            true);
+            !useLowpolyTerrainMesh);
+    }
+
+    private void BuildLowpolyTerrainMesh()
+    {
+        terrainMesh = CreateLowpolyTerrainMeshData();
+
+        if (terrainMesh == null)
+        {
+            return;
+        }
+
+        GameObject terrainObject = new GameObject("LowpolyTerrainMesh");
+        terrainObject.transform.SetParent(groundRoot, false);
+        terrainObject.transform.localPosition = Vector3.zero;
+        terrainObject.transform.localRotation = Quaternion.identity;
+        terrainObject.transform.localScale = Vector3.one;
+        terrainObject.isStatic = true;
+        terrainMeshRoot = terrainObject.transform;
+
+        MeshFilter meshFilter = terrainObject.AddComponent<MeshFilter>();
+        meshFilter.sharedMesh = terrainMesh;
+
+        MeshRenderer meshRenderer = terrainObject.AddComponent<MeshRenderer>();
+        Material referenceMaterial = new Material(Shader.Find("Standard"));
+        meshRenderer.sharedMaterial = referenceMaterial;
+        GameVisualStyle.ApplyColor(meshRenderer, GroundColor, 0.14f, false, 0f);
+
+        MeshCollider meshCollider = terrainObject.AddComponent<MeshCollider>();
+        meshCollider.sharedMesh = terrainMesh;
+    }
+
+    private Mesh CreateLowpolyTerrainMeshData()
+    {
+        int resolution = TerrainGridResolution;
+        int quadCountX = resolution - 1;
+        int quadCountZ = resolution - 1;
+        var vertices = new List<Vector3>(quadCountX * quadCountZ * 6);
+        var triangles = new List<int>(quadCountX * quadCountZ * 6);
+        var colors = new List<Color>(quadCountX * quadCountZ * 6);
+
+        for (int z = 0; z < quadCountZ; z++)
+        {
+            for (int x = 0; x < quadCountX; x++)
+            {
+                Vector3 v00 = TerrainVertexAtGrid(x, z, resolution);
+                Vector3 v10 = TerrainVertexAtGrid(x + 1, z, resolution);
+                Vector3 v01 = TerrainVertexAtGrid(x, z + 1, resolution);
+                Vector3 v11 = TerrainVertexAtGrid(x + 1, z + 1, resolution);
+
+                AddTerrainFlatTriangle(vertices, triangles, colors, v00, v10, v11);
+                AddTerrainFlatTriangle(vertices, triangles, colors, v00, v11, v01);
+            }
+        }
+
+        Mesh mesh = new Mesh
+        {
+            name = "LowpolyTerrainMesh",
+            indexFormat = vertices.Count > 65000
+                ? UnityEngine.Rendering.IndexFormat.UInt32
+                : UnityEngine.Rendering.IndexFormat.UInt16
+        };
+
+        mesh.SetVertices(vertices);
+        mesh.SetTriangles(triangles, 0);
+        mesh.SetColors(colors);
+        mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
+        return mesh;
+    }
+
+    private Vector3 TerrainVertexAtGrid(int gridX, int gridZ, int resolution)
+    {
+        float tX = gridX / (float)(resolution - 1);
+        float tZ = gridZ / (float)(resolution - 1);
+        float worldX = Mathf.Lerp(-HalfSizeX, HalfSizeX, tX);
+        float worldZ = Mathf.Lerp(-HalfSizeZ, HalfSizeZ, tZ);
+        float worldY = SampleTerrainHeight(worldX, worldZ);
+        return new Vector3(worldX, worldY, worldZ);
+    }
+
+    private void AddTerrainFlatTriangle(
+        List<Vector3> vertices,
+        List<int> triangles,
+        List<Color> colors,
+        Vector3 a,
+        Vector3 b,
+        Vector3 c)
+    {
+        int start = vertices.Count;
+        vertices.Add(a);
+        vertices.Add(b);
+        vertices.Add(c);
+        triangles.Add(start);
+        triangles.Add(start + 1);
+        triangles.Add(start + 2);
+
+        Vector3 normal = Vector3.Cross(b - a, c - a).normalized;
+        colors.Add(SampleTerrainVertexColor(a, normal));
+        colors.Add(SampleTerrainVertexColor(b, normal));
+        colors.Add(SampleTerrainVertexColor(c, normal));
+    }
+
+    private Color SampleTerrainVertexColor(Vector3 worldPosition, Vector3 normal)
+    {
+        float height = worldPosition.y - groundHeight;
+        float slope = 1f - Mathf.Clamp01(normal.y);
+        float halfX = HalfSizeX;
+        float halfZ = HalfSizeZ;
+
+        Color color = Color.Lerp(GroundColor, GroundPatchLight, Mathf.Clamp01(height / 4.5f));
+
+        if (height < 1.2f && worldPosition.x < -halfX * 0.2f)
+        {
+            color = Color.Lerp(color, GroundPatchDirt, 0.55f);
+        }
+
+        if (height > 3.5f || worldPosition.z > halfZ * 0.35f)
+        {
+            color = Color.Lerp(color, GroundPatchDry, 0.35f);
+        }
+
+        if (slope > 0.18f)
+        {
+            color = Color.Lerp(color, GroundPathColor, Mathf.Clamp01(slope * 1.6f));
+        }
+
+        if (worldPosition.z < -halfZ * 0.15f && height < 2f)
+        {
+            color = Color.Lerp(color, GroundPatchDry, 0.28f);
+        }
+
+        return color;
     }
 
     private void BuildBorders()
@@ -751,7 +991,7 @@ public class ProceduralGrassArena : MonoBehaviour
             float trunkHeight = RandomRange(random, 1.4f, 2.2f);
             float trunkRadius = RandomRange(random, 0.16f, 0.24f);
             Vector3 trunkScale = new Vector3(trunkRadius * 2f, trunkHeight, trunkRadius * 2f);
-            Vector3 trunkPosition = new Vector3(position.x, groundHeight + trunkHeight * 0.5f, position.z);
+            Vector3 trunkPosition = new Vector3(position.x, position.y + trunkHeight * 0.5f, position.z);
 
             float leafHeight = RandomRange(random, 0.75f, 1.15f);
             float leafRadius = RandomRange(random, 0.5f, maxTreeCanopyRadius);
@@ -812,7 +1052,7 @@ public class ProceduralGrassArena : MonoBehaviour
             scale.x = Mathf.Min(scale.x, maxRockScale);
             scale.y = Mathf.Min(scale.y, maxRockScale);
             scale.z = Mathf.Min(scale.z, maxRockScale);
-            position.y = groundHeight + scale.y * 0.5f;
+            position.y = position.y + scale.y * 0.5f;
 
             CreatePrimitivePart(
                 rocksRoot,
@@ -841,7 +1081,7 @@ public class ProceduralGrassArena : MonoBehaviour
             }
 
             int rockPieces = random.Next(2, 5);
-            Vector3 clusterCenter = new Vector3(center.x, groundHeight, center.z);
+            Vector3 clusterCenter = new Vector3(center.x, center.y, center.z);
             placedLargeObjectPositions.Add(clusterCenter);
 
 #if UNITY_EDITOR
@@ -888,7 +1128,7 @@ public class ProceduralGrassArena : MonoBehaviour
             float length = RandomRange(random, 2.4f, 4.2f);
             float radius = RandomRange(random, 0.18f, 0.28f);
             Vector3 logScale = new Vector3(radius * 2f, radius * 2f, length);
-            Vector3 logPosition = new Vector3(position.x, groundHeight + radius, position.z);
+            Vector3 logPosition = new Vector3(position.x, position.y + radius, position.z);
 
             CreatePrimitivePart(
                 obstaclesRoot,
@@ -917,7 +1157,7 @@ public class ProceduralGrassArena : MonoBehaviour
             float bushHeight = RandomRange(random, 0.55f, 1.1f);
             float bushRadius = RandomRange(random, 0.45f, 0.95f);
             Vector3 bushScale = new Vector3(bushRadius * 2f, bushHeight, bushRadius * 2f);
-            Vector3 bushPosition = new Vector3(position.x, groundHeight + bushHeight * 0.45f, position.z);
+            Vector3 bushPosition = new Vector3(position.x, position.y + bushHeight * 0.45f, position.z);
 
             CreatePrimitivePart(
                 bushesRoot,
@@ -954,7 +1194,7 @@ public class ProceduralGrassArena : MonoBehaviour
                 Vector3 patchScale = new Vector3(width, 0.03f, depth);
                 Vector3 patchPosition = new Vector3(
                     position.x + offsetX,
-                    groundHeight + 0.015f,
+                    position.y + 0.015f,
                     position.z + offsetZ);
 
                 Color patchColor = random.NextDouble() < 0.22f ? GroundPatchDirt :
@@ -993,7 +1233,7 @@ public class ProceduralGrassArena : MonoBehaviour
             Vector3 landmarkScale = usePillar
                 ? new Vector3(width, height, width)
                 : new Vector3(width * 1.6f, height * 0.55f, width * 1.2f);
-            Vector3 landmarkPosition = new Vector3(position.x, groundHeight + landmarkScale.y * 0.5f, position.z);
+            Vector3 landmarkPosition = new Vector3(position.x, position.y + landmarkScale.y * 0.5f, position.z);
             Vector3 flatLandmark = new Vector3(landmarkPosition.x, 0f, landmarkPosition.z);
             float landmarkRadius = Mathf.Max(landmarkScale.x, landmarkScale.z) * 0.5f;
             float landmarkMinY = landmarkPosition.y - landmarkScale.y * 0.5f;
@@ -1200,21 +1440,154 @@ public class ProceduralGrassArena : MonoBehaviour
 
         float scale = PlayabilityScale;
 
-        PlaceProminentHill(playabilityTerrainRoot, "PlayMound_NE", ScaleFlat(new Vector3(54f, 0f, 46f), scale), 18f * scale, 6.2f, 24f, true);
-        PlaceProminentHill(playabilityTerrainRoot, "PlayMound_SW", ScaleFlat(new Vector3(-58f, 0f, -52f), scale), 19f * scale, 6.5f, 112f, true);
-        PlaceProminentHill(playabilityTerrainRoot, "PlayMound_NW", ScaleFlat(new Vector3(-48f, 0f, 56f), scale), 17f * scale, 5.8f, 196f, true);
+        if (!useLowpolyTerrainMesh)
+        {
+            PlaceProminentHill(playabilityTerrainRoot, "PlayMound_NE", ScaleFlat(new Vector3(54f, 0f, 46f), scale), 18f * scale, 6.2f, 24f, true);
+            PlaceProminentHill(playabilityTerrainRoot, "PlayMound_SW", ScaleFlat(new Vector3(-58f, 0f, -52f), scale), 19f * scale, 6.5f, 112f, true);
+            PlaceProminentHill(playabilityTerrainRoot, "PlayMound_NW", ScaleFlat(new Vector3(-48f, 0f, 56f), scale), 17f * scale, 5.8f, 196f, true);
 
-        PlaceValleyDepression(playabilityTerrainRoot, "PlayValley_SE", ScaleFlat(new Vector3(42f, 0f, -58f), scale), 22f * scale, 0.45f);
-        PlaceValleyDepression(playabilityTerrainRoot, "PlayValley_West", ScaleFlat(new Vector3(-72f, 0f, 8f), scale), 20f * scale, 0.4f);
+            PlaceValleyDepression(playabilityTerrainRoot, "PlayValley_SE", ScaleFlat(new Vector3(42f, 0f, -58f), scale), 22f * scale, 0.45f);
+            PlaceValleyDepression(playabilityTerrainRoot, "PlayValley_West", ScaleFlat(new Vector3(-72f, 0f, 8f), scale), 20f * scale, 0.4f);
 
-        PlaceRidgeCrossing(playabilityTerrainRoot, "PlayRidge_East", ScaleFlat(new Vector3(74f, 0f, 12f), scale), 28f * scale, 9f * scale, 8f);
-        PlaceRidgeCrossing(playabilityTerrainRoot, "PlayRidge_North", ScaleFlat(new Vector3(8f, 0f, 74f), scale), 26f * scale, 8.5f * scale, 98f);
-        PlaceRidgeCrossing(playabilityTerrainRoot, "PlayRidge_SW", ScaleFlat(new Vector3(-56f, 0f, -68f), scale), 24f * scale, 8f * scale, 142f);
+            PlaceRidgeCrossing(playabilityTerrainRoot, "PlayRidge_East", ScaleFlat(new Vector3(74f, 0f, 12f), scale), 28f * scale, 9f * scale, 8f);
+            PlaceRidgeCrossing(playabilityTerrainRoot, "PlayRidge_North", ScaleFlat(new Vector3(8f, 0f, 74f), scale), 26f * scale, 8.5f * scale, 98f);
+            PlaceRidgeCrossing(playabilityTerrainRoot, "PlayRidge_SW", ScaleFlat(new Vector3(-56f, 0f, -68f), scale), 24f * scale, 8f * scale, 142f);
+        }
+        else
+        {
+            Vector3 northRidgeCenter = ScaleFlat(new Vector3(8f, 0f, 74f), scale);
+            PlaceRidgeSilhouetteTreesOnTerrain(
+                playabilityTerrainRoot,
+                "TerrainNorthRidge",
+                northRidgeCenter,
+                Vector3.forward,
+                26f * scale);
+
+            Vector3 eastHillCenter = ScaleFlat(new Vector3(54f, 0f, 46f), scale);
+            PlaceHilltopLandmarkOnTerrain(playabilityTerrainRoot, "TerrainEastHill", eastHillCenter, 24f);
+
+            Vector3 westValleyCenter = ScaleFlat(new Vector3(-72f, 0f, 8f), scale);
+            PlaceValleyDecor(playabilityTerrainRoot, "TerrainWestValley", westValleyCenter, 20f * scale);
+
+            Vector3 southOpenCenter = ScaleFlat(new Vector3(-12f, 0f, -48f), scale);
+            PlaceGrassTuftCluster(playabilityTerrainRoot, southOpenCenter, "TerrainSouthGrass", new System.Random(unchecked((int)(southOpenCenter.x * 17f) ^ (int)(southOpenCenter.z * 31f))));
+        }
 
         PlaceRuinCluster(playabilityTerrainRoot, ScaleFlat(new Vector3(62f, 0f, -28f), scale), 18f);
         PlaceStoneArch(playabilityTerrainRoot, ScaleFlat(new Vector3(-32f, 0f, 64f), scale), 22f);
         PlaceTreeCluster(playabilityTerrainRoot, ScaleFlat(new Vector3(34f, 0f, 62f), scale), 16f, 7, 2.4f);
-        PlaceHilltopShrine(playabilityTerrainRoot, ScaleFlat(new Vector3(0f, 0f, 82f), scale), 13f * scale, 4.8f);
+
+        if (!useLowpolyTerrainMesh)
+        {
+            PlaceHilltopShrine(playabilityTerrainRoot, ScaleFlat(new Vector3(0f, 0f, 82f), scale), 13f * scale, 4.8f);
+        }
+        else
+        {
+            PlaceTerrainHilltopShrine(playabilityTerrainRoot, ScaleFlat(new Vector3(0f, 0f, 82f), scale), 13f * scale);
+        }
+    }
+
+    private void PlaceHilltopLandmarkOnTerrain(Transform parent, string prefix, Vector3 flatCenter, float yawDegrees)
+    {
+        if (IsPlayabilityPlacementBlocked(flatCenter, 6f))
+        {
+            return;
+        }
+
+        PlaceHilltopLandmark(parent, prefix, flatCenter, SurfaceY(flatCenter), yawDegrees);
+    }
+
+    private void PlaceRidgeSilhouetteTreesOnTerrain(
+        Transform parent,
+        string name,
+        Vector3 flatCenter,
+        Vector3 forward,
+        float length)
+    {
+        if (IsPlayabilityPlacementBlocked(flatCenter, length * 0.35f))
+        {
+            return;
+        }
+
+        int treeCount = 5;
+
+        for (int i = 0; i < treeCount; i++)
+        {
+            float t = (i + 1f) / (treeCount + 1f);
+            Vector3 offset = forward * Mathf.Lerp(-length * 0.42f, length * 0.42f, t);
+            Vector3 position = flatCenter + offset;
+            float trunkHeight = 2.8f;
+            float trunkRadius = 0.2f;
+            float baseY = SurfaceY(position.x, position.z);
+            Vector3 trunkPosition = new Vector3(position.x, baseY + trunkHeight * 0.5f, position.z);
+
+            CreatePrimitivePart(
+                parent,
+                $"{name}_RidgeTreeTrunk_{i}",
+                PrimitiveType.Cylinder,
+                trunkPosition,
+                new Vector3(trunkRadius * 2f, trunkHeight, trunkRadius * 2f),
+                TrunkColor,
+                0.2f,
+                true,
+                false);
+
+            float leafHeight = 1.8f;
+            float leafRadius = 1.1f;
+            Vector3 leafPosition = trunkPosition + new Vector3(0f, trunkHeight * 0.65f, 0f);
+
+            CreatePrimitivePart(
+                parent,
+                $"{name}_RidgeTreeLeaf_{i}",
+                PrimitiveType.Sphere,
+                leafPosition,
+                new Vector3(leafRadius * 2f, leafHeight, leafRadius * 2f),
+                LeafColor,
+                0.16f,
+                true,
+                false);
+        }
+    }
+
+    private void PlaceTerrainHilltopShrine(Transform parent, Vector3 flatCenter, float radius)
+    {
+        if (IsPlayabilityPlacementBlocked(flatCenter, radius))
+        {
+            return;
+        }
+
+        float surfaceY = SurfaceY(flatCenter);
+        float pillarHeight = 4.6f;
+        float pillarWidth = 1.05f;
+        Vector3 pillarScale = new Vector3(pillarWidth, pillarHeight, pillarWidth);
+        Vector3[] pillarOffsets =
+        {
+            new Vector3(-1.6f, 0f, 0f),
+            new Vector3(1.6f, 0f, 0f),
+            new Vector3(0f, 0f, -1.4f)
+        };
+
+        for (int i = 0; i < pillarOffsets.Length; i++)
+        {
+            Vector3 offset = pillarOffsets[i];
+            Vector3 position = new Vector3(
+                flatCenter.x + offset.x,
+                surfaceY + pillarHeight * 0.5f,
+                flatCenter.z + offset.z);
+
+            CreatePrimitivePart(
+                parent,
+                $"TerrainHilltopPillar_{i}",
+                PrimitiveType.Cube,
+                position,
+                pillarScale,
+                LandmarkAccentColor,
+                0.4f,
+                true,
+                false);
+        }
+
+        RegisterBlockedArea(flatCenter, radius * 0.55f);
     }
 
     private void BuildGroundVariationPatches()
@@ -1639,7 +2012,7 @@ public class ProceduralGrassArena : MonoBehaviour
                 RandomRange(valleyRandom, 0.6f, 1.1f),
                 RandomRange(valleyRandom, 0.35f, 0.7f),
                 RandomRange(valleyRandom, 0.6f, 1.1f));
-            Vector3 rockPosition = new Vector3(position.x, groundHeight + rockScale.y * 0.5f, position.z);
+            Vector3 rockPosition = new Vector3(position.x, SurfaceY(position.x, position.z) + rockScale.y * 0.5f, position.z);
 
             CreatePrimitivePart(
                 parent,
@@ -1668,7 +2041,7 @@ public class ProceduralGrassArena : MonoBehaviour
                 parent,
                 $"{name}_Bush_{i}",
                 PrimitiveType.Sphere,
-                new Vector3(position.x, groundHeight + bushHeight * 0.45f, position.z),
+                new Vector3(position.x, SurfaceY(position.x, position.z) + bushHeight * 0.45f, position.z),
                 new Vector3(bushRadius * 2f, bushHeight, bushRadius * 2f),
                 BushColor,
                 0.14f,
@@ -1693,7 +2066,8 @@ public class ProceduralGrassArena : MonoBehaviour
         Quaternion rotation = Quaternion.Euler(0f, yawDegrees, 0f);
         float ridgeHeight = 4.4f;
         Vector3 ridgeScale = new Vector3(width, ridgeHeight, length);
-        Vector3 ridgePosition = new Vector3(flatCenter.x, groundHeight + ridgeHeight * 0.5f, flatCenter.z);
+        float ridgeSurfaceY = SurfaceY(flatCenter);
+        Vector3 ridgePosition = new Vector3(flatCenter.x, ridgeSurfaceY + ridgeHeight * 0.5f, flatCenter.z);
 
         CreateTerrainMound(
             parent,
@@ -1848,7 +2222,7 @@ public class ProceduralGrassArena : MonoBehaviour
             float height = heights[i];
             float width = widths[i];
             Vector3 scale = new Vector3(width, height, width * 0.9f);
-            Vector3 partPosition = new Vector3(position.x, groundHeight + height * 0.5f, position.z);
+            Vector3 partPosition = new Vector3(position.x, SurfaceY(position.x, position.z) + height * 0.5f, position.z);
 
             CreatePrimitivePart(
                 parent,
@@ -1885,7 +2259,7 @@ public class ProceduralGrassArena : MonoBehaviour
             parent,
             "StoneArch_Left",
             PrimitiveType.Cube,
-            new Vector3(flatCenter.x + leftOffset.x, groundHeight + pillarHeight * 0.5f, flatCenter.z + leftOffset.z),
+            new Vector3(flatCenter.x + leftOffset.x, SurfaceY(flatCenter.x + leftOffset.x, flatCenter.z + leftOffset.z) + pillarHeight * 0.5f, flatCenter.z + leftOffset.z),
             pillarScale,
             LandmarkColor,
             0.3f,
@@ -1898,7 +2272,7 @@ public class ProceduralGrassArena : MonoBehaviour
             parent,
             "StoneArch_Right",
             PrimitiveType.Cube,
-            new Vector3(flatCenter.x + rightOffset.x, groundHeight + pillarHeight * 0.5f, flatCenter.z + rightOffset.z),
+            new Vector3(flatCenter.x + rightOffset.x, SurfaceY(flatCenter.x + rightOffset.x, flatCenter.z + rightOffset.z) + pillarHeight * 0.5f, flatCenter.z + rightOffset.z),
             pillarScale,
             LandmarkColor,
             0.3f,
@@ -1908,7 +2282,8 @@ public class ProceduralGrassArena : MonoBehaviour
             rotation);
 
         Vector3 lintelScale = new Vector3(5.2f, 0.7f, 1.2f);
-        Vector3 lintelPosition = new Vector3(flatCenter.x, groundHeight + pillarHeight + lintelScale.y * 0.5f, flatCenter.z);
+        float archSurfaceY = SurfaceY(flatCenter);
+        Vector3 lintelPosition = new Vector3(flatCenter.x, archSurfaceY + pillarHeight + lintelScale.y * 0.5f, flatCenter.z);
 
         CreatePrimitivePart(
             parent,
@@ -1943,7 +2318,7 @@ public class ProceduralGrassArena : MonoBehaviour
             float trunkHeight = RandomRange(clusterRandom, maxTrunkHeight * 0.72f, maxTrunkHeight);
             float trunkRadius = RandomRange(clusterRandom, 0.16f, 0.28f);
             Vector3 trunkScale = new Vector3(trunkRadius * 2f, trunkHeight, trunkRadius * 2f);
-            Vector3 trunkPosition = new Vector3(position.x, groundHeight + trunkHeight * 0.5f, position.z);
+            Vector3 trunkPosition = new Vector3(position.x, SurfaceY(position.x, position.z) + trunkHeight * 0.5f, position.z);
             float yaw = RandomRange(clusterRandom, 0f, 360f);
 
             CreatePrimitivePart(
@@ -1983,7 +2358,8 @@ public class ProceduralGrassArena : MonoBehaviour
 
     private void CreateFlatGroundPatch(Transform parent, string name, Vector3 flatCenter, Vector3 size, Color color)
     {
-        Vector3 position = new Vector3(flatCenter.x, groundHeight + size.y * 0.5f, flatCenter.z);
+        float surfaceY = SurfaceY(flatCenter);
+        Vector3 position = new Vector3(flatCenter.x, surfaceY + size.y * 0.5f, flatCenter.z);
 
         CreatePrimitivePart(
             parent,
@@ -2004,7 +2380,8 @@ public class ProceduralGrassArena : MonoBehaviour
         float ridgeLength = 22f;
         float ridgeWidth = 5.5f;
         Vector3 ridgeScale = new Vector3(ridgeWidth, ridgeHeight, ridgeLength);
-        Vector3 ridgePosition = new Vector3(flatCenter.x, groundHeight + ridgeHeight * 0.5f, flatCenter.z);
+        float ridgeSurfaceY = SurfaceY(flatCenter);
+        Vector3 ridgePosition = new Vector3(flatCenter.x, ridgeSurfaceY + ridgeHeight * 0.5f, flatCenter.z);
 
         CreateTerrainMound(
             parent,
@@ -2038,7 +2415,7 @@ public class ProceduralGrassArena : MonoBehaviour
             float t = (i - 1) * 0.35f;
             Vector3 treeBase = flatCenter + forward * (ridgeLength * t * 0.25f);
             float trunkHeight = 3.6f;
-            Vector3 trunkPosition = new Vector3(treeBase.x, groundHeight + ridgeHeight + trunkHeight * 0.5f, treeBase.z);
+            Vector3 trunkPosition = new Vector3(treeBase.x, ridgeSurfaceY + ridgeHeight + trunkHeight * 0.5f, treeBase.z);
 
             CreatePrimitivePart(
                 parent,
@@ -2074,7 +2451,8 @@ public class ProceduralGrassArena : MonoBehaviour
         float height = 8.5f;
         float width = 5f;
         Vector3 scale = new Vector3(width, height, width * 0.85f);
-        Vector3 position = new Vector3(flatCenter.x, groundHeight + height * 0.5f, flatCenter.z);
+        float surfaceY = SurfaceY(flatCenter);
+        Vector3 position = new Vector3(flatCenter.x, surfaceY + height * 0.5f, flatCenter.z);
 
         CreatePrimitivePart(
             parent,
@@ -2119,7 +2497,7 @@ public class ProceduralGrassArena : MonoBehaviour
                 parent,
                 $"{name}_{i}",
                 PrimitiveType.Sphere,
-                new Vector3(position.x, groundHeight + bushHeight * 0.45f, position.z),
+                new Vector3(position.x, SurfaceY(position.x, position.z) + bushHeight * 0.45f, position.z),
                 new Vector3(bushRadius * 2f, bushHeight, bushRadius * 2f),
                 BushColor,
                 0.14f,
@@ -2138,7 +2516,7 @@ public class ProceduralGrassArena : MonoBehaviour
                 RandomRange(random, 0.5f, 0.9f),
                 RandomRange(random, 0.35f, 0.65f),
                 RandomRange(random, 0.5f, 0.9f));
-            Vector3 rockPosition = new Vector3(position.x, groundHeight + scale.y * 0.5f, position.z);
+            Vector3 rockPosition = new Vector3(position.x, SurfaceY(position.x, position.z) + scale.y * 0.5f, position.z);
 
             CreatePrimitivePart(
                 parent,
@@ -2160,7 +2538,8 @@ public class ProceduralGrassArena : MonoBehaviour
         float height = RandomRange(random, 2.4f, 3.6f);
         float width = RandomRange(random, 0.8f, 1.2f);
         Vector3 scale = new Vector3(width, height, width);
-        Vector3 position = new Vector3(flatCenter.x, groundHeight + height * 0.5f, flatCenter.z);
+        float surfaceY = SurfaceY(flatCenter);
+        Vector3 position = new Vector3(flatCenter.x, surfaceY + height * 0.5f, flatCenter.z);
         float yaw = RandomRange(random, 0f, 360f);
 
         CreatePrimitivePart(
@@ -2183,7 +2562,8 @@ public class ProceduralGrassArena : MonoBehaviour
         float radius = RandomRange(random, 0.14f, 0.22f);
         float yaw = RandomRange(random, 0f, 360f);
         Vector3 scale = new Vector3(radius * 2f, radius * 2f, length);
-        Vector3 position = new Vector3(flatCenter.x, groundHeight + radius, flatCenter.z);
+        float surfaceY = SurfaceY(flatCenter);
+        Vector3 position = new Vector3(flatCenter.x, surfaceY + radius, flatCenter.z);
 
         CreatePrimitivePart(
             parent,
@@ -2213,7 +2593,7 @@ public class ProceduralGrassArena : MonoBehaviour
                 parent,
                 $"{name}_{i}",
                 PrimitiveType.Cube,
-                new Vector3(position.x, groundHeight + 0.02f, position.z),
+                new Vector3(position.x, SurfaceY(position.x, position.z) + 0.02f, position.z),
                 new Vector3(width, 0.03f, depth),
                 patchColor,
                 0.1f,
@@ -2272,7 +2652,7 @@ public class ProceduralGrassArena : MonoBehaviour
             return;
         }
 
-        float spawnY = groundHeight + PlayerSpawnHeightOffset;
+        float spawnY = GetSurfaceHeightAt(0f, 0f) + PlayerSpawnHeightOffset;
         float borderMargin = BorderInset + playerSpawnSafeRadius;
         float maxX = HalfSizeX - borderMargin;
         float maxZ = HalfSizeZ - borderMargin;
@@ -2291,7 +2671,7 @@ public class ProceduralGrassArena : MonoBehaviour
                 continue;
             }
 
-            Vector3 candidate = new Vector3(x, spawnY, z);
+            Vector3 candidate = new Vector3(x, GetSurfaceHeightAt(x, z) + PlayerSpawnHeightOffset, z);
 
             if (IsPositionBlocked(candidate, 1.2f))
             {
@@ -2368,12 +2748,12 @@ public class ProceduralGrassArena : MonoBehaviour
             float angle = RandomRange(random, 0f, Mathf.PI * 2f);
             float x = Mathf.Cos(angle) * HalfSizeX * normalizedDistance;
             float z = Mathf.Sin(angle) * HalfSizeZ * normalizedDistance;
-            return new Vector3(x, groundHeight, z);
+            return new Vector3(x, SurfaceY(x, z), z);
         }
 
         float randomX = RandomRange(random, -HalfSizeX + minDistanceFromMapBorder, HalfSizeX - minDistanceFromMapBorder);
         float randomZ = RandomRange(random, -HalfSizeZ + minDistanceFromMapBorder, HalfSizeZ - minDistanceFromMapBorder);
-        return new Vector3(randomX, groundHeight, randomZ);
+        return new Vector3(randomX, SurfaceY(randomX, randomZ), randomZ);
     }
 
     private bool IsInsideMapWithBorderMargin(Vector3 candidate)
@@ -2546,7 +2926,7 @@ public class ProceduralGrassArena : MonoBehaviour
     {
         blockedAreas.Add(new BlockedArea
         {
-            Center = new Vector3(flatCenter.x, groundHeight, flatCenter.z),
+            Center = new Vector3(flatCenter.x, SurfaceY(flatCenter), flatCenter.z),
             Radius = radius
         });
     }
@@ -2685,12 +3065,12 @@ public class ProceduralGrassArena : MonoBehaviour
             float angle = RandomRange(random, 0f, Mathf.PI * 2f);
             float x = Mathf.Cos(angle) * HalfSizeX * normalizedDistance;
             float z = Mathf.Sin(angle) * HalfSizeZ * normalizedDistance;
-            return new Vector3(x, groundHeight, z);
+            return new Vector3(x, SurfaceY(x, z), z);
         }
 
         float randomX = RandomRange(random, -HalfSizeX + BorderInset, HalfSizeX - BorderInset);
         float randomZ = RandomRange(random, -HalfSizeZ + BorderInset, HalfSizeZ - BorderInset);
-        return new Vector3(randomX, groundHeight, randomZ);
+        return new Vector3(randomX, SurfaceY(randomX, randomZ), randomZ);
     }
 
     private bool IsBlockedPlacement(Vector3 candidate)
