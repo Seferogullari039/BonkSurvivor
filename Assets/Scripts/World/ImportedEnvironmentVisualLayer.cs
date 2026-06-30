@@ -94,16 +94,17 @@ public static class ImportedEnvironmentVisualLayer
             float z = Mathf.Lerp(halfZ * 0.62f, halfZ * 0.88f, 0.35f + (i % 3) * 0.22f);
             Vector3 flat = new Vector3(x, 0f, z);
 
-            if (!IsValidPlacement(arena, flat, path))
-            {
-                continue;
-            }
-
             string path = i % 4 == 0
                 ? RockPrefabPaths[2]
                 : i % 3 == 0
                     ? TreePrefabPaths[2]
                     : TreePrefabPaths[0];
+
+            if (!IsValidPlacement(arena, flat, path))
+            {
+                continue;
+            }
+
             Material material = path.Contains("Rock") ? materials.Rock : materials.Tree;
             float yaw = PlacementYaw(random, i, 17);
             float scale = PlacementScale(random, i, 19, 0.92f, 1.18f);
@@ -142,13 +143,13 @@ public static class ImportedEnvironmentVisualLayer
                 float angle = RandomRange(random, 0f, Mathf.PI * 2f);
                 float distance = RandomRange(random, 2.5f, 9f);
                 Vector3 flat = center + new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
+                string path = TreePrefabPaths[i % TreePrefabPaths.Length];
 
                 if (!IsValidPlacement(arena, flat, path))
                 {
                     continue;
                 }
 
-                string path = TreePrefabPaths[i % TreePrefabPaths.Length];
                 float yaw = PlacementYaw(random, cluster * 10 + i, 23);
                 float scale = PlacementScale(random, cluster * 10 + i, 29, 0.88f, 1.08f);
 
@@ -197,11 +198,6 @@ public static class ImportedEnvironmentVisualLayer
             float z = Mathf.Lerp(-arena.HalfSizeZ * 0.2f, arena.HalfSizeZ * 0.28f, t);
             Vector3 flat = new Vector3(x, 0f, z);
 
-            if (!IsValidPlacement(arena, flat, path))
-            {
-                continue;
-            }
-
             string path;
             Material material;
             float scale;
@@ -228,6 +224,11 @@ public static class ImportedEnvironmentVisualLayer
                     material = materials.Grass;
                     scale = PlacementScale(random, i, 53, 1f, 1.2f);
                     break;
+            }
+
+            if (!IsValidPlacement(arena, flat, path))
+            {
+                continue;
             }
 
             if (TryPlacePrefab(arena, zone, path, flat, PlacementYaw(random, i, 59), scale, material))
