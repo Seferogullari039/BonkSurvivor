@@ -15,31 +15,36 @@ public class ProceduralGrassArena : MonoBehaviour
     private const int MaxPlayerSpawnAttempts = 48;
     private const int MaxChestSpawnAttempts = 80;
 
+    public const float DefaultMapSize = 220f;
+    public const float DefaultMapHalfSize = DefaultMapSize * 0.5f;
+    private const float LegacyMapSize = 160f;
+    private const float ReferenceHalfSize = 80f;
+
     [Header("Map Size")]
-    [SerializeField] private float mapSizeX = 160f;
-    [SerializeField] private float mapSizeZ = 160f;
+    [SerializeField] private float mapSizeX = DefaultMapSize;
+    [SerializeField] private float mapSizeZ = DefaultMapSize;
     [SerializeField] private float groundHeight = 0f;
 
     [Header("Population")]
-    [SerializeField] private int obstacleCount = 45;
-    [SerializeField] private int rockCount = 45;
-    [SerializeField] private int treeCount = 70;
-    [SerializeField] private int bushCount = 80;
-    [SerializeField] private int grassPatchCount = 120;
-    [SerializeField] private int landmarkCount = 8;
+    [SerializeField] private int obstacleCount = 55;
+    [SerializeField] private int rockCount = 55;
+    [SerializeField] private int treeCount = 90;
+    [SerializeField] private int bushCount = 100;
+    [SerializeField] private int grassPatchCount = 150;
+    [SerializeField] private int landmarkCount = 10;
     [SerializeField] private float minDistanceBetweenLargeObjects = 6f;
     [SerializeField] private float maxTreeCanopyRadius = 0.9f;
     [SerializeField] private float maxRockScale = 1.4f;
     [SerializeField] private float maxMountainScale = 1.8f;
-    [SerializeField] private float largeObstacleMinDistanceFromPlayer = 35f;
+    [SerializeField] private float largeObstacleMinDistanceFromPlayer = 42f;
 
     [Header("Interior Hills & Mountains")]
     [SerializeField] private bool generateInteriorHills = true;
     [SerializeField] private bool generateInteriorMountains = true;
-    [SerializeField] private int interiorHillCount = 16;
-    [SerializeField] private int interiorMountainCount = 8;
-    [SerializeField] private float mountainSafeRadiusFromPlayer = 42f;
-    [SerializeField] private float mountainSafeRadiusFromSpawnCenter = 16f;
+    [SerializeField] private int interiorHillCount = 20;
+    [SerializeField] private int interiorMountainCount = 10;
+    [SerializeField] private float mountainSafeRadiusFromPlayer = 50f;
+    [SerializeField] private float mountainSafeRadiusFromSpawnCenter = 18f;
     [SerializeField] private float minDistanceBetweenMountains = 18f;
     [SerializeField] private float minDistanceFromMapBorder = 18f;
     [SerializeField] private float mountainColliderRadiusMultiplier = 0.55f;
@@ -60,7 +65,7 @@ public class ProceduralGrassArena : MonoBehaviour
     [SerializeField] private float playerForwardClearRadius = 35f;
     [SerializeField] private float cameraEyeHeight = 1.65f;
     [SerializeField] private float playerSpawnMinDistanceFromCenter = 0f;
-    [SerializeField] private float playerSpawnMaxDistanceFromCenter = 50f;
+    [SerializeField] private float playerSpawnMaxDistanceFromCenter = 65f;
 
     [Header("Run Debug")]
     [SerializeField] private bool debugLargeSpawnLogs = false;
@@ -102,6 +107,7 @@ public class ProceduralGrassArena : MonoBehaviour
     private Transform landmarksRoot;
     private Transform interiorHillsRoot;
     private Transform interiorMountainsRoot;
+    private Transform playabilityTerrainRoot;
     private readonly List<Vector3> placedLargeObjectPositions = new List<Vector3>();
     private readonly List<BlockedArea> blockedAreas = new List<BlockedArea>();
     private readonly List<Vector3> placedMountainCenters = new List<Vector3>();
@@ -118,9 +124,23 @@ public class ProceduralGrassArena : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+        EnsureExpandedMapDefaults();
         PrepareRunSeed(forceNewSeed: randomizeSeedOnStart || useRandomSeed);
         RegenerateArenaInternal(applyPlayerSpawn: randomizePlayerSpawnOnStart);
     }
+
+    private void EnsureExpandedMapDefaults()
+    {
+        if (mapSizeX > LegacyMapSize + 0.01f && mapSizeZ > LegacyMapSize + 0.01f)
+        {
+            return;
+        }
+
+        mapSizeX = DefaultMapSize;
+        mapSizeZ = DefaultMapSize;
+    }
+
+    private float PlayabilityScale => Mathf.Min(HalfSizeX, HalfSizeZ) / ReferenceHalfSize;
 
     private void OnDestroy()
     {
@@ -419,6 +439,7 @@ public class ProceduralGrassArena : MonoBehaviour
 
     private void RegenerateArenaInternal(bool applyPlayerSpawn)
     {
+        EnsureExpandedMapDefaults();
         gameObject.SetActive(true);
         HideLegacyArena();
         ClearGeneratedChildren();
@@ -440,6 +461,7 @@ public class ProceduralGrassArena : MonoBehaviour
         landmarksRoot = EnsureChildRoot("Landmarks", arenaRoot);
         interiorHillsRoot = EnsureChildRoot("InteriorHills", arenaRoot);
         interiorMountainsRoot = EnsureChildRoot("InteriorMountains", arenaRoot);
+        playabilityTerrainRoot = EnsureChildRoot("PlayabilityTerrain", arenaRoot);
 
         System.Random random = CreateRandom();
         SelectPlayerSpawn(random);
@@ -448,6 +470,7 @@ public class ProceduralGrassArena : MonoBehaviour
         BuildBorders();
         BuildInteriorHills(random);
         BuildInteriorMountains(random);
+        BuildPlayabilityTerrain();
         EnsureValidPlayerSpawn(random);
         BuildObstacles(random);
         BuildTrees(random);
@@ -568,6 +591,7 @@ public class ProceduralGrassArena : MonoBehaviour
         landmarksRoot = null;
         interiorHillsRoot = null;
         interiorMountainsRoot = null;
+        playabilityTerrainRoot = null;
 
         Transform existingRoot = transform.Find(ArenaRootName);
 
@@ -1156,6 +1180,455 @@ public class ProceduralGrassArena : MonoBehaviour
             string mountainCategory = isLargeLandmark ? "floating_island" : "mountain";
             LogLargeObjectSpawn(mountainCategory, $"InteriorMountain_{i}", center, horizontalRadius);
 #endif
+        }
+    }
+
+    private void BuildPlayabilityTerrain()
+    {
+        if (playabilityTerrainRoot == null)
+        {
+            return;
+        }
+
+        float scale = PlayabilityScale;
+
+        PlaceWalkableMound(playabilityTerrainRoot, "PlayMound_NE", ScaleFlat(new Vector3(54f, 0f, 46f), scale), 14f * scale, 3.6f, 24f);
+        PlaceWalkableMound(playabilityTerrainRoot, "PlayMound_SW", ScaleFlat(new Vector3(-58f, 0f, -52f), scale), 15f * scale, 3.8f, 112f);
+        PlaceWalkableMound(playabilityTerrainRoot, "PlayMound_NW", ScaleFlat(new Vector3(-48f, 0f, 56f), scale), 13f * scale, 3.2f, 196f);
+
+        PlaceValleyDepression(playabilityTerrainRoot, "PlayValley_SE", ScaleFlat(new Vector3(42f, 0f, -58f), scale), 18f * scale, 0.35f);
+        PlaceValleyDepression(playabilityTerrainRoot, "PlayValley_West", ScaleFlat(new Vector3(-72f, 0f, 8f), scale), 16f * scale, 0.3f);
+
+        PlaceRidgeCrossing(playabilityTerrainRoot, "PlayRidge_East", ScaleFlat(new Vector3(74f, 0f, 12f), scale), 22f * scale, 7f * scale, 8f);
+        PlaceRidgeCrossing(playabilityTerrainRoot, "PlayRidge_North", ScaleFlat(new Vector3(8f, 0f, 74f), scale), 20f * scale, 6.5f * scale, 98f);
+        PlaceRidgeCrossing(playabilityTerrainRoot, "PlayRidge_SW", ScaleFlat(new Vector3(-56f, 0f, -68f), scale), 18f * scale, 6f * scale, 142f);
+
+        PlaceRuinCluster(playabilityTerrainRoot, ScaleFlat(new Vector3(62f, 0f, -28f), scale), 18f);
+        PlaceStoneArch(playabilityTerrainRoot, ScaleFlat(new Vector3(-32f, 0f, 64f), scale), 22f);
+        PlaceTreeCluster(playabilityTerrainRoot, ScaleFlat(new Vector3(34f, 0f, 62f), scale), 14f);
+        PlaceHilltopShrine(playabilityTerrainRoot, ScaleFlat(new Vector3(0f, 0f, 82f), scale), 11f * scale, 2.8f);
+    }
+
+    private static Vector3 ScaleFlat(Vector3 position, float scale)
+    {
+        return new Vector3(position.x * scale, position.y, position.z * scale);
+    }
+
+    private bool IsPlayabilityPlacementBlocked(Vector3 flatCenter, float radius)
+    {
+        if (!IsInsideMapWithBorderMargin(flatCenter))
+        {
+            return true;
+        }
+
+        float minSpawnClearance = CenterClearRadius + radius;
+
+        if (flatCenter.sqrMagnitude < minSpawnClearance * minSpawnClearance)
+        {
+            return true;
+        }
+
+        if (spawnSelected)
+        {
+            Vector3 flatSpawn = selectedPlayerSpawn;
+            flatSpawn.y = 0f;
+            float spawnClearance = playerSpawnSafeRadius + radius;
+
+            if ((flatCenter - flatSpawn).sqrMagnitude < spawnClearance * spawnClearance)
+            {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private void PlaceWalkableMound(
+        Transform parent,
+        string name,
+        Vector3 flatCenter,
+        float radius,
+        float peakHeight,
+        float yawDegrees)
+    {
+        if (IsPlayabilityPlacementBlocked(flatCenter, radius))
+        {
+            return;
+        }
+
+        Quaternion rotation = Quaternion.Euler(0f, yawDegrees, 0f);
+        Vector3 mainScale = new Vector3(radius * 2f, peakHeight, radius * 1.75f);
+        Vector3 mainPosition = new Vector3(flatCenter.x, groundHeight + peakHeight * 0.5f, flatCenter.z);
+
+        CreateTerrainMound(
+            parent,
+            name,
+            mainPosition,
+            mainScale,
+            HillMoundColor,
+            0.16f,
+            true,
+            true,
+            rotation);
+
+        Vector3 blendScale = new Vector3(radius * 1.55f, peakHeight * 0.55f, radius * 1.35f);
+        Vector3 blendOffset = rotation * new Vector3(-radius * 0.28f, -peakHeight * 0.12f, -radius * 0.22f);
+        Vector3 blendPosition = mainPosition + blendOffset;
+
+        CreateTerrainMound(
+            parent,
+            name + "_Blend",
+            blendPosition,
+            blendScale,
+            GroundPatchLight,
+            0.14f,
+            true,
+            true,
+            rotation);
+
+        RegisterBlockedArea(flatCenter, radius * 0.65f);
+    }
+
+    private void PlaceValleyDepression(
+        Transform parent,
+        string name,
+        Vector3 flatCenter,
+        float width,
+        float depth)
+    {
+        if (IsPlayabilityPlacementBlocked(flatCenter, width * 0.55f))
+        {
+            return;
+        }
+
+        float basinHeight = Mathf.Max(0.12f, depth);
+        Vector3 basinPosition = new Vector3(flatCenter.x, groundHeight - basinHeight * 0.35f, flatCenter.z);
+        Vector3 basinScale = new Vector3(width * 1.5f, basinHeight, width * 1.15f);
+
+        CreatePrimitivePart(
+            parent,
+            name + "_Basin",
+            PrimitiveType.Cube,
+            basinPosition,
+            basinScale,
+            GroundPatchDark,
+            0.18f,
+            true,
+            true);
+
+        float rampWidth = width * 0.95f;
+        float rampDepth = width * 0.42f;
+        float rampThickness = 0.32f;
+
+        CreateWalkableRamp(
+            parent,
+            name + "_RampNorth",
+            flatCenter + new Vector3(0f, 0f, width * 0.34f),
+            new Vector3(rampWidth, rampThickness, rampDepth),
+            -11f,
+            0f);
+
+        CreateWalkableRamp(
+            parent,
+            name + "_RampSouth",
+            flatCenter + new Vector3(0f, 0f, -width * 0.34f),
+            new Vector3(rampWidth, rampThickness, rampDepth),
+            11f,
+            180f);
+
+        CreateWalkableRamp(
+            parent,
+            name + "_RampEast",
+            flatCenter + new Vector3(width * 0.34f, 0f, 0f),
+            new Vector3(rampDepth, rampThickness, rampWidth),
+            -11f,
+            90f);
+
+        CreateWalkableRamp(
+            parent,
+            name + "_RampWest",
+            flatCenter + new Vector3(-width * 0.34f, 0f, 0f),
+            new Vector3(rampDepth, rampThickness, rampWidth),
+            11f,
+            -90f);
+    }
+
+    private void PlaceRidgeCrossing(
+        Transform parent,
+        string name,
+        Vector3 flatCenter,
+        float length,
+        float width,
+        float yawDegrees)
+    {
+        if (IsPlayabilityPlacementBlocked(flatCenter, length * 0.45f))
+        {
+            return;
+        }
+
+        Quaternion rotation = Quaternion.Euler(0f, yawDegrees, 0f);
+        float ridgeHeight = 2.6f;
+        Vector3 ridgeScale = new Vector3(width, ridgeHeight, length);
+        Vector3 ridgePosition = new Vector3(flatCenter.x, groundHeight + ridgeHeight * 0.5f, flatCenter.z);
+
+        CreateTerrainMound(
+            parent,
+            name,
+            ridgePosition,
+            ridgeScale,
+            MountainBaseColor,
+            0.2f,
+            true,
+            true,
+            rotation);
+
+        Vector3 forward = rotation * Vector3.forward;
+        float rampLength = length * 0.38f;
+        float rampWidth = width * 1.15f;
+
+        CreateWalkableRamp(
+            parent,
+            name + "_RampA",
+            flatCenter - forward * rampLength,
+            new Vector3(rampWidth, 0.34f, rampLength),
+            -14f,
+            yawDegrees);
+
+        CreateWalkableRamp(
+            parent,
+            name + "_RampB",
+            flatCenter + forward * rampLength,
+            new Vector3(rampWidth, 0.34f, rampLength),
+            14f,
+            yawDegrees + 180f);
+
+        RegisterBlockedArea(flatCenter, width * 0.55f);
+    }
+
+    private void CreateWalkableRamp(
+        Transform parent,
+        string name,
+        Vector3 flatCenter,
+        Vector3 size,
+        float pitchDegrees,
+        float yawDegrees)
+    {
+        Quaternion rotation = Quaternion.Euler(pitchDegrees, yawDegrees, 0f);
+        float lift = size.y * 0.5f * Mathf.Cos(Mathf.Abs(pitchDegrees) * Mathf.Deg2Rad);
+        Vector3 position = new Vector3(flatCenter.x, groundHeight + lift, flatCenter.z);
+
+        CreatePrimitivePart(
+            parent,
+            name,
+            PrimitiveType.Cube,
+            position,
+            size,
+            HillMoundColor,
+            0.18f,
+            true,
+            true,
+            0f,
+            rotation);
+    }
+
+    private void PlaceRuinCluster(Transform parent, Vector3 flatCenter, float yawDegrees)
+    {
+        if (IsPlayabilityPlacementBlocked(flatCenter, 5f))
+        {
+            return;
+        }
+
+        Quaternion rotation = Quaternion.Euler(0f, yawDegrees, 0f);
+        Vector3[] offsets =
+        {
+            new Vector3(-2.4f, 0f, -1.2f),
+            new Vector3(0.8f, 0f, 1.6f),
+            new Vector3(2.6f, 0f, -0.6f),
+            new Vector3(-0.6f, 0f, 2.4f)
+        };
+
+        float[] heights = { 4.2f, 3.1f, 5.4f, 2.6f };
+        float[] widths = { 1.4f, 1.8f, 1.2f, 1.6f };
+
+        for (int i = 0; i < offsets.Length; i++)
+        {
+            Vector3 localOffset = rotation * offsets[i];
+            Vector3 position = flatCenter + localOffset;
+            float height = heights[i];
+            float width = widths[i];
+            Vector3 scale = new Vector3(width, height, width * 0.9f);
+            Vector3 partPosition = new Vector3(position.x, groundHeight + height * 0.5f, position.z);
+
+            CreatePrimitivePart(
+                parent,
+                $"RuinPillar_{i}",
+                PrimitiveType.Cube,
+                partPosition,
+                scale,
+                LandmarkColor,
+                0.28f,
+                true,
+                true,
+                0f,
+                rotation);
+        }
+
+        RegisterBlockedArea(flatCenter, 4.5f);
+    }
+
+    private void PlaceStoneArch(Transform parent, Vector3 flatCenter, float yawDegrees)
+    {
+        if (IsPlayabilityPlacementBlocked(flatCenter, 4.5f))
+        {
+            return;
+        }
+
+        Quaternion rotation = Quaternion.Euler(0f, yawDegrees, 0f);
+        Vector3 leftOffset = rotation * new Vector3(-2.2f, 0f, 0f);
+        Vector3 rightOffset = rotation * new Vector3(2.2f, 0f, 0f);
+        float pillarHeight = 4.8f;
+        float pillarWidth = 1.1f;
+        Vector3 pillarScale = new Vector3(pillarWidth, pillarHeight, pillarWidth);
+
+        CreatePrimitivePart(
+            parent,
+            "StoneArch_Left",
+            PrimitiveType.Cube,
+            new Vector3(flatCenter.x + leftOffset.x, groundHeight + pillarHeight * 0.5f, flatCenter.z + leftOffset.z),
+            pillarScale,
+            LandmarkColor,
+            0.3f,
+            true,
+            true,
+            0f,
+            rotation);
+
+        CreatePrimitivePart(
+            parent,
+            "StoneArch_Right",
+            PrimitiveType.Cube,
+            new Vector3(flatCenter.x + rightOffset.x, groundHeight + pillarHeight * 0.5f, flatCenter.z + rightOffset.z),
+            pillarScale,
+            LandmarkColor,
+            0.3f,
+            true,
+            true,
+            0f,
+            rotation);
+
+        Vector3 lintelScale = new Vector3(5.2f, 0.7f, 1.2f);
+        Vector3 lintelPosition = new Vector3(flatCenter.x, groundHeight + pillarHeight + lintelScale.y * 0.5f, flatCenter.z);
+
+        CreatePrimitivePart(
+            parent,
+            "StoneArch_Lintel",
+            PrimitiveType.Cube,
+            lintelPosition,
+            lintelScale,
+            LandmarkAccentColor,
+            0.35f,
+            true,
+            true,
+            0f,
+            rotation);
+
+        RegisterBlockedArea(flatCenter, 3.8f);
+    }
+
+    private void PlaceTreeCluster(Transform parent, Vector3 flatCenter, float radius)
+    {
+        if (IsPlayabilityPlacementBlocked(flatCenter, radius))
+        {
+            return;
+        }
+
+        int treeCountInCluster = 5;
+        System.Random clusterRandom = new System.Random(unchecked((int)(flatCenter.x * 17f) ^ (int)(flatCenter.z * 31f)));
+
+        for (int i = 0; i < treeCountInCluster; i++)
+        {
+            float angle = RandomRange(clusterRandom, 0f, Mathf.PI * 2f);
+            float distance = RandomRange(clusterRandom, radius * 0.15f, radius);
+            Vector3 position = flatCenter + new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
+            float trunkHeight = RandomRange(clusterRandom, 1.5f, 2.1f);
+            float trunkRadius = RandomRange(clusterRandom, 0.14f, 0.22f);
+            Vector3 trunkScale = new Vector3(trunkRadius * 2f, trunkHeight, trunkRadius * 2f);
+            Vector3 trunkPosition = new Vector3(position.x, groundHeight + trunkHeight * 0.5f, position.z);
+            float yaw = RandomRange(clusterRandom, 0f, 360f);
+
+            CreatePrimitivePart(
+                parent,
+                $"ClusterTrunk_{i}",
+                PrimitiveType.Cylinder,
+                trunkPosition,
+                trunkScale,
+                TrunkColor,
+                0.2f,
+                true,
+                false,
+                0f,
+                Quaternion.Euler(0f, yaw, 0f));
+
+            float leafHeight = RandomRange(clusterRandom, 0.7f, 1f);
+            float leafRadius = RandomRange(clusterRandom, 0.45f, 0.75f);
+            Vector3 leafScale = new Vector3(leafRadius * 2f, leafHeight, leafRadius * 2f);
+            Vector3 leafPosition = trunkPosition + new Vector3(0f, trunkHeight * 0.55f + leafHeight * 0.4f, 0f);
+
+            CreatePrimitivePart(
+                parent,
+                $"ClusterLeaf_{i}",
+                PrimitiveType.Sphere,
+                leafPosition,
+                leafScale,
+                LeafColor,
+                0.16f,
+                true,
+                false,
+                0f,
+                Quaternion.Euler(0f, yaw * 0.5f, 0f));
+        }
+
+        RegisterBlockedArea(flatCenter, radius * 0.75f);
+    }
+
+    private void PlaceHilltopShrine(Transform parent, Vector3 flatCenter, float radius, float peakHeight)
+    {
+        if (IsPlayabilityPlacementBlocked(flatCenter, radius))
+        {
+            return;
+        }
+
+        PlaceWalkableMound(parent, "HilltopShrine_Mound", flatCenter, radius, peakHeight, 0f);
+
+        float pillarHeight = 3.4f;
+        float pillarWidth = 0.9f;
+        Vector3 pillarScale = new Vector3(pillarWidth, pillarHeight, pillarWidth);
+        float moundTopY = groundHeight + peakHeight;
+        Vector3[] pillarOffsets =
+        {
+            new Vector3(-1.6f, 0f, 0f),
+            new Vector3(1.6f, 0f, 0f),
+            new Vector3(0f, 0f, -1.4f)
+        };
+
+        for (int i = 0; i < pillarOffsets.Length; i++)
+        {
+            Vector3 offset = pillarOffsets[i];
+            Vector3 position = new Vector3(
+                flatCenter.x + offset.x,
+                moundTopY + pillarHeight * 0.5f,
+                flatCenter.z + offset.z);
+
+            CreatePrimitivePart(
+                parent,
+                $"HilltopPillar_{i}",
+                PrimitiveType.Cube,
+                position,
+                pillarScale,
+                LandmarkAccentColor,
+                0.4f,
+                true,
+                false);
         }
     }
 

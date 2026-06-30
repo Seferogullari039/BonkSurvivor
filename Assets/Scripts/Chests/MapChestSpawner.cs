@@ -35,8 +35,8 @@ public static class MapChestSpawner
 
         ProceduralGrassArena arena = ProceduralGrassArena.Instance;
         Vector3 spawnCenter = arena != null ? arena.SelectedPlayerSpawn : Vector3.zero;
-        float halfX = arena != null ? arena.HalfSizeX : 80f;
-        float halfZ = arena != null ? arena.HalfSizeZ : 80f;
+        float halfX = arena != null ? arena.HalfSizeX : ProceduralGrassArena.DefaultMapHalfSize;
+        float halfZ = arena != null ? arena.HalfSizeZ : ProceduralGrassArena.DefaultMapHalfSize;
 
         System.Random random = new System.Random(unchecked(runSeed ^ MapChestSeedSalt));
         List<Vector3> placedPositions = new List<Vector3>(DefaultMapChestCount);
@@ -91,7 +91,7 @@ public static class MapChestSpawner
                 continue;
             }
 
-            if (IsNearHardcodedExclusionZone(flatCandidate))
+            if (IsNearHardcodedExclusionZone(flatCandidate, Mathf.Min(halfX, halfZ)))
             {
                 continue;
             }
@@ -218,11 +218,13 @@ public static class MapChestSpawner
         return false;
     }
 
-    private static bool IsNearHardcodedExclusionZone(Vector3 flatCandidate)
+    private static bool IsNearHardcodedExclusionZone(Vector3 flatCandidate, float mapHalfSize)
     {
+        float scale = mapHalfSize / 80f;
+
         for (int i = 0; i < HardcodedExclusionZones.Length; i++)
         {
-            Vector3 zone = HardcodedExclusionZones[i];
+            Vector3 zone = HardcodedExclusionZones[i] * scale;
             zone.y = 0f;
 
             if ((flatCandidate - zone).sqrMagnitude < HardcodedExclusionRadius * HardcodedExclusionRadius)

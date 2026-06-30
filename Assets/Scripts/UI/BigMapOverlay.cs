@@ -10,7 +10,7 @@ public class BigMapOverlay : MonoBehaviour
     private const float MarkerPadding = 14f;
     private const float MarkerUpdateInterval = 0.1f;
     private const int MaxEnemyMarkers = 80;
-    private const float DefaultWorldHalfSize = 80f;
+    private const float DefaultWorldHalfSize = ProceduralGrassArena.DefaultMapHalfSize;
 
     private static readonly Color DimOverlayColor = new Color(0.02f, 0.03f, 0.05f, 0.32f);
     private static readonly Color MapPanelColor = new Color(0.09f, 0.22f, 0.11f, 0.44f);
