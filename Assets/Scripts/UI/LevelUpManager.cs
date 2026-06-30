@@ -1625,6 +1625,11 @@ public class LevelUpManager : MonoBehaviour
             case UpgradeOptionCatalog.VitalityIndex:
                 weight = earlyGame ? 8 : (midGame ? 6 : 5);
                 break;
+            case UpgradeOptionCatalog.BattleFocusIndex:
+            case UpgradeOptionCatalog.WindRunnerIndex:
+            case UpgradeOptionCatalog.TreasureInstinctIndex:
+                weight = earlyGame ? 7 : (midGame ? 6 : 5);
+                break;
             case 19:
             case 21:
                 weight = earlyGame ? 2 : (midGame ? 3 : 4);
@@ -1912,6 +1917,21 @@ public class LevelUpManager : MonoBehaviour
                     "Vitality",
                     "+10 Max HP",
                     "chest_stat_health");
+            case UpgradeOptionCatalog.BattleFocusIndex:
+                return MakeContent(
+                    "Battle Focus",
+                    "Increase starter weapon damage by 5% per level.",
+                    "sharp_instinct");
+            case UpgradeOptionCatalog.WindRunnerIndex:
+                return MakeContent(
+                    "Wind Runner",
+                    "Increase move speed by 4% per level.",
+                    "swift");
+            case UpgradeOptionCatalog.TreasureInstinctIndex:
+                return MakeContent(
+                    "Treasure Instinct",
+                    "Increase coin gain by 8% per level.",
+                    "golden_magnet");
             default:
                 return MakeContent(string.Empty, string.Empty, string.Empty);
         }
@@ -2406,6 +2426,16 @@ public class LevelUpManager : MonoBehaviour
         if (upgradeIndex >= 0)
         {
             RunBuildTracker.GetOrCreate().RecordUpgrade(upgradeIndex);
+        }
+
+        if (upgradeIndex == UpgradeOptionCatalog.WindRunnerIndex)
+        {
+            GameObject player = GameObject.FindGameObjectWithTag("Player");
+
+            if (player != null)
+            {
+                player.GetComponent<FPSPlayerController>()?.RefreshMoveSpeedFromStats();
+            }
         }
     }
 

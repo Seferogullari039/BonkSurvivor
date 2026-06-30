@@ -670,6 +670,7 @@ public static class StarterWeaponDamageUtility
         }
 
         finalDamage = LegendaryPassiveEffectManager.ApplyBloodPactStarterDamageBonus(finalDamage);
+        finalDamage = Mathf.Max(1, Mathf.RoundToInt(finalDamage * PassiveBuildModifiers.GetBattleFocusDamageMultiplier()));
         finalDamage = Mathf.Max(1, Mathf.RoundToInt(finalDamage * ChestStatCombatModifiers.GetDamageMultiplier()));
         finalDamage = ChestStatCombatModifiers.ApplyCritToDamage(finalDamage);
 

@@ -235,7 +235,8 @@ public class FPSPlayerController : MonoBehaviour
         moveSpeed = baseMoveSpeed
             * (1f + MetaProgressionManager.GetOrCreate().GetMoveSpeedBonusPercent())
             * RelicManager.MoveSpeedMultiplier
-            * chestMoveSpeedMultiplier;
+            * chestMoveSpeedMultiplier
+            * PassiveBuildModifiers.GetWindRunnerMoveSpeedMultiplier();
     }
 
     public void RefreshMoveSpeedFromStats()

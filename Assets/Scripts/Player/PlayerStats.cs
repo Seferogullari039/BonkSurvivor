@@ -541,7 +541,9 @@ public class PlayerStats : MonoBehaviour
     {
         if (!MainMenuManager.IsRunActive) return;
 
-        float multiplier = RelicManager.CoinGainMultiplier * chestCoinGainMultiplier;
+        float multiplier = RelicManager.CoinGainMultiplier
+            * chestCoinGainMultiplier
+            * PassiveBuildModifiers.GetTreasureInstinctCoinMultiplier();
         int finalAmount = amount > 0
             ? Mathf.Max(1, Mathf.RoundToInt(amount * multiplier))
             : amount;
