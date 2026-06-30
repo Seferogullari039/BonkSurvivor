@@ -21,6 +21,9 @@ public class ProceduralGrassArena : MonoBehaviour
     private const float ReferenceHalfSize = 80f;
     private const int TerrainGridResolution = 52;
     private const float TerrainSpawnFlattenRadius = 22f;
+    private const float SafetyGroundThickness = 0.5f;
+    private const float SafetyGroundYOffset = -0.25f;
+    private const float SafetyGroundMargin = 20f;
 
     [Header("Terrain Mesh")]
     [SerializeField] private bool useLowpolyTerrainMesh = true;
@@ -117,7 +120,9 @@ public class ProceduralGrassArena : MonoBehaviour
     private Transform interiorMountainsRoot;
     private Transform playabilityTerrainRoot;
     private Transform terrainMeshRoot;
+    private Transform safetyGroundRoot;
     private Mesh terrainMesh;
+    private Mesh terrainCollisionMesh;
     private readonly List<Vector3> placedLargeObjectPositions = new List<Vector3>();
     private readonly List<BlockedArea> blockedAreas = new List<BlockedArea>();
     private readonly List<Vector3> placedMountainCenters = new List<Vector3>();
@@ -223,6 +228,13 @@ public class ProceduralGrassArena : MonoBehaviour
         if (player == null) return;
 
         Vector3 spawn = GetSafePlayerSpawn();
+        Vector3 probePosition = new Vector3(spawn.x, GetSurfaceHeightAt(spawn.x, spawn.z), spawn.z);
+
+        if (GroundSnapUtility.TryGetGroundY(probePosition, PlayerSpawnHeightOffset, out float snappedY))
+        {
+            spawn.y = snappedY;
+        }
+
         selectedPlayerSpawn = spawn;
 
         CharacterController characterController = player.GetComponent<CharacterController>();
@@ -567,6 +579,7 @@ public class ProceduralGrassArena : MonoBehaviour
         if (useLowpolyTerrainMesh)
         {
             BuildLowpolyTerrainMesh();
+            BuildSafetyGroundCollider();
         }
 
         BuildBorders();
@@ -703,7 +716,9 @@ public class ProceduralGrassArena : MonoBehaviour
         interiorMountainsRoot = null;
         playabilityTerrainRoot = null;
         terrainMeshRoot = null;
+        safetyGroundRoot = null;
         terrainMesh = null;
+        terrainCollisionMesh = null;
 
         Transform existingRoot = transform.Find(ArenaRootName);
 
@@ -772,14 +787,31 @@ public class ProceduralGrassArena : MonoBehaviour
             underlayColor,
             0.18f,
             true,
-            !useLowpolyTerrainMesh);
+            true);
+    }
+
+    private void BuildSafetyGroundCollider()
+    {
+        GameObject safetyObject = new GameObject("SafetyGroundCollider");
+        safetyObject.transform.SetParent(groundRoot, false);
+        safetyObject.transform.position = new Vector3(0f, groundHeight + SafetyGroundYOffset, 0f);
+        safetyObject.isStatic = true;
+        safetyGroundRoot = safetyObject.transform;
+
+        BoxCollider boxCollider = safetyObject.AddComponent<BoxCollider>();
+        boxCollider.size = new Vector3(
+            mapSizeX + SafetyGroundMargin,
+            SafetyGroundThickness,
+            mapSizeZ + SafetyGroundMargin);
+        boxCollider.isTrigger = false;
     }
 
     private void BuildLowpolyTerrainMesh()
     {
         terrainMesh = CreateLowpolyTerrainMeshData();
+        terrainCollisionMesh = CreateTerrainCollisionMeshData();
 
-        if (terrainMesh == null)
+        if (terrainMesh == null || terrainCollisionMesh == null)
         {
             return;
         }
@@ -801,7 +833,62 @@ public class ProceduralGrassArena : MonoBehaviour
         GameVisualStyle.ApplyColor(meshRenderer, GroundColor, 0.14f, false, 0f);
 
         MeshCollider meshCollider = terrainObject.AddComponent<MeshCollider>();
-        meshCollider.sharedMesh = terrainMesh;
+        meshCollider.convex = false;
+        meshCollider.isTrigger = false;
+        meshCollider.sharedMesh = null;
+        meshCollider.sharedMesh = terrainCollisionMesh;
+    }
+
+    private Mesh CreateTerrainCollisionMeshData()
+    {
+        int resolution = TerrainGridResolution;
+        int vertexCount = resolution * resolution;
+        var vertices = new Vector3[vertexCount];
+
+        for (int z = 0; z < resolution; z++)
+        {
+            for (int x = 0; x < resolution; x++)
+            {
+                vertices[z * resolution + x] = TerrainVertexAtGrid(x, z, resolution);
+            }
+        }
+
+        int quadCountX = resolution - 1;
+        int quadCountZ = resolution - 1;
+        var triangles = new int[quadCountX * quadCountZ * 6];
+        int triangleIndex = 0;
+
+        for (int z = 0; z < quadCountZ; z++)
+        {
+            for (int x = 0; x < quadCountX; x++)
+            {
+                int bottomLeft = z * resolution + x;
+                int bottomRight = bottomLeft + 1;
+                int topLeft = bottomLeft + resolution;
+                int topRight = topLeft + 1;
+
+                triangles[triangleIndex++] = bottomLeft;
+                triangles[triangleIndex++] = bottomRight;
+                triangles[triangleIndex++] = topRight;
+                triangles[triangleIndex++] = bottomLeft;
+                triangles[triangleIndex++] = topRight;
+                triangles[triangleIndex++] = topLeft;
+            }
+        }
+
+        Mesh mesh = new Mesh
+        {
+            name = "LowpolyTerrainCollisionMesh",
+            indexFormat = vertexCount > 65000
+                ? UnityEngine.Rendering.IndexFormat.UInt32
+                : UnityEngine.Rendering.IndexFormat.UInt16
+        };
+
+        mesh.vertices = vertices;
+        mesh.triangles = triangles;
+        mesh.RecalculateBounds();
+        mesh.RecalculateNormals();
+        return mesh;
     }
 
     private Mesh CreateLowpolyTerrainMeshData()
