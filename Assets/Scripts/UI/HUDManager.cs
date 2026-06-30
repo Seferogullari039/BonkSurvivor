@@ -80,6 +80,50 @@ public class HUDManager : MonoBehaviour
         SetGameplayHudVisible(true);
     }
 
+    public static void HideLevelUpFeedbackImmediate()
+    {
+        if (Instance == null)
+        {
+            Instance = FindFirstObjectByType<HUDManager>();
+        }
+
+        Instance?.HideLevelUpFeedbackImmediateInternal();
+    }
+
+    public static void EnsureReadyForRun()
+    {
+        if (Instance == null)
+        {
+            Instance = FindFirstObjectByType<HUDManager>();
+        }
+
+        HideLevelUpFeedbackImmediate();
+        if (Instance != null)
+        {
+            Instance.lastPolishedLevel = -1;
+        }
+    }
+
+    private void HideLevelUpFeedbackImmediateInternal()
+    {
+        if (levelUpFeedbackRoutine != null)
+        {
+            StopCoroutine(levelUpFeedbackRoutine);
+            levelUpFeedbackRoutine = null;
+        }
+
+        if (levelUpFeedbackText == null)
+        {
+            return;
+        }
+
+        Color color = LevelUpFeedbackColor;
+        color.a = 0f;
+        levelUpFeedbackText.color = color;
+        levelUpFeedbackText.alpha = 0f;
+        levelUpFeedbackText.gameObject.SetActive(false);
+    }
+
     public static void SetGameplayHudVisible(bool visible)
     {
         if (Instance == null)
@@ -473,7 +517,6 @@ public class HUDManager : MonoBehaviour
         SetElementVisible(xpBarBackground, visible);
         SetElementVisible(hpBarFill, visible);
         SetElementVisible(xpBarFill, visible);
-        SetElementVisible(levelUpFeedbackText, visible);
     }
 
     public void ForceHudElementsVisibleForRecovery()

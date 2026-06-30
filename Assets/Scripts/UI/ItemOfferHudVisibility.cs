@@ -30,6 +30,7 @@ public static class ItemOfferHudVisibility
         RunBuildHud.HideHud();
         ActiveWeaponHud.HideHud();
         ChestStatBuffHud.HideHud();
+        HUDManager.HideLevelUpFeedbackImmediate();
         HUDManager.HideGameplayHud();
     }
 

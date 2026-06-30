@@ -10,6 +10,9 @@ public static class ImportedEnvironmentVisualLayer
     private const string PolytopePrefabsRoot = "Assets/Polytope Studio/Lowpoly_Environments/Prefabs";
     private const string GaMaterialsFolder = "Assets/BonkSurvivor/Maps/GreenAncientWilds/Materials";
     private const float MinDistanceFromSpawnCenter = 25f;
+    private const float SmallDecorMinCenterDistance = 35f;
+    private const float LargeTreeMinCenterDistance = 50f;
+    private const float LandmarkTreeMinCenterDistance = 62f;
 
     private static readonly string[] TreePrefabPaths =
     {
@@ -91,7 +94,7 @@ public static class ImportedEnvironmentVisualLayer
             float z = Mathf.Lerp(halfZ * 0.62f, halfZ * 0.88f, 0.35f + (i % 3) * 0.22f);
             Vector3 flat = new Vector3(x, 0f, z);
 
-            if (!IsValidPlacement(arena, flat))
+            if (!IsValidPlacement(arena, flat, path))
             {
                 continue;
             }
@@ -124,9 +127,9 @@ public static class ImportedEnvironmentVisualLayer
         int placed = 0;
         Vector3[] clusterCenters =
         {
-            new Vector3(arena.HalfSizeX * 0.58f, 0f, 18f),
-            new Vector3(arena.HalfSizeX * 0.66f, 0f, -8f),
-            new Vector3(arena.HalfSizeX * 0.52f, 0f, 42f),
+            new Vector3(arena.HalfSizeX * 0.72f, 0f, arena.HalfSizeZ * 0.42f),
+            new Vector3(arena.HalfSizeX * 0.78f, 0f, arena.HalfSizeZ * 0.18f),
+            new Vector3(arena.HalfSizeX * 0.64f, 0f, arena.HalfSizeZ * 0.58f),
         };
 
         for (int cluster = 0; cluster < clusterCenters.Length; cluster++)
@@ -140,14 +143,14 @@ public static class ImportedEnvironmentVisualLayer
                 float distance = RandomRange(random, 2.5f, 9f);
                 Vector3 flat = center + new Vector3(Mathf.Cos(angle) * distance, 0f, Mathf.Sin(angle) * distance);
 
-                if (!IsValidPlacement(arena, flat))
+                if (!IsValidPlacement(arena, flat, path))
                 {
                     continue;
                 }
 
                 string path = TreePrefabPaths[i % TreePrefabPaths.Length];
                 float yaw = PlacementYaw(random, cluster * 10 + i, 23);
-                float scale = PlacementScale(random, cluster * 10 + i, 29, 0.88f, 1.22f);
+                float scale = PlacementScale(random, cluster * 10 + i, 29, 0.88f, 1.08f);
 
                 if (TryPlacePrefab(arena, zone, path, flat, yaw, scale, materials.Tree))
                 {
@@ -156,7 +159,7 @@ public static class ImportedEnvironmentVisualLayer
             }
 
             Vector3 rockFlat = center + new Vector3(-5f, 0f, -4f);
-            if (IsValidPlacement(arena, rockFlat))
+            if (IsValidPlacement(arena, rockFlat, RockPrefabPaths[1]))
             {
                 if (TryPlacePrefab(
                         arena,
@@ -194,7 +197,7 @@ public static class ImportedEnvironmentVisualLayer
             float z = Mathf.Lerp(-arena.HalfSizeZ * 0.2f, arena.HalfSizeZ * 0.28f, t);
             Vector3 flat = new Vector3(x, 0f, z);
 
-            if (!IsValidPlacement(arena, flat))
+            if (!IsValidPlacement(arena, flat, path))
             {
                 continue;
             }
@@ -249,20 +252,15 @@ public static class ImportedEnvironmentVisualLayer
         for (int i = 0; i < 8; i++)
         {
             float angle = -Mathf.PI * 0.55f + i * (Mathf.PI * 0.14f);
-            float radius = RandomRange(random, arena.HalfSizeZ * 0.28f, arena.HalfSizeZ * 0.52f);
+            float radius = RandomRange(random, arena.HalfSizeZ * 0.45f, arena.HalfSizeZ * 0.58f);
             Vector3 flat = new Vector3(Mathf.Cos(angle) * radius * 0.75f, 0f, -Mathf.Abs(Mathf.Sin(angle)) * radius);
+            string path = i % 4 == 0 ? RockPrefabPaths[0] : grassPath;
+            Material material = path.Contains("Rock") ? materials.Rock : materials.Grass;
 
-            if (!IsValidPlacement(arena, flat))
+            if (!IsValidPlacement(arena, flat, path))
             {
                 continue;
             }
-
-            string path = i % 3 == 0 ? TreePrefabPaths[1] : i % 3 == 1 ? RockPrefabPaths[0] : grassPath;
-            Material material = path.Contains("Tree")
-                ? materials.Tree
-                : path.Contains("Rock")
-                    ? materials.Rock
-                    : materials.Grass;
 
             if (TryPlacePrefab(
                     arena,
@@ -283,23 +281,23 @@ public static class ImportedEnvironmentVisualLayer
     private static int PlaceNorthLandmark(ProceduralGrassArena arena, Transform parent, GaMaterialSet materials)
     {
         Transform zone = CreateZone(parent, "NorthLandmark");
-        Vector3 center = new Vector3(0f, 0f, arena.HalfSizeZ * 0.68f);
+        string menhirPath = PolytopePrefabsRoot + "/Rocks/PT_Menhir_Rock_02.prefab";
+        string pinePath = TreePrefabPaths[0];
+        Vector3 center = new Vector3(0f, 0f, arena.HalfSizeZ * 0.72f);
 
-        if (!IsValidPlacement(arena, center))
+        if (!IsValidPlacement(arena, center, pinePath))
         {
             return 0;
         }
 
         int placed = 0;
-        string menhirPath = PolytopePrefabsRoot + "/Rocks/PT_Menhir_Rock_02.prefab";
-        string pinePath = TreePrefabPaths[0];
         float[] angles = { 0f, 72f, 144f, 216f, 288f };
 
         for (int i = 0; i < angles.Length; i++)
         {
             float radians = angles[i] * Mathf.Deg2Rad;
             Vector3 flat = center + new Vector3(Mathf.Cos(radians) * 7f, 0f, Mathf.Sin(radians) * 7f);
-            if (!IsValidPlacement(arena, flat))
+            if (!IsValidPlacement(arena, flat, menhirPath))
             {
                 continue;
             }
@@ -320,12 +318,12 @@ public static class ImportedEnvironmentVisualLayer
         for (int i = 0; i < treeOffsets.Length; i++)
         {
             Vector3 flat = center + treeOffsets[i];
-            if (!IsValidPlacement(arena, flat))
+            if (!IsValidPlacement(arena, flat, pinePath))
             {
                 continue;
             }
 
-            if (TryPlacePrefab(arena, zone, pinePath, flat, i * 40f, 1.05f, materials.Tree))
+            if (TryPlacePrefab(arena, zone, pinePath, flat, i * 40f, 1.0f, materials.Tree))
             {
                 placed++;
             }
@@ -341,9 +339,12 @@ public static class ImportedEnvironmentVisualLayer
         return zoneObject.transform;
     }
 
-    private static bool IsValidPlacement(ProceduralGrassArena arena, Vector3 flatPosition)
+    private static bool IsValidPlacement(ProceduralGrassArena arena, Vector3 flatPosition, string prefabPath)
     {
-        if (flatPosition.sqrMagnitude < MinDistanceFromSpawnCenter * MinDistanceFromSpawnCenter)
+        float minCenterDistance = GetMinCenterDistanceForPrefab(prefabPath);
+        float minCenterDistanceSq = minCenterDistance * minCenterDistance;
+
+        if (flatPosition.sqrMagnitude < minCenterDistanceSq)
         {
             return false;
         }
@@ -353,6 +354,12 @@ public static class ImportedEnvironmentVisualLayer
         Vector3 flatCandidate = new Vector3(flatPosition.x, 0f, flatPosition.z);
 
         if ((flatCandidate - flatSpawn).sqrMagnitude < MinDistanceFromSpawnCenter * MinDistanceFromSpawnCenter)
+        {
+            return false;
+        }
+
+        if (IsLargeTreePrefab(prefabPath)
+            && (flatCandidate - flatSpawn).sqrMagnitude < LargeTreeMinCenterDistance * LargeTreeMinCenterDistance)
         {
             return false;
         }
@@ -367,6 +374,28 @@ public static class ImportedEnvironmentVisualLayer
         return true;
     }
 
+    private static float GetMinCenterDistanceForPrefab(string prefabPath)
+    {
+        if (IsLargeTreePrefab(prefabPath))
+        {
+            return LargeTreeMinCenterDistance;
+        }
+
+        if (prefabPath != null && prefabPath.Contains("Menhir"))
+        {
+            return LandmarkTreeMinCenterDistance;
+        }
+
+        return SmallDecorMinCenterDistance;
+    }
+
+    private static bool IsLargeTreePrefab(string prefabPath)
+    {
+        return prefabPath != null
+            && prefabPath.Contains("/Trees/")
+            && (prefabPath.Contains("PT_Pine_Tree") || prefabPath.Contains("PT_Fruit_Tree"));
+    }
+
     private static bool TryPlacePrefab(
         ProceduralGrassArena arena,
         Transform parent,
@@ -378,6 +407,11 @@ public static class ImportedEnvironmentVisualLayer
     {
         GameObject prefab = LoadEnvironmentPrefab(prefabPath);
         if (prefab == null)
+        {
+            return false;
+        }
+
+        if (!IsValidPlacement(arena, flatPosition, prefabPath))
         {
             return false;
         }

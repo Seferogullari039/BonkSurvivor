@@ -702,6 +702,7 @@ public class MainMenuManager : MonoBehaviour
         WorldInteractionPromptUI.EnsureReadyForRun();
         RunEventMessageDisplay.EnsureReadyForRun();
         LevelUpManager.EnsureReadyForRun();
+        HUDManager.EnsureReadyForRun();
 
         ClearRunEntities();
         ResetPlayerRun();
